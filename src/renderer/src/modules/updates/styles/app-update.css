@@ -73,7 +73,7 @@
   margin: 20px 24px 0;
   padding: 16px;
   background: var(--surface-subtle);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
 }
 
 .app-update-notes-section h3 {
@@ -128,7 +128,7 @@
   color: var(--text);
   background: var(--surface-raised);
   border: 1px solid color-mix(in srgb, var(--text) 15%, transparent);
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   font: inherit;
   font-size: 13px;
 }

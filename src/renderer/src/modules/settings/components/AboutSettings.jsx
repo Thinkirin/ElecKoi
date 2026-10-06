@@ -1,4 +1,5 @@
 import appIcon from "../../../assets/eleckoi-app-icon.png";
+import { ArrowClockwise, CircleNotch, WarningCircle, CheckCircle } from '@phosphor-icons/react';
 
 const BUSY_PHASES = new Set(["checking", "downloading", "installing"]);
 
@@ -21,7 +22,7 @@ export function AboutSettings({ updates }) {
       <header className="app-settings-heading">
         <h1>关于 ElecKoi</h1>
       </header>
-      <section className="app-settings-card about-version-card" aria-busy={busy || undefined}>
+      <section className="app-settings-card about-version-card settings-about-brand" aria-busy={busy || undefined}>
         <img src={appIcon} alt="" aria-hidden="true" draggable="false" />
         <div className="about-version-copy">
           <strong>ElecKoi</strong>
@@ -33,10 +34,12 @@ export function AboutSettings({ updates }) {
           disabled={busy}
           onClick={checkForUpdates}
         >
+          {busy ? <CircleNotch size={17} className="settings-status-spinner" /> : <ArrowClockwise size={17} />}
           {phase === "checking" ? "正在检查…" : "检查更新"}
         </button>
         {message ? (
           <p className={`about-update-status${phase === "error" || updates?.error ? " is-error" : ""}`} role="status">
+            {phase === 'error' || updates?.error ? <WarningCircle size={17} /> : <CheckCircle size={17} />}
             {message}
           </p>
         ) : null}

@@ -44,6 +44,8 @@ export const ModelConfigPanel = forwardRef(function ModelConfigPanel({
   onDirtyChange,
   renderEditor,
   renderLayout,
+  onNavigate,
+  onBack,
   navigationGuardRef,
 }, ref) {
   const [form, setForm] = useState(config);
@@ -401,6 +403,7 @@ export const ModelConfigPanel = forwardRef(function ModelConfigPanel({
       setForm(next);
       setIsDirty(false);
       isDirtyRef.current = false;
+      onNavigate?.();
     });
   }
 
@@ -593,6 +596,7 @@ export const ModelConfigPanel = forwardRef(function ModelConfigPanel({
   );
 
   const builtInMainPanel = <ModelConfigDetail
+    onBack={() => requestDraftReplacement(onBack || (() => window.dispatchEvent(new CustomEvent('eleckoi:platform-back', { cancelable: true }))))}
     activeProvider={activeProvider}
     isImageProvider={isImageProvider}
     hasUnsavedChanges={hasUnsavedChanges}

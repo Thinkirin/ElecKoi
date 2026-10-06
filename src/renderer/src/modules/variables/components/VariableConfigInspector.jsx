@@ -1,5 +1,7 @@
-import { useEffect, useId, useRef, useState } from "react";
-import { CaretDown, X } from "@phosphor-icons/react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { CaretDown } from "@phosphor-icons/react";
+import { EditorHeader } from '../../../ui/ui/EditorHeader.jsx';
 import { generatedInitialStatePreviewJson, generatedObjectStateJson } from "../../../../../shared/foundation/variables/initialState.ts";
 import { VARIABLE_INITIALIZATION_OBJECT_ID } from "../../../../../shared/contracts/variables/schemas.ts";
 import { VariableEntryIcon, VariableGroupIcon } from "./VariableConfigTree.jsx";
@@ -25,12 +27,14 @@ function VariableTypeSelect({ value, onSelect }) {
   const rootRef = useRef(null);
   const triggerRef = useRef(null);
   const optionRefs = useRef([]);
+  const optionsRef = useRef(null);
+  const [menuPosition, setMenuPosition] = useState(null);
   const selected = VARIABLE_TYPES.find((item) => item.value === value);
 
   useEffect(() => {
     if (!open) return undefined;
     const closeOutside = (event) => {
-      if (!rootRef.current?.contains(event.target)) setOpen(false);
+      if (!rootRef.current?.contains(event.target) && !optionsRef.current?.contains(event.target)) setOpen(false);
     };
     document.addEventListener("pointerdown", closeOutside);
     return () => document.removeEventListener("pointerdown", closeOutside);
@@ -38,7 +42,41 @@ function VariableTypeSelect({ value, onSelect }) {
 
   useEffect(() => {
     if (open) optionRefs.current[focusedIndex]?.focus();
-  }, [open, focusedIndex]);
+  }, [open, focusedIndex, Boolean(menuPosition)]);
+
+  useLayoutEffect(() => {
+    if (!open) { setMenuPosition(null); return undefined; }
+    function positionMenu() {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const viewport = window.visualViewport;
+      const leftEdge = (viewport?.offsetLeft || 0) + 8;
+      const topEdge = (viewport?.offsetTop || 0) + 8;
+      const rightEdge = (viewport?.offsetLeft || 0) + (viewport?.width || window.innerWidth) - 8;
+      const bottomEdge = (viewport?.offsetTop || 0) + (viewport?.height || window.innerHeight) - 8;
+      const width = Math.min(440, rightEdge - leftEdge);
+      const below = Math.max(0, bottomEdge - rect.bottom - 4);
+      const above = Math.max(0, rect.top - topEdge - 4);
+      const placeBelow = below >= Math.min(300, above);
+      const maxHeight = Math.min(300, placeBelow ? below : above);
+      setMenuPosition({
+        left: Math.max(leftEdge, Math.min(rect.right - width, rightEdge - width)),
+        top: placeBelow ? rect.bottom + 4 : Math.max(topEdge, rect.top - maxHeight - 4),
+        width,
+        maxHeight,
+      });
+    }
+    positionMenu();
+    window.addEventListener("resize", positionMenu);
+    window.addEventListener("scroll", positionMenu, true);
+    window.visualViewport?.addEventListener("resize", positionMenu);
+    window.visualViewport?.addEventListener("scroll", positionMenu);
+    return () => {
+      window.removeEventListener("resize", positionMenu);
+      window.removeEventListener("scroll", positionMenu, true);
+      window.visualViewport?.removeEventListener("resize", positionMenu);
+      window.visualViewport?.removeEventListener("scroll", positionMenu);
+    };
+  }, [open]);
 
   function showOptions(index = Math.max(0, VARIABLE_TYPES.findIndex((item) => item.value === value))) {
     setFocusedIndex(index);
@@ -68,7 +106,7 @@ function VariableTypeSelect({ value, onSelect }) {
   }
 
   return <div className="variable-field variable-type-field" ref={rootRef} onBlur={(event) => {
-    if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+    if (!event.currentTarget.contains(event.relatedTarget) && !optionsRef.current?.contains(event.relatedTarget)) setOpen(false);
   }}>
     <span id={labelId}>数据结构</span>
     <button
@@ -90,7 +128,7 @@ function VariableTypeSelect({ value, onSelect }) {
       <span className={selected ? "" : "is-placeholder"}>{selected?.value || "请选择 JSON 数据结构"}</span>
       <CaretDown size={15} aria-hidden="true" />
     </button>
-    {open ? <div className="variable-type-options" id={listId} role="listbox" aria-labelledby={labelId} onKeyDown={onOptionKeyDown}>
+    {open && menuPosition ? createPortal(<div className="variable-type-options" ref={optionsRef} style={menuPosition} id={listId} role="listbox" aria-labelledby={labelId} onKeyDown={onOptionKeyDown}>
       {VARIABLE_TYPES.map((item, index) => <button
         type="button"
         role="option"
@@ -104,7 +142,7 @@ function VariableTypeSelect({ value, onSelect }) {
         <VariableEntryIcon type={item.value} size={20} />
         <span><strong>{item.value}</strong><small>{item.description}</small></span>
       </button>)}
-    </div> : null}
+    </div>, document.body) : null}
   </div>;
 }
 
@@ -154,7 +192,7 @@ function VariableEditor({ config, variable, nameInputRef, onChange, onConvert })
   const update = (patch) => onChange({ ...config, variables: config.variables.map((item) => item.id === variable.id ? { ...item, ...patch } : item) });
   const defaultControl = variable.type === "boolean" ? (
     <select value={variable.defaultValue || "false"} onChange={(event) => update({ defaultValue: event.target.value })}><option value="false">false</option><option value="true">true</option></select>
-  ) : variable.type === "array" ? (
+  ) : variable.type === "array" || variable.type === "object" ? (
     <textarea className="is-code" value={variable.defaultValue} onChange={(event) => update({ defaultValue: event.target.value })} placeholder="[]" />
   ) : (
     <input type={variable.type === "number" ? "number" : "text"} value={variable.defaultValue} onChange={(event) => update({ defaultValue: event.target.value })} />
@@ -177,15 +215,13 @@ function VariableEditor({ config, variable, nameInputRef, onChange, onConvert })
   );
 }
 
-export function VariableConfigInspector({ config, selected, nameInputRef, onClose, onChange, onReplaceContents, onConvert }) {
+export function VariableConfigInspector({ config, selected, nameInputRef, onClose, saveAction, onChange, onReplaceContents, onConvert }) {
   if (!selected.value) return null;
   const fixed = selected.kind === "object" && selected.value.id === VARIABLE_INITIALIZATION_OBJECT_ID;
   return (
     <aside className={`variable-inspector${fixed ? " is-initialization" : ""}`} aria-label="变量编辑器">
-      <header className="variable-inspector-header">
-        <div>{selected.kind === "object" ? <VariableGroupIcon initialization={fixed} size={18} /> : <VariableEntryIcon type={selected.value.type} size={18} />}<strong>{fixed ? "变量运行配置" : selected.kind === "object" ? selected.value.name : selected.value.title}</strong></div>
-        <button type="button" aria-label="关闭编辑器" onClick={onClose}><X size={18} /></button>
-      </header>
+      <EditorHeader className="catalog-editor-header" onBack={onClose} backLabel="返回变量列表" saveAction={saveAction}
+        title={<span className="catalog-editor-title">{selected.kind === "object" ? <VariableGroupIcon initialization={fixed} size={18} /> : <VariableEntryIcon type={selected.value.type} size={18} />}<strong>{fixed ? "变量运行配置" : selected.kind === "object" ? selected.value.name : selected.value.title}</strong></span>} />
       <div className="variable-inspector-body">
         {fixed ? <InitializationEditor config={config} onChange={onChange} /> : selected.kind === "object" ? (
           <ObjectEditor config={config} object={selected.value} nameInputRef={nameInputRef} onChange={onChange} onReplaceContents={onReplaceContents} />

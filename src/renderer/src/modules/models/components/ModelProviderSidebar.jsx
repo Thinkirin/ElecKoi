@@ -127,6 +127,7 @@ export function ModelProviderSidebar({
                   {section.items.map((item) => (
                     <button
                       key={item.id}
+                      data-model-provider={item.id}
                       className={`model-config-provider ${activeProviderId === item.id ? "active" : ""}`}
                       type="button"
                       onClick={() => {

@@ -1,5 +1,5 @@
 import { useEffect, useId, useImperativeHandle, useRef, useState } from 'react';
-import { CaretRight, CaretUp, DotsThree, NotePencil, Plus } from '@phosphor-icons/react';
+import { CaretRight, CaretUp, Check, DotsThree, NotePencil, Plus, X } from '@phosphor-icons/react';
 import { TrashIcon } from '../../../ui/icons/index.jsx';
 import { UnsavedChangesDialog } from '../../../ui/ui/UnsavedChangesDialog.jsx';
 import { calendarDateValue, createTimelineDraft, createUsageDraft, introductionDraftPatch, isIntroductionDraftDirty, visibleTimelineRecords } from '../model/presetIntroductionDraft.js';
@@ -15,12 +15,12 @@ export function PresetContentComposer({ draft, formRef, saving, error, onChange,
         <input className="preset-content-composer-title" aria-label="更新标题" placeholder="更新标题" maxLength={80} value={draft.value.title} onChange={(event) => onChange({ ...draft.value, title: event.target.value })} />
         <input className="preset-content-composer-date" aria-label="更新日期" type={!draft.value.dateLabel || calendarDateValue(draft.value.dateLabel) ? 'date' : 'text'} maxLength={24} value={calendarDateValue(draft.value.dateLabel) || draft.value.dateLabel} onChange={(event) => onChange({ ...draft.value, dateLabel: event.target.value })} />
       </div> : null}
-      <textarea aria-label={timeline ? '更新内容' : '使用说明'} placeholder={timeline ? '写下这次更新…' : '写下使用说明…'} rows={4} maxLength={timeline ? 800 : 1000} value={timeline ? draft.value.note : draft.value} onChange={(event) => onChange(timeline ? { ...draft.value, note: event.target.value } : event.target.value)} />
+      <textarea aria-label={timeline ? '更新内容' : '使用说明'} placeholder={timeline ? '写下这次更新…' : '写下使用说明…'} rows={4} maxLength={timeline ? 800 : 8000} value={timeline ? draft.value.note : draft.value} onChange={(event) => onChange(timeline ? { ...draft.value, note: event.target.value } : event.target.value)} />
       <div className="preset-content-composer-footer">
         <span className="preset-content-error" role={error ? 'alert' : undefined}>{error}</span>
         <div className="preset-content-actions">
-          <button type="button" className="preset-content-button" onClick={onCancel}>取消</button>
-          <button type="submit" className="preset-content-button is-primary">{saving ? '保存中…' : timeline ? '保存更新' : '保存'}</button>
+          <button type="button" className="preset-content-button is-icon" aria-label="取消编辑" title="取消编辑" onClick={onCancel}><X size={17} /><span className="preset-content-sr-only">取消</span></button>
+          <button type="submit" className="preset-content-button is-primary is-icon" aria-label={timeline ? '保存更新' : '保存说明'} title={timeline ? '保存更新' : '保存说明'}><Check size={17} /><span className="preset-content-sr-only">{saving ? '保存中…' : timeline ? '保存更新' : '保存'}</span></button>
         </div>
       </div>
     </fieldset>
@@ -60,7 +60,7 @@ function RecordActions({ item, saving, onEdit, onDelete }) {
   </details>;
 }
 
-export function PresetIntroductionEditor({ preset, editorRef, saving, error, onClearError, onSaveProfile }) {
+export function PresetIntroductionEditor({ preset, editorRef, saving, error, onClearError, onSaveProfile, onDraftStateChange }) {
   const profile = preset.profile;
   const [draft, setDraft] = useState(() => profile.usageInstructions ? null : createUsageDraft(profile));
   const [validation, setValidation] = useState('');
@@ -75,6 +75,7 @@ export function PresetIntroductionEditor({ preset, editorRef, saving, error, onC
   const addRef = useRef(null);
   const busyRef = useRef(false);
   const dirty = isIntroductionDraftDirty(draft);
+  useEffect(() => { onDraftStateChange?.({ dirty, hasDraft: Boolean(draft) }); }, [dirty, Boolean(draft), onDraftStateChange]);
   const { records, hiddenCount } = visibleTimelineRecords(profile.timeline, expanded, Boolean(draft?.isNew));
 
   useEffect(() => {
@@ -134,16 +135,13 @@ export function PresetIntroductionEditor({ preset, editorRef, saving, error, onC
   const composer = draft ? <PresetContentComposer draft={draft} formRef={formRef} saving={saving} error={validation || error} onChange={(value) => { setDraft((current) => ({ ...current, value })); setValidation(''); }} onCancel={() => { if (!saving) { finish(); onClearError(); } }} onSave={saveDraft} /> : null;
   return <div className="preset-usage-content">
     <section className="preset-content-section preset-usage-section" aria-label="使用说明">
-      <div className="preset-content-section-heading">
-        <h2>使用说明</h2>
-        {draft?.kind !== 'usage' ? <button ref={usageEditRef} type="button" className="preset-content-button is-section-action" disabled={saving} onClick={() => openDraft(createUsageDraft(profile))}>编辑</button> : null}
-      </div>
+      {draft?.kind !== 'usage' ? <div className="preset-content-section-heading is-usage-heading"><button ref={usageEditRef} type="button" className="preset-content-button is-icon" aria-label="编辑使用说明" title="编辑使用说明" disabled={saving} onClick={() => openDraft(createUsageDraft(profile))}><NotePencil size={17} /></button></div> : null}
       {draft?.kind === 'usage' ? composer : <div className="preset-usage-reading-surface">
         <p className={`preset-usage-copy${profile.usageInstructions ? '' : ' is-empty'}`}>{profile.usageInstructions || '暂无使用说明'}</p>
       </div>}
     </section>
     <section className="preset-content-section preset-updates" aria-label="更新记录">
-      <div className="preset-content-section-heading"><h2>更新记录</h2><button ref={addRef} type="button" className="preset-content-button is-section-action" disabled={saving || Boolean(draft?.isNew)} onClick={() => openDraft(createTimelineDraft())}><Plus size={15} />添加更新</button></div>
+      <div className="preset-content-section-heading"><h2>更新记录</h2><button ref={addRef} type="button" className="preset-content-button is-icon" aria-label="添加更新" title="添加更新" disabled={saving || Boolean(draft?.isNew)} onClick={() => openDraft(createTimelineDraft())}><Plus size={17} /><span className="preset-content-sr-only">添加更新</span></button></div>
       <ol ref={timelineRef} id={timelineId} className="preset-update-list" aria-label="更新时间线，最新记录在前">
         {draft?.kind === 'timeline' && draft.isNew ? <li className="preset-update-step is-editing"><i className="preset-update-node" aria-hidden="true" />{composer}</li> : null}
         {records.map((item, index) => <li className={`preset-update-step${index === 0 ? ' is-latest' : ''}${draft?.kind === 'timeline' && draft.value.id === item.id ? ' is-editing' : ''}`} key={item.id}>

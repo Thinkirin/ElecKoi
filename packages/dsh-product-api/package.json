@@ -48,6 +48,8 @@
     "build": "pnpm build:host && pnpm build:client"
   },
   "dependencies": {
+    "fflate": "0.8.3",
+    "@eleckoi/dsh-worldbook-compat": "workspace:*",
     "@deepseek-ai/cordis": "4.0.4",
     "@deepseek-ai/dsh-agent": "0.2.0-rc.2",
     "@deepseek-ai/dsh-api-gateway": "0.2.0-rc.2",
@@ -93,6 +95,28 @@
   },
   "eleckoi": {
     "developerInterfaces": [
+      {
+        "id": "eleckoiCompatibilityRemote",
+        "kind": "remote",
+        "title": "酒馆兼容产品能力",
+        "description": "通过产品原有服务调用兼容命令，读取实际能力清单并订阅数据变更。",
+        "mode": "call-and-listen",
+        "scope": "host",
+        "relation": "provides",
+        "members": ["capabilities", "invoke", "changes"],
+        "owner": "eleckoiCompatibility"
+      },
+      {
+        "id": "eleckoiCreatorAssistantRemote",
+        "kind": "remote",
+        "title": "创作项目 Agent 会话",
+        "description": "管理创作项目所属的官方 Session，提交原生 Agent 输入及取消请求。",
+        "mode": "call",
+        "scope": "host",
+        "relation": "provides",
+        "members": ["history", "create", "open", "prompt", "cancel"],
+        "owner": "eleckoiCreatorAssistant"
+      },
       {
         "id": "eleckoiConversationLifecycle",
         "kind": "service",
@@ -320,8 +344,11 @@
           "revealFile",
           "create",
           "delete",
+          "rename",
+          "fork",
           "preparePrompt",
           "waitForGeneration",
+          "completeGroupRound",
           "editMessage",
           "deleteMessagesFrom",
           "regenerateMessage",

@@ -4,7 +4,8 @@ export {
   initializeAppearanceMode,
   normalizeAppearanceMode,
 } from "./theme/appearanceMode.js";
-export { applyAppearanceTheme } from "./theme/appearanceTheme.js";
+export { applyAppearanceTheme, createAppearanceThemeFromImageSource } from "./theme/appearanceTheme.js";
+export { createAppFontController, DEFAULT_APP_FONT_ID, SYSTEM_APP_FONT, normalizeAppFont } from './preferences/appFont.js';
 export { AppearanceProvider, useDshAppearance } from "./model/AppearanceContext.jsx";
 export {
   DEFAULT_SIDEBAR_CHARACTER_ARTWORK,

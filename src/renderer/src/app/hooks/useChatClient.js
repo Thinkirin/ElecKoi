@@ -66,19 +66,20 @@ export function useChatClient({ conversations, characters: characterCatalog, mod
     [characters.items, chatSessions.chatCharacter?.character_id],
   );
   const chatBackgroundCharacter = useMemo(() => {
-    if (latestChatCharacter) return latestChatCharacter;
+    const lock = chatSessions.chatMetadata?.eleckoi_background;
+    if (latestChatCharacter) return lock ? { ...latestChatCharacter, chatBackground: lock.path } : latestChatCharacter;
     return {
       id: chatSessions.chatCharacter?.character_id || "",
       name: chatSessions.chatCharacter?.assistant_name || chatSessions.chatCharacter?.character_name || "",
       avatar: chatSessions.chatCharacter?.assistant_avatar || chatSessions.chatCharacter?.character_avatar || "",
       squareImage: chatSessions.chatCharacter?.assistant_square || "",
       coverImage: chatSessions.chatCharacter?.assistant_cover || "",
-      chatBackground: chatSessions.chatCharacter?.chat_background || "",
+      chatBackground: lock?.path ?? chatSessions.chatCharacter?.chat_background ?? "",
       chatBackgroundOpacity: chatSessions.chatCharacter?.chat_background_opacity ?? 0.72,
       chatBackgroundBlur: chatSessions.chatCharacter?.chat_background_blur ?? 2,
       chatBackgroundScrim: chatSessions.chatCharacter?.chat_background_scrim ?? 0.5,
     };
-  }, [chatSessions.chatCharacter, latestChatCharacter]);
+  }, [chatSessions.chatCharacter, chatSessions.chatMetadata, latestChatCharacter]);
   const chatPersona = useMemo(
     () => {
       const hasLatestCharacter = Boolean(latestChatCharacter);

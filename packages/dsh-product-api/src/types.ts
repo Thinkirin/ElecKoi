@@ -3,6 +3,22 @@ export interface ElecKoiHostStatus {
   protocolVersion: 1
 }
 
+export type CompatibilityValue = null | boolean | number | string | CompatibilityValue[] | { [key: string]: CompatibilityValue }
+export interface CompatibilityCommand { method: string; params: { [key: string]: CompatibilityValue } }
+export interface CompatibilityChange { event: string; payload: CompatibilityValue }
+export interface CompatibilityStoreContract {
+  readonly root: string
+  get(scope: string, key: string): CompatibilityValue
+  put(scope: string, key: string, value: CompatibilityValue): CompatibilityValue
+  delete(scope: string, key: string): number
+  deleteScope(scope: string): number
+  list(scope: string): { [key: string]: CompatibilityValue }
+  scopes(prefix: string): string[]
+  atomic<T>(operation: () => T): T
+  sql(pluginId: string, name: string, statements: Array<{ sql: string; params?: CompatibilityValue[] }>, transaction: boolean): CompatibilityValue[]
+  deleteWorldbook(name: string): boolean
+}
+
 export interface ModelConnectionInput {
   configId: string
   model: string
@@ -72,12 +88,13 @@ export interface ConversationSummary extends ConversationRecord {
 export type ConversationChange =
   | { kind: 'snapshot' }
   | { kind: 'generation'; conversationId: string; error: string }
-  | { kind: 'catalog'; conversationId: string; reason: 'created' | 'deleted' }
+  | { kind: 'catalog'; conversationId: string; reason: 'created' | 'deleted' | 'updated' }
   | {
       kind: 'messages'
       conversationId: string
       reason: 'edited' | 'deleted' | 'regenerated'
       messageIds: string[]
+      sessionRewritten?: boolean
     }
 
 export type CharacterConfigurationChange =
@@ -151,6 +168,9 @@ export interface ConversationDetailsMetadata {
   beforeSequence: number | null
   /** Committed post-turn variable snapshots keyed by the authoritative DSH turn. */
   runtimeVariableStateByTurn?: Record<string, string>
+  compatibilityPresentation?: { metadata: { [id: string]: CompatibilityValue }; extensions: { [id: string]: CompatibilityValue };
+    bindings: { [id: string]: CompatibilityValue }; swipes?: { [id: string]: CompatibilityValue };
+    variables?: { [id: string]: CompatibilityValue }; timeline: CompatibilityValue }
 }
 
 /** DSH-owned message text submitted to the product display projection. */
@@ -522,6 +542,10 @@ export interface RegexRule {
   promptOnly: boolean
   runOnEdit: boolean
   order: number
+  trimStrings?: string[]
+  minDepth?: number | null
+  maxDepth?: number | null
+  substituteRegex?: 0 | 1 | 2
 }
 
 export interface RegexRuleVersion {
@@ -638,6 +662,8 @@ export interface AgentPreset {
   groups: SettingLibraryGroup[]
   promptPositions: SettingLibraryPromptPosition[]
   toolGroups: AgentToolGroup[]
+  subagentModelSelection?: { configId: string; model: string }
+  toolModelConfigIds?: Record<string, string>
   roleplayPlan: { steps: string[] }
   regexRules: RegexRule[]
   expandedGroupIds: string[]
@@ -673,6 +699,10 @@ export interface ConversationRuntimeSettingLibrary {
 export interface ConversationRuntimePreparation {
   conversationId: string
   runtimeSessionId: string
+  promptTextContext: {
+    macros?: { userName: string; characterName: string }
+    rules?: RegexRuleCollection
+  }
   variableContext?: {
     initialStateJson: string
     schemaCode: string
@@ -695,6 +725,8 @@ export interface ConversationRuntimePreparation {
     versionId: string
     name: string
     roleplayPlan: { steps: string[] }
+    subagentModelSelection?: { configId: string; model: string }
+    toolModelConfigIds?: Record<string, string>
     historyCompactionInstructions?: string
   }
   settingLibraryBaseline?: {
@@ -704,6 +736,8 @@ export interface ConversationRuntimePreparation {
 }
 
 export interface ElecKoiProductDataStore {
+  normalizeChatDisplaySettings(value: unknown): unknown
+  compatibilityStore(): CompatibilityStoreContract
   setDisplayPreferences(value: unknown): void
   prepareDisplayUi(value: Record<string, unknown>): {
     value: Record<string, unknown>
@@ -719,7 +753,8 @@ export interface ElecKoiProductDataStore {
     snapshot: ConversationArchiveSnapshot,
     characterId: string,
     runtimeIds: ReadonlyMap<string, string>,
-    conversationId: string
+    conversationId: string,
+    options?: { preserveIds?: boolean }
   ): string
   readConversationCatalog(): ConversationCatalogRecord[]
   readConversationDetails(conversationId: string, beforeSequence?: number, limit?: number): ConversationDetailsMetadata
@@ -731,10 +766,12 @@ export interface ElecKoiProductDataStore {
   readAuthorConversationState(conversationId: string): AuthorConversationState
   replaceConversationVariableState(conversationId: string, stateJson: string): string
   createConversation(input: ConversationCreateInput): ConversationDetailsMetadata
+  renameConversation(conversationId: string, title: string): ConversationDetailsMetadata
   deleteConversation(conversationId: string): Promise<void>
   selectConversationOpening(conversationId: string, openingId: string): ConversationDetailsMetadata
   updateConversationOpening(conversationId: string, content: string): ConversationDetailsMetadata
-  prepareConversationRuntime(conversationId: string, text: string): ConversationRuntimePreparation
+  prepareConversationRuntime(conversationId: string, text: string, options?: { preset?: AgentPreset; persona?: Record<string, unknown>; characterId?: string }): ConversationRuntimePreparation
+  projectConversationPromptHistory<T extends { role: string; content: string }>(history: readonly T[], preparation: Pick<ConversationRuntimePreparation, 'promptTextContext'>): T[]
   commitConversationRuntime(
     conversationId: string,
     variableStateJson: string | undefined,
@@ -750,7 +787,7 @@ export interface ElecKoiProductDataStore {
   updateCharacter(character: CharacterRecord): CharacterCollection
   selectCharacter(characterId: string): CharacterCollection
   saveCharacterGroups(groups: string[], assignments: CharacterGroupAssignment[]): CharacterCollection
-  deleteCharacters(characterIds: string[]): CharacterCollection
+  deleteCharacters(characterIds: string[], options?: { deleteChats?: boolean }): CharacterCollection
   exportCharacter(characterId: string, format: CharacterExportFormat): CharacterExportResult
   prepareCharacterImports(files: CharacterImportFile[], source: CharacterImportSource): CharacterImportPreview
   commitCharacterImports(token: string): CharacterImportResult
@@ -811,3 +848,7 @@ export interface DisplayPreferencesSnapshot {
   writable: boolean
   revision: number
 }
+export interface CreatorAssistantConversation { sessionId: string; title: string; createdAt: string; legacyConversationId?: string }
+export interface CreatorAssistantHistory { projectId: string; activeSessionId: string; items: CreatorAssistantConversation[] }
+export interface CreatorAssistantPromptReceipt { accepted: true; requestId: string }
+export interface CreatorAssistantCancelReceipt { accepted: true }

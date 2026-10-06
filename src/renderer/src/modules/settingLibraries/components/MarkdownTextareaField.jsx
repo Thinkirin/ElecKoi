@@ -2,12 +2,14 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { OfficialMarkdown } from "../../../ui/messages/OfficialMarkdown.jsx";
 import { ArrowsInSimple, ArrowsOutSimple, Eye, PencilSimple } from "@phosphor-icons/react";
+import { useAnimatedClose } from "../../../ui/hooks/useAnimatedClose.js";
 
 export function MarkdownTextareaField({ label, value, placeholder, onChange, preview = true, labelAction = null }) {
   const inputId = useId();
   const editorRef = useRef(null);
   const [immersive, setImmersive] = useState(false);
   const [mode, setMode] = useState("edit");
+  const { closing, close: closeImmersive } = useAnimatedClose(() => setImmersive(false), 200, immersive);
 
   useEffect(() => {
     if (!immersive) return undefined;
@@ -18,15 +20,8 @@ export function MarkdownTextareaField({ label, value, placeholder, onChange, pre
       editor?.focus();
       editor?.setSelectionRange(editor.value.length, editor.value.length);
     });
-    const closeOnEscape = (event) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      setImmersive(false);
-    };
-    window.addEventListener("keydown", closeOnEscape);
     return () => {
       cancelAnimationFrame(focusFrame);
-      window.removeEventListener("keydown", closeOnEscape);
       document.documentElement.classList.remove("immersive-editor-open");
     };
   }, [immersive]);
@@ -36,7 +31,7 @@ export function MarkdownTextareaField({ label, value, placeholder, onChange, pre
     : null;
 
   const overlay = immersive && overlayHost ? createPortal(
-    <section className="immersive-markdown-editor" role="dialog" aria-modal="true" aria-labelledby={`${inputId}-title`}>
+    <section className={`immersive-markdown-editor${closing ? ' is-closing' : ''}`} role="dialog" aria-modal="true" aria-labelledby={`${inputId}-title`}>
       <header className="immersive-markdown-header">
         <strong id={`${inputId}-title`}>{label}</strong>
         <div className="immersive-markdown-actions">
@@ -46,7 +41,7 @@ export function MarkdownTextareaField({ label, value, placeholder, onChange, pre
               <button type="button" role="tab" aria-selected={mode === "preview"} onClick={() => setMode("preview")}><Eye size={15} />预览</button>
             </div>
           ) : null}
-          <button type="button" className="immersive-markdown-exit" onClick={() => setImmersive(false)}><ArrowsInSimple size={15} />退出沉浸</button>
+          <button type="button" className="immersive-markdown-exit" onClick={closeImmersive} aria-label="退出沉浸编辑" title="退出沉浸编辑"><ArrowsInSimple size={18} /></button>
         </div>
       </header>
       <div className="immersive-markdown-body">
@@ -75,7 +70,7 @@ export function MarkdownTextareaField({ label, value, placeholder, onChange, pre
           <label htmlFor={inputId}>{label}</label>
           <div className="setting-library-content-actions">
             {labelAction}
-            <button type="button" onClick={() => setImmersive(true)}><ArrowsOutSimple size={14} />沉浸编辑</button>
+            <button type="button" onClick={() => setImmersive(true)} aria-label="沉浸编辑" title="沉浸编辑"><ArrowsOutSimple size={18} /></button>
           </div>
         </div>
         <textarea id={inputId} value={value} placeholder={placeholder} spellCheck={false} onChange={(event) => onChange(event.target.value)} />

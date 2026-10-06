@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { useAnimatedClose } from "../../../ui/hooks/useAnimatedClose.js";
 
-export function DynamicSettingsNameDialog({ dialog, busy, onCancel, onConfirm }) {
+export function DynamicSettingsNameDialog({ dialog, busy, onCancel: onDismiss, onConfirm }) {
+  const { closing, close: onCancel } = useAnimatedClose(onDismiss, 200, Boolean(dialog), { busy });
   const [value, setValue] = useState(dialog?.value || "");
   const inputRef = useRef(null);
 
@@ -12,7 +14,7 @@ export function DynamicSettingsNameDialog({ dialog, busy, onCancel, onConfirm })
   if (!dialog) return null;
   const normalized = value.trim();
   return (
-    <div className="setting-library-dialog-overlay" role="presentation" onMouseDown={onCancel}>
+    <div className={`setting-library-dialog-overlay${closing ? ' is-closing' : ''}`} role="presentation" onMouseDown={onCancel}>
       <section className="setting-library-dialog dynamic-settings-name-dialog" role="dialog" aria-modal="true" aria-labelledby="dynamic-settings-name-title" onMouseDown={(event) => event.stopPropagation()}>
         <h2 id="dynamic-settings-name-title">{dialog.title}</h2>
         <label>

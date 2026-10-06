@@ -533,6 +533,7 @@ export const SettingLibraryPanel = forwardRef(function SettingLibraryPanel({ cha
   const SelectedIcon = selectedIcon || FileText;
   const presence = useInspectorPresence(selected.value && !managerOpen ? (
     <SettingLibraryInspector
+      saveAction={<SaveControl dirty={dirty} error={error} notice={saveNotice} saving={saving} onSave={save} />}
       selected={selected}
       library={library}
       variableVersions={variableSnapshot.value?.versions || []}
@@ -574,7 +575,7 @@ export const SettingLibraryPanel = forwardRef(function SettingLibraryPanel({ cha
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索设定" aria-label="搜索设定" />
           </label>
           <div className="setting-library-add-wrap">
-            <button type="button" className="setting-library-create-button" aria-label="新建" aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}><Plus size={16} />新建</button>
+            <button type="button" className="setting-library-create-button" title="新建" aria-label="新建" aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}><Plus size={16} /><span>新建</span></button>
             {menuOpen ? (
               <div className="setting-library-popover" role="menu">
                 <button type="button" role="menuitem" onClick={() => requestAddNode("group")}><CreateFolderIcon size={16} />文件夹</button>
@@ -583,7 +584,7 @@ export const SettingLibraryPanel = forwardRef(function SettingLibraryPanel({ cha
               </div>
             ) : null}
           </div>
-          <button type="button" className="setting-library-manage-button" aria-expanded={managerOpen} onClick={() => { setMenuOpen(false); setManagerOpen(true); }}><Books size={16} />管理</button>
+          <button type="button" className="setting-library-manage-button" aria-label="管理" title="管理" aria-expanded={managerOpen} onClick={() => { setMenuOpen(false); setManagerOpen(true); }}><Books size={16} /><span>管理</span></button>
           <SaveControl dirty={dirty} error={error} notice={saveNotice} saving={saving} onSave={save} />
         </div>
 

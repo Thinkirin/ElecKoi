@@ -193,6 +193,7 @@ export function ConversationList({
       ) : null}
 
       <div className="conversation-scroll">
+        {!sessions.length ? <div className="conversation-empty"><strong>{keyword ? '没有匹配的会话' : '还没有会话'}</strong><button type="button" onClick={() => keyword ? setKeyword('') : setAddCharacterOpen(true)}>{keyword ? '清除搜索' : '新建对话'}</button></div> : null}
         {sessions.map((item, index) => {
           const pinned = pinnedIds.includes(item.id);
           const nextPinned = pinnedIds.includes(sessions[index + 1]?.id);
@@ -208,6 +209,7 @@ export function ConversationList({
               className={`conversation-item is-${resolvedArtworkMode}-artwork ${pinned ? "pinned" : ""} ${pinned && !nextPinned ? "pin-boundary" : ""} ${active ? "active" : ""}`}
               type="button"
               key={item.id}
+              aria-current={active ? 'page' : undefined}
               onClick={() => onLoadChat(item.id)}
               onContextMenu={(event) => openContextMenu(event, item)}
             >
@@ -218,6 +220,7 @@ export function ConversationList({
               </div>
               <div className="conversation-meta">
                 <time>{formatDate(item.updated_at)}</time>
+                {pinned ? <PinIcon className="conversation-pin" aria-label="已置顶" /> : null}
               </div>
             </button>
           );
@@ -227,7 +230,7 @@ export function ConversationList({
       {menu && typeof document !== "undefined" ? createPortal(
         <div
           className="conversation-context-menu"
-          style={{ left: `${menu.x}px`, top: `${menu.y}px` }}
+          style={{ left: `${Math.max(8, Math.min(menu.x, window.innerWidth - 234))}px`, top: `${Math.max(8, Math.min(menu.y, window.innerHeight - 172))}px` }}
           onPointerDown={(event) => event.stopPropagation()}
         >
           <button type="button" onClick={() => runMenuAction((item) => onTogglePinChat(item.id))}>

@@ -1,4 +1,5 @@
-import { Trash, X } from "@phosphor-icons/react";
+import { Trash } from "@phosphor-icons/react";
+import { EditorHeader } from '../../../ui/ui/EditorHeader.jsx';
 import { DshFolderClosedIcon } from "../../../ui/icons/dshTreeIcons.jsx";
 import { FIXED_ENTRY_IDS } from "../model/settingLibraryEditing.js";
 import { MarkdownTextareaField } from "./MarkdownTextareaField.jsx";
@@ -79,6 +80,7 @@ export function SettingLibraryInspector({
   nameInputRef,
   SelectedIcon,
   onClose,
+  saveAction,
   onUpdateGroup,
   onDeleteGroup,
   onUpdateEntry,
@@ -108,15 +110,13 @@ export function SettingLibraryInspector({
           onDoubleClick={onResetResize}
         />
       ) : null}
-      <header className="setting-library-inspector-header">
-        <div>
+      <EditorHeader className="catalog-editor-header" onBack={onClose} backLabel="返回设定列表" saveAction={saveAction}
+        title={<span className="catalog-editor-title">
           {selected.kind === "entry" && !FIXED_ENTRY_IDS.has(selected.value.id) && selected.value.contentMode !== "ejs" && selected.value.dynamicMode !== "ejs_reference"
             ? <SettingEntryGlyph iconId={selected.value.iconId} size={19} aria-hidden="true" />
             : selected.kind === "group" ? <DshFolderClosedIcon size={19} aria-hidden="true" /> : <SelectedIcon size={19} aria-hidden="true" />}
           <strong>{selected.kind === "group" ? "文件夹" : selected.value.dynamicMode === "ejs_reference" ? "EJS引用设定" : selected.value.title}</strong>
-        </div>
-        <button type="button" aria-label="关闭编辑器" onClick={onClose}><X size={17} /></button>
-      </header>
+        </span>} />
       <div className="setting-library-inspector-body">
         {selected.kind === "group" ? (
           <div className="setting-library-group-editor">

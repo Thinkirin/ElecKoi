@@ -1,5 +1,8 @@
-import { RoleplayInputMenu } from "./RoleplayInputMenu.jsx";
+import { RoleplayInputMenu, RoleplayMenuItems } from "./RoleplayInputMenu.jsx";
+import { createPortal } from 'react-dom';
+import { useChatMenuPosition } from '../hooks/useChatMenuPosition.js';
 import { ChatModelPicker } from "./ChatModelPicker.jsx";
+import { ChatTurnError } from './ChatTurnError.jsx';
 import { ConversationWidthControls } from "./ConversationWidthControls.tsx";
 import conversationWidthCss from "./ConversationWidthControls.module.css";
 import { PinnedAvatar } from "./PinnedAvatar.jsx";
@@ -8,9 +11,10 @@ import { VariableViewerDialog } from "./VariableViewerDialog.jsx";
 import { AgentToolsDialog } from "./AgentToolsDialog.jsx";
 import { MessageBubble } from "../../../ui/messages/MessageBubble.jsx";
 import { ConfirmationDialog } from "../../../ui/ui/ConfirmationDialog.jsx";
+import { Avatar } from "../../../ui/ui/Avatar.jsx";
 import logoIcon from "../../../assets/eleckoi-app-icon.png";
 import { DshAgentPresetIcon, DshNewChatIcon } from "../../../ui/icons/dshComposerIcons.jsx";
-import { SlidersHorizontal } from "@phosphor-icons/react";
+import { ArrowLeft, ImageSquare, ClockCounterClockwise, SlidersHorizontal, ChatCircleDots, Path, ArrowClockwise } from "@phosphor-icons/react";
 import { lazy, memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   chatDisplayCssVariables,
@@ -21,20 +25,28 @@ import {
   resolveChatDisplayProfile,
 } from "../../appearance/index.js";
 import { findLatestRegenerateTargetMessageId } from "../model/chatRegeneration.js";
+import { useMobileComposerKeyboard } from '../hooks/useMobileComposerKeyboard.js';
 import { selectRoleplayChatSeat, selectRoleplayPendingInput } from "../model/chatViewSeats.js";
 import { revealChatFile } from "../api/chatApi.js";
+import { useFrontendWorkspace, AdvancedFrontendFrame, FrontendProjectManager, AdaptiveChatSheet, AdaptiveMessageEditor, createMessageSurfaceFormatter } from '../../authorFrontend/index.js';
+import { createAppearanceThemeFromImageSource } from '../../appearance/index.js';
+import { normalizeMarkdownForRendering } from '../../../ui/messages/normalizeMarkdownForRendering.js';
 
 const TrajectoryView = lazy(() => import("./TrajectoryDialog.jsx").then((module) => ({
   default: module.TrajectoryView,
 })));
+const EMPTY_CHARACTER_RECORDS = Object.freeze([]);
+const isHiddenMessage = (message) => message?.metadata?.is_hidden === true || message?.is_hidden === true;
 export function ChatPanel({
   hasActiveChat,
   hasCharacters,
   currentTitle,
   conversationId,
+  characterId = '',
   conversationModel,
   presetCatalog,
   persona,
+  characterRecords = EMPTY_CHARACTER_RECORDS,
   messages,
   input,
   setInput,
@@ -57,7 +69,10 @@ export function ChatPanel({
   onSend,
   onStop,
   onCreateChat,
+  onOpenChat,
+  onCloseChat,
   onOpenHistory,
+  onCloseHistory,
   onOpenChatBackground,
   onOpenPresetTools,
   onRegenerate,
@@ -80,6 +95,7 @@ export function ChatPanel({
   conversationTransitionRevision = 0,
 }) {
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const headerMenuPopupRef = useRef(null);
   const [processMessage, setProcessMessage] = useState(null);
   const [fallbackView, setFallbackView] = useState("chat");
   const activeView = dshConversation ? dshConversation.activeView : fallbackView;
@@ -95,6 +111,16 @@ export function ChatPanel({
   const [trajectoryRevision, setTrajectoryRevision] = useState(0);
   const [variablesOpen, setVariablesOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [messageScrollElement, setMessageScrollElement] = useState(null);
+  const [frontendManagerOpen, setFrontendManagerOpen] = useState(false);
+  const [chatSettingsOpen, setChatSettingsOpen] = useState(false);
+  const [frontendEditMessage, setFrontendEditMessage] = useState(null);
+  const modelApiRef = useRef(null);
+  const inputStateRef = useRef(input); inputStateRef.current = input;
+  const frontend = useFrontendWorkspace(characterId);
+  const selectedFrontend = frontend.workspace.projects.find(project => project.id === frontend.workspace.selectedProjectId);
+  const openPluginUi = useCallback(entry => frontend.runtime.openPanel(entry.pluginId, entry.id)
+    .catch(error => onNotify?.('error', error.message || String(error))), [frontend.runtime, onNotify]);
   const loadImage = useCallback((id, image) => {
     if (!conversationModel) return Promise.reject(new Error('DSH 图片服务尚未就绪。'));
     return conversationModel.readImage(id, image);
@@ -111,7 +137,80 @@ export function ChatPanel({
   const [runningStatusTarget, setRunningStatusTarget] = useState(null);
   const chatPanelRef = useRef(null);
   const composerRegionRef = useRef(null);
+  useMobileComposerKeyboard(composerRegionRef, runtimeSessionId || conversationId);
   const headerMenuRef = useRef(null);
+  const headerMenuStyle = useChatMenuPosition(headerMenuOpen, headerMenuRef, { align: 'end', placement: 'below' });
+  const settingsImageInputRef = useRef(null);
+  const useAdvanced = Boolean(selectedFrontend && activeView === 'chat' && !deleteMode);
+
+  useEffect(() => {
+    if (!frontend.runtime || !conversationId) return undefined;
+    const findMessage = id => {
+      const message = messages.find((value, index) => value.id === id || index === id);
+      if (!message) throw new Error(`显示消息不存在：${id}`);
+      return message;
+    };
+    return frontend.runtime.registerChatUi(conversationId, {
+      'input.get': () => ({ text: inputStateRef.current || '' }),
+      'input.set': params => { const text = String(params.text || ''); inputStateRef.current = text; setInput(text); return { text }; },
+      'input.append': params => { const text = String(inputStateRef.current || '') + String(params.text || ''); inputStateRef.current = text; setInput(text); return { text }; },
+      'input.clear': () => { inputStateRef.current = ''; setInput(''); return { text: '' }; },
+      'input.send': () => { const text = inputStateRef.current; if (!String(text || '').trim() && !inputImages.length && !inputFiles.length) return { submitted: false };
+        Promise.resolve(onSend({ preventDefault() {} }, text)).catch(error => onNotify?.('error', error.message || String(error)));
+        return { submitted: true }; },
+      'presentation.current': () => ({ conversationId, characterId, characters: characterRecords, title: currentTitle, messages,
+        isGenerating: isSending, persona, chatDisplay }),
+      'ui.openSettings': () => { setChatSettingsOpen(true); return null; },
+      'ui.openModels': () => { if (!modelApiRef.current) throw new Error('模型选择器尚未就绪'); modelApiRef.current.open(); return null; },
+      'ui.openBackground': () => { onOpenChatBackground(); return null; },
+      'ui.openHistory': () => { onOpenHistory(); return null; },
+      'ui.createChat': async () => { await onCreateChat(); return null; },
+      'ui.editMessage': params => {
+        const message = findMessage(params.id);
+        if (message.id === 'opening' ? message.canChangeOpening !== true : !Number.isSafeInteger(message.sessionEventSeq)) {
+          throw new Error('这条消息当前不可编辑。');
+        }
+        setFrontendEditMessage(message); return null;
+      },
+      'ui.showProcess': params => { setProcessMessage(findMessage(params.id)); return null; },
+      'ui.chatPanels': params => {
+        if (params.action === 'toggle') setHeaderMenuOpen(value => !value);
+        else if (params.action === 'reset') {
+          setHeaderMenuOpen(false); setChatSettingsOpen(false); setFrontendManagerOpen(false);
+          setVariablesOpen(false); setToolsOpen(false); setProcessMessage(null); setFrontendEditMessage(null);
+          modelApiRef.current?.close?.(); onCloseHistory?.();
+        } else throw new Error(`未知菜单操作：${params.action}`);
+        return { accepted: true };
+      },
+      'appearance.createPalette': async params => {
+        const resolve = window.__ElecKoiResolveAsset || (value => value);
+        return createAppearanceThemeFromImageSource(resolve(params.image), { name: params.name });
+      },
+      'chats.open': async params => { if (!onOpenChat) throw new Error('当前页面没有会话导航服务'); await onOpenChat(params.id); return null; },
+      'chats.close': () => { if (!onCloseChat) throw new Error('当前页面没有关闭会话服务'); onCloseChat(); return null; },
+      'chats.openHistory': () => { onOpenHistory(); return null; },
+    });
+  }, [chatDisplay, characterId, characterRecords, conversationId, currentTitle, frontend.runtime, input, inputFiles.length, inputImages.length,
+    isSending, messages, onCloseChat, onCloseHistory, onCreateChat, onOpenChat, onOpenChatBackground, onOpenHistory, onSend, persona, setInput]);
+
+  useEffect(() => {
+    if (!conversationId || !frontend.runtime || frontend.status !== 'ready' || !messageScrollElement || useAdvanced || activeView !== 'chat') return undefined;
+    let disposed = false, stop;
+    frontend.runtime.initialized?.then(() => {
+      if (disposed) return;
+      const sdk = window.ElecKoi;
+      const retrieve = id => [...messageScrollElement.querySelectorAll('[data-message-id]')].find(node => node.dataset.messageId === id);
+      const format = createMessageSurfaceFormatter(window);
+      stop = sdk.ui.registerMessageSurface({ root: messageScrollElement, retrieve, conversationId,
+        format: text => format(normalizeMarkdownForRendering(text)),
+        refresh: (id, html) => { const node = retrieve(id)?.querySelector('.mes_text'); if (node) node.innerHTML = html; },
+        syncMetadata: rows => { rows.forEach((row, index) => {
+          const node = retrieve(row.native_id); if (node) { node.setAttribute('mesid', String(index)); node.setAttribute('is_user', String(row.is_user)); }
+        }); },
+      });
+    }).catch(error => onNotify?.('error', error.message || String(error)));
+    return () => { disposed = true; stop?.(); };
+  }, [activeView, conversationId, frontend.runtime, frontend.status, messageScrollElement, onNotify, useAdvanced]);
 
   useLayoutEffect(() => {
     const panel = chatPanelRef.current;
@@ -132,7 +231,7 @@ export function ChatPanel({
       scroller.style.removeProperty("--dsh-conversation-viewport-height");
     };
   }, [conversationBody]);
-  const displayedMessages = useMemo(() => messages.filter((item) => !(
+  const displayedMessages = useMemo(() => messages.filter((item) => !isHiddenMessage(item) && !(
     item.role === "assistant" && !item.pending && !String(item.content || "").trim() && !(item.process || []).length
   )), [messages]);
   const regenerateFrom = useCallback(async (message) => {
@@ -142,6 +241,7 @@ export function ChatPanel({
   }, [onRegenerate]);
   const bindMessageScrollElement = useCallback((element) => {
     scrollRef.current = element;
+    setMessageScrollElement(element);
   }, [scrollRef]);
 
   useEffect(() => {
@@ -189,12 +289,19 @@ export function ChatPanel({
   useEffect(() => {
     if (!headerMenuOpen) return undefined;
     const close = (event) => {
-      if (!headerMenuRef.current?.contains(event.target)) {
+      if (!headerMenuRef.current?.contains(event.target) && !headerMenuPopupRef.current?.contains(event.target)) {
         setHeaderMenuOpen(false);
       }
     };
+    const escape = event => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setHeaderMenuOpen(false);
+      headerMenuRef.current?.querySelector('[aria-haspopup="menu"]')?.focus();
+    };
     window.addEventListener("click", close);
-    return () => window.removeEventListener("click", close);
+    window.addEventListener('keydown', escape);
+    return () => { window.removeEventListener("click", close); window.removeEventListener('keydown', escape); };
   }, [headerMenuOpen]);
 
   const openingMessage = messages.find((item) => item.id === "opening" && item.openingOptions?.length > 1);
@@ -231,12 +338,11 @@ export function ChatPanel({
           {hasCharacters ? (
             <>
               <strong>选择一个角色开始聊天</strong>
-              <span>从左侧角色列表中打开一个角色后，这里会显示对话内容。</span>
+              <button type="button" onClick={onGoCharacterSettings}>选择角色</button>
             </>
           ) : (
             <>
               <strong>还没有聊天角色</strong>
-              <span>先创建一个角色，再开始第一段对话。</span>
               <button type="button" onClick={onGoCharacterSettings}>去创建角色</button>
             </>
           )}
@@ -253,6 +359,7 @@ export function ChatPanel({
   };
   const userAvatar = resolveChatAvatar(persona, "user", avatarShape);
   const assistantAvatar = resolveChatAvatar(persona, "assistant", avatarShape);
+  const selectedModelLabel = typeof selectedModel === 'string' ? selectedModel : selectedModel?.label || selectedModel?.name || selectedModel?.id || '';
   const regenerateTargetMessageId = findLatestRegenerateTargetMessageId(messages);
 
   function openChatBackground(event) {
@@ -299,14 +406,19 @@ export function ChatPanel({
     isSending={isSending}
     onCreateChat={onCreateChat}
     onOpenHistory={onOpenHistory}
+    onAddImages={onAddImages}
     onOpenTools={() => setToolsOpen(true)}
     onOpenVariables={() => setVariablesOpen(true)}
+    onOpenFrontends={() => setFrontendManagerOpen(true)}
     onEnterDeleteMode={enterDeleteMode}
     canDeleteMessages={displayedMessages.some((message) => message.id !== "opening")}
     onRegenerate={regenerateFrom}
     regenerateTargetMessageId={regenerateTargetMessageId}
+    pluginEntries={frontend.uiEntries}
+    onOpenPluginUi={openPluginUi}
   />;
   const roleplayModel = <ChatModelPicker
+    apiRef={modelApiRef}
     configs={modelConfigs}
     selectedConfigId={selectedModelConfigId}
     selectedModel={selectedModel}
@@ -339,7 +451,7 @@ export function ChatPanel({
 
   const rowProps = {
     conversationId, messages: displayedMessages, layoutMode, profile, avatarShape,
-    userAvatar, assistantAvatar,
+    userAvatar, assistantAvatar, characterRecords,
     userPinImage: persona.user_portrait || persona.user_square || userAvatar,
     assistantPinImage: persona.assistant_cover || persona.assistant_square || assistantAvatar,
     onPinAvatar: setPinnedAvatar, userName: persona.user_name, assistantName: persona.assistant_name,
@@ -351,6 +463,7 @@ export function ChatPanel({
     onRegenerate: regenerateFrom, deleteMode, deleteFromMessageId,
     onSelectDeleteFrom: setDeleteFromMessageId, runtimeSessionId,
     renderRoleplaySlot, renderRoleplayMessage, loadImage, onOpenFile: openFile,
+    renderRichMessages: frontend.workspace.messageRendererEnabled,
   };
   const opening = <MessageList {...rowProps} openingOnly />;
   const officialChat = isSwitchingChat ? null : renderRoleplaySlot?.("eleckoi.roleplay.chat", {
@@ -358,11 +471,15 @@ export function ChatPanel({
     before: opening,
     runningStatusTarget,
     renderChatNode: ({ node }) => {
+      // Explicit product visibility still applies when the official node exists
+      // before its visible metadata projection. Admission remains owned by DSH.
+      if (isHiddenMessage(selectRoleplayChatSeat(messages, runtimeSessionId, node)?.item)) return null;
       const seat = selectRoleplayChatSeat(displayedMessages, runtimeSessionId, node);
       if (seat && !seat.item.conversationId) seat.item = { ...seat.item, conversationId };
       return seat === undefined ? undefined : seat ? <MessageList {...rowProps} seat={seat} officialNode /> : null;
     },
     renderPendingInput: ({ input: pendingInput }) => {
+      if (isHiddenMessage(selectRoleplayPendingInput(messages, runtimeSessionId, pendingInput)?.item)) return null;
       const seat = selectRoleplayPendingInput(displayedMessages, runtimeSessionId, pendingInput);
       return <MessageList {...rowProps} seat={{ ...seat, item: { ...seat.item, conversationId } }} />;
     },
@@ -371,57 +488,72 @@ export function ChatPanel({
   return (
     <section
       ref={chatPanelRef}
-      className={`chat-panel layout-${layoutMode} view-${activeView}${profile?.assistant_bubble_enabled ? " assistant-bubble-enabled" : ""}${deleteMode ? " message-delete-mode" : ""}`}
+      className={`chat-panel layout-${layoutMode} view-${activeView}${useAdvanced ? ' has-advanced-frontend' : ''}${profile?.assistant_bubble_enabled ? " assistant-bubble-enabled" : ""}${deleteMode ? " message-delete-mode" : ""}`}
       style={displayStyle}
     >
       <header className="chat-header">
         <div className="chat-header-title-row">
+          {onCloseChat ? <button type="button" className="chat-mobile-back" aria-label="返回会话列表" onClick={onCloseChat}><ArrowLeft size={20} /></button> : null}
+          <Avatar className={`chat-identity-avatar${isSending ? ' is-running' : ''}`} src={assistantAvatar} name={currentTitle} />
           <div className="chat-header-title-cluster">
             <h1>{currentTitle}</h1>
+            <div className="chat-header-metadata">
+            {selectedModelLabel ? <span className="chat-header-model" title={selectedModelLabel}>{selectedModelLabel}</span> : null}
             {activePresetName ? <span className="chat-header-preset" title={activePresetName}>
               <DshAgentPresetIcon size={14} className="chat-header-preset-icon" />
               <span>{activePresetName}</span>
             </span> : null}
+            </div>
           </div>
+        </div>
           <div className="chat-header-actions" ref={headerMenuRef}>
+            <button className="chat-header-action chat-mobile-shortcut" type="button" aria-label="对话历史" onClick={onOpenHistory}><ClockCounterClockwise size={20} /></button>
             <button className="chat-header-action" type="button" aria-label="对话操作" title="对话操作" aria-haspopup="menu" aria-expanded={headerMenuOpen} onClick={() => setHeaderMenuOpen((value) => !value)}>
               <SlidersHorizontal size={20} weight="bold" />
             </button>
-            <button className="chat-header-action chat-header-new" type="button" aria-label="新建对话" title="新建对话" onClick={onCreateChat}>
+            <button className="chat-header-action chat-header-regenerate" type="button" aria-label="重新生成最新回复" title="重新生成最新回复" disabled={isSending || !onRegenerate || !regenerateTargetMessageId} onClick={() => regenerateFrom({ targetMessageId: regenerateTargetMessageId })}>
+              <ArrowClockwise size={20} />
+            </button>
+            <button className="chat-header-action chat-header-new" type="button" aria-label="新建对话" title="新建对话" disabled={isSending || !onCreateChat} onClick={onCreateChat}>
               <DshNewChatIcon size={20} />
             </button>
             {renderRoleplaySlot?.("eleckoi.roleplay.conversation.header.corner", {})}
-            {headerMenuOpen ? (
+            {headerMenuOpen && headerMenuStyle ? createPortal(
               <div
+                ref={headerMenuPopupRef}
+                style={headerMenuStyle}
                 className="chat-header-menu"
                 role="menu"
                 onClick={(event) => event.stopPropagation()}
               >
+                <button type="button" role="menuitem" disabled={!onOpenHistory} onClick={() => { setHeaderMenuOpen(false); onOpenHistory?.(); }}><ClockCounterClockwise size={18} />对话历史</button>
                 <button
                   type="button"
                   role="menuitem"
-                  onClick={openChatBackground}
+                  onClick={(event) => { setHeaderMenuOpen(false); openChatBackground(event); }}
                 >
-                  自定义背景
+                  <ImageSquare size={18} />自定义背景
                 </button>
-              </div>
+                <button type="button" role="menuitem" onClick={() => { setHeaderMenuOpen(false); setFrontendManagerOpen(true); }}>高级 HTML 前端</button>
+              </div>, document.body
             ) : null}
           </div>
-        </div>
         <div className="chat-header-tabs" role="tablist" aria-label="对话视图" data-conversation-tabs="">
-          {viewTabs.map((view) => <button key={view.id} type="button" role="tab" aria-selected={activeView === view.id} onClick={() => selectView(view.id)}>{view.label}</button>)}
+          {viewTabs.map((view) => <button key={view.id} data-view-id={view.id} type="button" role="tab" title={view.label} aria-label={view.label} aria-selected={activeView === view.id} onClick={() => selectView(view.id)}>
+            {view.id === 'chat' ? <ChatCircleDots className="chat-tab-icon" size={19} weight={activeView === view.id ? 'fill' : 'regular'} aria-hidden="true" /> : view.id === 'trajectory' ? <Path className="chat-tab-icon" size={19} aria-hidden="true" /> : null}
+            <span className="chat-tab-label">{view.label}</span>
+          </button>)}
         </div>
       </header>
 
       <div className={`chat-conversation-body ${conversationWidthCss.root}`} ref={setConversationBody}>
-        <div
-          className={`message-area layout-${layoutMode}`}
+        <div id="chat" className={`message-area layout-${layoutMode}`}
           ref={bindMessageScrollElement}
           data-conversation-scroll=""
           aria-busy={isSwitchingChat || isLoadingOlderMessages || undefined}
         >
           <div className="chat-transcript-region">
-            {activeView === "chat" ? officialChat ?? (isSwitchingChat ? null : opening) : activeView === "trajectory" ? <Suspense fallback={<div className="trajectory-state">正在加载轨迹...</div>}>
+            {useAdvanced ? <AdvancedFrontendFrame key={selectedFrontend.id} project={selectedFrontend} runtime={frontend.runtime} request={frontend.request} /> : activeView === "chat" ? officialChat ?? (isSwitchingChat ? null : opening) : activeView === "trajectory" ? <Suspense fallback={<div className="trajectory-state">正在加载轨迹...</div>}>
               <TrajectoryView
                 key={`${conversationId}:${trajectoryRevision}`}
                 conversationId={conversationId}
@@ -433,7 +565,7 @@ export function ChatPanel({
             </Suspense> : activeView === undefined ? null : dshConversation?.renderView(activeView)}
           </div>
 
-          <div className="chat-composer-region" ref={composerRegionRef} data-composer-seat="">
+          <div className="chat-composer-region" ref={composerRegionRef} data-composer-seat="" style={useAdvanced ? { display: 'none' } : undefined}>
             {deleteMode ? (
               <div className="chat-message-delete-bar" aria-label="删除消息">
                 <button
@@ -463,6 +595,25 @@ export function ChatPanel({
         />
       </div>
       {activeView === "chat" && pinnedAvatar ? <PinnedAvatar src={pinnedAvatar.src} name={pinnedAvatar.name} containerRef={chatPanelRef} onClose={() => setPinnedAvatar(null)} /> : null}
+      {frontend.error ? <p className="adaptive-chat-error" role="alert">HTML 前端服务：{frontend.error}</p> : null}
+      {frontendManagerOpen ? <FrontendProjectManager workspace={frontend.workspace} request={frontend.request} onClose={() => setFrontendManagerOpen(false)} /> : null}
+      {chatSettingsOpen ? <AdaptiveChatSheet title="对话设置" onClose={() => setChatSettingsOpen(false)}>
+        <div className="adaptive-roleplay-menu"><RoleplayMenuItems
+          run={action => { setChatSettingsOpen(false); action?.(); }} isSending={isSending} onCreateChat={onCreateChat}
+          onOpenHistory={onOpenHistory} onAddImages={onAddImages ? () => settingsImageInputRef.current?.click() : undefined} onOpenTools={() => setToolsOpen(true)} onOpenVariables={() => setVariablesOpen(true)}
+          onOpenFrontends={() => setFrontendManagerOpen(true)} onEnterDeleteMode={enterDeleteMode}
+          canDeleteMessages={displayedMessages.some(message => message.id !== 'opening')}
+          onRegenerate={regenerateFrom} regenerateTargetMessageId={regenerateTargetMessageId}
+          pluginEntries={frontend.uiEntries} onOpenPluginUi={openPluginUi} /></div>
+      </AdaptiveChatSheet> : null}
+      {onAddImages ? <input ref={settingsImageInputRef} type="file" accept="image/*" multiple hidden onChange={event => {
+        const files = [...event.target.files || []]; event.target.value = '';
+        if (files.length) Promise.resolve(onAddImages(files)).catch(error => onNotify?.('error', error.message || String(error)));
+      }} /> : null}
+      {frontendEditMessage ? <AdaptiveMessageEditor message={frontendEditMessage}
+        onSave={frontendEditMessage.id === 'opening' ? onEditOpening : onEditMessage}
+        onRegenerate={frontendEditMessage.role === 'user' ? (message, replacementMessage) => regenerateFrom({ targetMessageId: message.turnId || message.id, replacementMessage }) : undefined}
+        onClose={() => setFrontendEditMessage(null)} /> : null}
       {processMessage ? (
         <AgentProcessDialog
           message={messages.find((item) => (
@@ -506,6 +657,7 @@ export function MessageList({
   avatarShape,
   userAvatar,
   assistantAvatar,
+  characterRecords = EMPTY_CHARACTER_RECORDS,
   userPinImage,
   assistantPinImage,
   onPinAvatar,
@@ -526,11 +678,13 @@ export function MessageList({
   renderRoleplayMessage,
   loadImage,
   onOpenFile,
+  renderRichMessages = true,
 }) {
   const [isEntering, setIsEntering] = useState(Boolean(entering));
   const latestAssistantIndex = messages.findLastIndex((message) => message.role === "assistant" && !message.pending);
-  const regenerateMessage = useCallback((message) => onRegenerate?.({
+  const regenerateMessage = useCallback((message, replacementMessage) => onRegenerate?.({
     targetMessageId: message.turnId || message.id,
+    ...(replacementMessage === undefined ? {} : { replacementMessage }),
   }), [onRegenerate]);
   const deleteFromIndex = deleteMode
     ? messages.findIndex((message) => message.id === deleteFromMessageId)
@@ -575,6 +729,7 @@ export function MessageList({
           avatarShape={avatarShape}
           userAvatar={userAvatar}
           assistantAvatar={assistantAvatar}
+          characterRecords={characterRecords}
           userPinImage={userPinImage}
           assistantPinImage={assistantPinImage}
           userName={userName}
@@ -595,6 +750,7 @@ export function MessageList({
           renderRoleplayMessage={renderRoleplayMessage}
           loadImage={loadImage}
           onOpenFile={onOpenFile}
+          renderRichMessages={renderRichMessages}
         />;
       })}
     </div>
@@ -612,6 +768,7 @@ const MessageRow = memo(function MessageRow({
   avatarShape,
   userAvatar,
   assistantAvatar,
+  characterRecords,
   userPinImage,
   assistantPinImage,
   userName,
@@ -632,8 +789,10 @@ const MessageRow = memo(function MessageRow({
   renderRoleplayMessage,
   loadImage,
   onOpenFile,
+  renderRichMessages,
 }) {
-  const pluginScopeActive = !deleteMode && item.runtimeSessionId === runtimeSessionId;
+  const isTurnError = item.kind === 'turn-error';
+  const pluginScopeActive = !isTurnError && !deleteMode && item.runtimeSessionId === runtimeSessionId;
   const pluginMessage = pluginScopeActive && renderRoleplaySlot && !item.pending;
   const pluginActions = pluginMessage && item.role === "assistant" && item.dshMessageId
     ? renderRoleplaySlot("eleckoi.roleplay.message.actions", {
@@ -647,12 +806,14 @@ const MessageRow = memo(function MessageRow({
   const renderMessageContent = pluginScopeActive ? renderRoleplayMessage : undefined;
   // Rewind/edit/delete target the durable Session event. Historical rows can
   // legitimately have no projected turn until a closing tail is rebound.
-  const canMutate = item.id === "opening" ? item.canChangeOpening === true : Number.isSafeInteger(item.sessionEventSeq);
-  const bubble = <MessageBubble
+  const canMutate = !isTurnError && (item.id === "opening" ? item.canChangeOpening === true : Number.isSafeInteger(item.sessionEventSeq));
+  const speaker = characterRecords?.find(character => character.id === (item.speakerId || item.metadata?.speakerId));
+  const speakerAvatar = speaker ? resolveChatAvatar({ ...speaker.persona, assistant_avatar: speaker.avatar || speaker.persona?.assistant_avatar }, 'assistant', avatarShape) : '';
+  const bubble = isTurnError ? <ChatTurnError message={item} layoutMode={layoutMode} /> : <MessageBubble
     message={item}
-    avatar={item.role === "user" ? userAvatar : assistantAvatar}
-    pinSrc={item.role === "user" ? userPinImage : assistantPinImage}
-    name={item.role === "user" ? userName : assistantName}
+    avatar={item.role === "user" ? userAvatar : speakerAvatar || assistantAvatar}
+    pinSrc={item.role === "user" ? userPinImage : speaker?.persona?.assistant_cover || speakerAvatar || assistantPinImage}
+    name={item.name || item.metadata?.name || (item.role === "user" ? userName : speaker?.name || assistantName)}
     layoutMode={layoutMode}
     avatarShape={avatarShape}
     isLatestAssistant={isLatestAssistant}
@@ -669,6 +830,7 @@ const MessageRow = memo(function MessageRow({
     renderMessageContent={renderMessageContent}
     loadImage={loadImage}
     onOpenFile={onOpenFile}
+    renderRichMessages={renderRichMessages}
   />;
 
   return (

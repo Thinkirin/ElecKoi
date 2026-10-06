@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CaretRight, CheckCircle, WarningCircle } from "@phosphor-icons/react";
 import { ImportIcon, XIcon } from "../../../ui/icons/index.jsx";
+import { registerOverlayBack } from "../../../ui/hooks/overlayBack.js";
+import { createPortal } from 'react-dom';
+import { useCharacterDialogFocus } from '../hooks/useCharacterDialogFocus.js';
 
 const SOURCES = [
   { id: "eleckoi", title: "本项目角色卡", detail: "导入 ElecKoi 导出的角色卡" },
@@ -9,6 +12,8 @@ const SOURCES = [
 
 export function CharacterImportDialog({ onClose, onImported, onPrepare, onDiscard }) {
   const inputRef = useRef(null);
+  const dialogRef = useRef(null);
+  useCharacterDialogFocus(dialogRef);
   const sourceRef = useRef("");
   const [preview, setPreview] = useState(null);
   const [files, setFiles] = useState([]);
@@ -18,17 +23,18 @@ export function CharacterImportDialog({ onClose, onImported, onPrepare, onDiscar
   const [error, setError] = useState("");
 
   const close = useCallback(async () => {
-    if (preview?.token) await onDiscard(preview.token).catch(() => {});
-    onClose();
+    try {
+      if (preview?.token) await onDiscard(preview.token);
+      onClose();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : '无法取消角色卡导入');
+    }
   }, [onClose, onDiscard, preview?.token]);
 
-  useEffect(() => {
-    function onKeyDown(event) {
-      if (event.key === "Escape" && !preparing && !importing) close();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [close, preparing, importing]);
+  useEffect(() => registerOverlayBack(() => {
+    if (!preparing && !importing) void close();
+    return true;
+  }), [close, preparing, importing]);
 
   useEffect(() => {
     const urls = files.map((file) => file.type === "image/png" || file.name.toLowerCase().endsWith(".png") ? URL.createObjectURL(file) : "");
@@ -83,9 +89,9 @@ export function CharacterImportDialog({ onClose, onImported, onPrepare, onDiscar
 
   const importableCount = preview?.items.filter((item) => item.importable).length || 0;
 
-  return (
+  return createPortal(
     <div className="character-import-overlay" onMouseDown={() => !preparing && !importing && close()}>
-      <section className="character-import-dialog" role="dialog" aria-modal="true" aria-labelledby="character-import-title" onMouseDown={(event) => event.stopPropagation()}>
+      <section ref={dialogRef} className="character-import-dialog" role="dialog" tabIndex={-1} aria-modal="true" aria-labelledby="character-import-title" onMouseDown={(event) => event.stopPropagation()}>
         <header>
           <h2 id="character-import-title">{preview ? "导入角色卡" : "选择导入来源"}</h2>
           <button type="button" aria-label="关闭" onClick={close} disabled={preparing || importing}><XIcon /></button>
@@ -130,7 +136,7 @@ export function CharacterImportDialog({ onClose, onImported, onPrepare, onDiscar
         {preparing ? <div className="character-import-busy">正在读取角色卡…</div> : null}
         <input ref={inputRef} type="file" accept="image/png,application/json,.png,.json" multiple hidden onChange={onFilesPicked} />
       </section>
-    </div>
+    </div>, document.body
   );
 }
 

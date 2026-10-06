@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Copy, Play, Trash, X } from "@phosphor-icons/react";
+import { ArrowsLeftRight, Code, Copy, DotsThree, Play, Tag, Trash } from "@phosphor-icons/react";
+import { EditorHeader } from '../../../ui/ui/EditorHeader.jsx';
 import { REGEX_SCOPES, REGEX_TARGETS } from "../model/regexRulesEditing.js";
 
 function Switch({ checked, onChange, label }) {
@@ -12,7 +13,7 @@ function Switch({ checked, onChange, label }) {
   );
 }
 
-export function RegexRuleInspector({ scope, rule, scopeLocked = false, onChange, onMoveScope, onClose, onDuplicate, onDelete, onTest }) {
+export function RegexRuleInspector({ scope, rule, scopeLocked = false, onChange, onMoveScope, onClose, saveAction, onDuplicate, onDelete, onTest }) {
   const [testInput, setTestInput] = useState("");
   const [testOutput, setTestOutput] = useState("");
   const [testError, setTestError] = useState("");
@@ -54,27 +55,26 @@ export function RegexRuleInspector({ scope, rule, scopeLocked = false, onChange,
 
   return (
     <aside className="regex-inspector" aria-label="正则详情">
-      <header className="regex-inspector-header">
-        <strong>{rule.name.trim() || "未命名规则"}</strong>
-        <button type="button" aria-label="关闭详情" onClick={onClose}><X size={18} /></button>
-      </header>
+      <EditorHeader className="catalog-editor-header" onBack={onClose} backLabel="返回正则列表" title={rule.name.trim() || "未命名规则"} saveAction={saveAction}
+        moreAction={<details className="compact-editor-more"><summary aria-label="规则操作"><DotsThree size={22} /></summary><div><button type="button" onClick={onDuplicate}><Copy size={15} />复制规则</button><button type="button" className="is-destructive" onClick={onDelete}><Trash size={15} />删除规则</button></div></details>} />
       <div className="regex-inspector-scroll">
+        <div className="regex-rule-fields">
         <label className="regex-field">
           <span>名称</span>
           <input value={rule.name} maxLength={60} onChange={(event) => onChange({ name: event.target.value })} />
         </label>
         {!scopeLocked ? <label className="regex-field">
-          <span>分类</span>
+          <span className="regex-field-caption is-scope"><Tag size={14} weight="duotone" aria-hidden="true" />分类</span>
           <select value={scope} onChange={(event) => onMoveScope(event.target.value)}>
             {REGEX_SCOPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
           </select>
         </label> : null}
         <label className="regex-field">
-          <span>匹配表达式</span>
+          <span className="regex-field-caption is-pattern"><Code size={14} weight="duotone" aria-hidden="true" />匹配表达式</span>
           <textarea className="is-code" value={rule.pattern} spellCheck="false" placeholder="/pattern/g" onChange={(event) => onChange({ pattern: event.target.value })} />
         </label>
         <label className="regex-field">
-          <span>替换为</span>
+          <span className="regex-field-caption is-replacement"><ArrowsLeftRight size={14} weight="duotone" aria-hidden="true" />替换为</span>
           <textarea className="is-code" value={rule.replacement} spellCheck="false" onChange={(event) => onChange({ replacement: event.target.value })} />
         </label>
 
@@ -96,6 +96,7 @@ export function RegexRuleInspector({ scope, rule, scopeLocked = false, onChange,
           <Switch checked={rule.runOnEdit} label="编辑测试时自动运行" onChange={(checked) => onChange({ runOnEdit: checked })} />
         </div>
 
+        </div>
         <section className="regex-test" aria-label="测试正则">
           <div className="regex-test-heading">
             <strong>测试</strong>
@@ -106,10 +107,6 @@ export function RegexRuleInspector({ scope, rule, scopeLocked = false, onChange,
           {testError ? <p className="regex-test-error" role="alert">{testError}</p> : null}
         </section>
       </div>
-      <footer className="regex-inspector-footer">
-        <button type="button" onClick={onDuplicate}><Copy size={15} />复制规则</button>
-        <button type="button" className="is-destructive" onClick={onDelete}><Trash size={15} />删除规则</button>
-      </footer>
     </aside>
   );
 }

@@ -6,6 +6,7 @@ import { generatePluginApiReference } from './generate-plugin-api-reference.mjs'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const outputPath = join(root, 'docs', 'plugins', 'api-reference.md')
 const checkOnly = process.argv.includes('--check')
+const validateOnly = process.argv.includes('--validate')
 const allowedKinds = new Set(['ui-slot', 'service', 'event', 'contribution', 'remote'])
 const allowedRelations = new Set(['provides', 'contributes'])
 
@@ -117,8 +118,10 @@ lines.push('', '## 完整性规则', '',
   '- `pnpm check:plugin-docs` 与 `pnpm build` 会拒绝过期或不完整的总表。', '')
 
 const generated = `${lines.join('\n')}\n`
-const reference = await generatePluginApiReference(root, { check: checkOnly })
-if (checkOnly) {
+const reference = await generatePluginApiReference(root, { check: checkOnly, validate: validateOnly })
+if (validateOnly && !checkOnly) {
+  console.log(`Plugin API contracts are valid: ${bundles.length} bundles, ${rows.length} interfaces, ${reference.remoteMethods} Remote methods; production generated APIs are current.`)
+} else if (checkOnly) {
   let current = ''
   try {
     current = await readFile(outputPath, 'utf8')

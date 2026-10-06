@@ -12,9 +12,13 @@ import { SidePanelResizeHandle } from "./shell/components/SidePanelResizeHandle.
 import { TitleBar, WindowControls } from "./shell/components/TitleBar.jsx";
 import { useRightbarLayout } from "./shell/hooks/useRightbarLayout.js";
 import { useSidePanelLayout } from "./shell/hooks/useSidePanelLayout.js";
+import { useMobilePageTransition } from './shell/hooks/mobilePageTransition.js';
 import { AppUpdateController, useAppUpdates } from "../../modules/updates/index.js";
 import { openCreatorStudioWindow } from "../../modules/creatorStudio/index.js";
 import { MainPageContext } from "./MainPageContext.jsx";
+import { getDesktopService } from '../services/platform.js';
+import { appWindow } from '../services/windowControls.js';
+import { registerOverlayBack } from '../../ui/hooks/overlayBack.js';
 
 class MainPageErrorBoundary extends Component {
   state = { error: null };
@@ -32,40 +36,108 @@ export function MainWindow({ conversations, characters, characterConfiguration, 
   const chat = useChatClient({ conversations, characters, models, persona, navigation });
   const appearance = useWindowAppearance({ notify: chat.notify });
   const sidePanelLayout = useSidePanelLayout();
+  const isFrontendPage = Boolean(navigation?.frontendPageIds?.includes(chat.activeSection));
+  const isPluginPanel = isFrontendPage || Boolean(navigation && !navigation.productPanelIds?.includes(chat.activeSection) && chat.activeSection !== "plugins");
   const rightbarLayout = useRightbarLayout({
     model: rightbar,
     shellRef: sidePanelLayout.shellRef,
-    sidePanelCollapsed: sidePanelLayout.sidePanelCollapsed,
-    collapseSidePanel: sidePanelLayout.collapseSidePanel,
+    sidePanelCollapsed: sidePanelLayout.sidePanelCollapsed || isPluginPanel,
+    sidePanelWidth: sidePanelLayout.sidePanelWidth,
+    compact: sidePanelLayout.compact,
   });
   const appUpdates = useAppUpdates();
-  const isPluginPanel = Boolean(navigation && !navigation.productPanelIds?.includes(chat.activeSection) && chat.activeSection !== "plugins");
   const [chatBackgroundOpen, setChatBackgroundOpen] = useState(false);
   const [communityOpen, setCommunityOpen] = useState(false);
   const [settingsPage, setSettingsPage] = useState("chat");
   const [presetRequestedTab, setPresetRequestedTab] = useState("");
   const presetNavigationGuardRef = useRef(null);
   const modelNavigationGuardRef = useRef(null);
+  const mainPanelContentRef = useMobilePageTransition(chat.activeSection, sidePanelLayout.compact);
+  const sidePanelContentRef = useMobilePageTransition(chat.activeSection, sidePanelLayout.compact);
 
   useEffect(() => {
     document.title = "ElecKoi";
   }, []);
 
-  useEffect(() => window.dshDesktop.host?.subscribeFailure((message) => {
+  useEffect(() => {
+    if (!sidePanelLayout.compact || chat.activeSection !== 'messages') return;
+    if (chat.sessionId || chat.chatCharacter?.character_id) sidePanelLayout.collapseSidePanel();
+    else sidePanelLayout.expandSidePanel();
+  }, [sidePanelLayout.compact, sidePanelLayout.collapseSidePanel, sidePanelLayout.expandSidePanel,
+    chat.activeSection, chat.sessionId, chat.chatCharacter?.character_id]);
+
+  useEffect(() => getDesktopService('host')?.subscribeFailure((message) => {
     chat.notify("error", message);
   }), [chat.notify]);
 
   const changeActiveSection = useCallback((section) => {
+    const navigate = () => {
+      chat.setActiveSection(section);
+      if (sidePanelLayout.compact) {
+        if (['plugins', 'settings', 'character', 'presets', 'model'].includes(section) || (section === 'messages' && !chat.sessionId && !chat.chatCharacter?.character_id)) sidePanelLayout.expandSidePanel();
+        else sidePanelLayout.collapseSidePanel();
+      }
+    };
     if (chat.activeSection === "model" && section !== "model" && modelNavigationGuardRef.current) {
-      modelNavigationGuardRef.current(() => chat.setActiveSection(section));
+      modelNavigationGuardRef.current(navigate);
       return;
     }
     if (chat.activeSection === "presets" && section !== "presets" && presetNavigationGuardRef.current) {
-      presetNavigationGuardRef.current(() => chat.setActiveSection(section));
+      presetNavigationGuardRef.current(navigate);
       return;
     }
-    chat.setActiveSection(section);
-  }, [chat]);
+    // On a phone the navigation is an overlay drawer. Selecting a destination
+    // must reveal it immediately instead of leaving the drawer over a blank
+    // zero-width main track.
+    navigate();
+  }, [chat, sidePanelLayout]);
+
+  const closeChat = useCallback(() => {
+    chat.clearActiveChat();
+    if (sidePanelLayout.compact) sidePanelLayout.expandSidePanel();
+  }, [chat, sidePanelLayout]);
+
+  const onMobileDetailOpen = useCallback(() => {
+    if (sidePanelLayout.compact) sidePanelLayout.collapseSidePanel();
+  }, [sidePanelLayout]);
+
+  const openCharacterChat = useCallback((characterId) => {
+    onMobileDetailOpen();
+    return chat.openCharacterChat(characterId);
+  }, [chat, onMobileDetailOpen]);
+
+  const selectCharacter = useCallback((characterId) => {
+    const result = chat.selectCharacter(characterId);
+    onMobileDetailOpen();
+    return result;
+  }, [chat, onMobileDetailOpen]);
+
+  useEffect(() => {
+    if (!sidePanelLayout.compact) return undefined;
+    function onPlatformBack(event) {
+      if (event.defaultPrevented) return false;
+      if (event.type === 'keydown' && (event.key !== 'Escape' || event.target?.closest?.('input, textarea, select, [contenteditable="true"]'))) return false;
+      if (chat.activeSection !== 'messages') {
+        event.preventDefault();
+        const showList = () => sidePanelLayout.expandSidePanel();
+        const guard = chat.activeSection === 'model' ? modelNavigationGuardRef.current : chat.activeSection === 'presets' ? presetNavigationGuardRef.current : null;
+        if (!sidePanelLayout.sidePanelCollapsed) changeActiveSection('messages');
+        else if (guard) guard(showList);
+        else showList();
+        return true;
+      } else if (sidePanelLayout.sidePanelCollapsed && (chat.sessionId || chat.chatCharacter?.character_id)) {
+        event.preventDefault();
+        closeChat();
+        return true;
+      } else if (!sidePanelLayout.sidePanelCollapsed && (chat.sessionId || chat.chatCharacter?.character_id)) {
+        event.preventDefault();
+        sidePanelLayout.collapseSidePanel();
+        return true;
+      }
+      return false;
+    }
+    return registerOverlayBack(onPlatformBack, window, 0);
+  }, [chat, closeChat, changeActiveSection, sidePanelLayout]);
 
   const chatWallpaper = useMemo(() => resolveChatWallpaper({
     character: chat.chatBackgroundCharacter,
@@ -75,19 +147,22 @@ export function MainWindow({ conversations, characters, characterConfiguration, 
   const showChatWallpaper = chat.activeSection === "messages" && Boolean(chat.sessionId || chat.chatCharacter?.character_id) && Boolean(chatWallpaper.image);
 
   function selectConversation(chatId) {
+    if (sidePanelLayout.compact) sidePanelLayout.collapseSidePanel();
     if (chatId === chat.sessionId) {
-      chat.clearActiveChat();
+      closeChat();
       return;
     }
     chat.loadChat(chatId);
   }
 
-  function renderWindowLayout({ sidePanel, mainPanel, overlays = null }) {
-    const renderSidebarContent = (renderSidebarSlot) => <>
+  function renderNavigationRail(renderSidebarSlot) {
+    return (
       <section className="navigation-rail-shell" aria-label="功能导航栏">
         <div className="navigation-rail-title" data-tauri-drag-region />
         <SidebarRail
           activeSection={chat.activeSection}
+          compact={sidePanelLayout.compact}
+          onNotify={chat.notify}
           navigationItems={navigation?.items}
           renderSidebarSlot={renderSidebarSlot}
           profileActive={chat.activeSection === "settings" && settingsPage === "profile"}
@@ -100,6 +175,7 @@ export function MainWindow({ conversations, characters, characterConfiguration, 
           onOpenProfile={() => {
             setSettingsPage("profile");
             changeActiveSection("settings");
+            onMobileDetailOpen();
           }}
           onOpenSettings={() => {
             setSettingsPage("chat");
@@ -107,8 +183,16 @@ export function MainWindow({ conversations, characters, characterConfiguration, 
           }}
         />
       </section>
+    );
+  }
 
+  function renderWindowLayout({ sidePanel, mainPanel, overlays = null }) {
+    const renderSidebarContent = (renderSidebarSlot) => <>
+      {!sidePanelLayout.compact ? renderNavigationRail(renderSidebarSlot) : null}
       <SidePanelShell
+        compact={sidePanelLayout.compact}
+        contentRef={sidePanelContentRef}
+        sectionTitle={navigation?.items?.find(item => item.id === chat.activeSection)?.label}
         collapsed={sidePanelLayout.sidePanelCollapsed || isPluginPanel}
         onCollapse={sidePanelLayout.collapseSidePanel}
         renderSidebarSlot={renderSidebarSlot}
@@ -119,16 +203,19 @@ export function MainWindow({ conversations, characters, characterConfiguration, 
     </>;
     return (
       <>
+        {sidePanelLayout.compact && !sidePanelLayout.sidePanelCollapsed ? (
+          <button className="mobile-navigation-backdrop" type="button" aria-label="关闭导航菜单" onClick={sidePanelLayout.collapseSidePanel} />
+        ) : null}
         {navigation?.renderSidebar ? navigation.renderSidebar(renderSidebarContent) : renderSidebarContent(null)}
 
         <section className="main-panel-shell" aria-label="主功能界面">
           <TitleBar
             splitSurface
             showWindowControls={false}
-            sidePanelCollapsed={sidePanelLayout.sidePanelCollapsed && !isPluginPanel}
+            sidePanelCollapsed={sidePanelLayout.compact || (sidePanelLayout.sidePanelCollapsed && !isPluginPanel)}
             onToggleSidePanel={sidePanelLayout.expandSidePanel}
           />
-          <div className="main-panel-content">{mainPanel}</div>
+          <div className="main-panel-content" ref={mainPanelContentRef}>{mainPanel}</div>
         </section>
         <div className="dsh-rightbar-column">
           {rightbar?.render?.({
@@ -159,26 +246,35 @@ export function MainWindow({ conversations, characters, characterConfiguration, 
     renderPresetEditorSection,
     renderRoleplay,
     settingsPage,
-    setSettingsPage,
+    setSettingsPage: (page) => {
+      setSettingsPage(page);
+      onMobileDetailOpen();
+    },
     presetNavigationGuardRef,
     modelNavigationGuardRef,
     presetRequestedTab,
     setPresetRequestedTab,
     changeActiveSection,
+    closeChat,
+    onMobileDetailOpen,
+    onMobileListOpen: () => sidePanelLayout.expandSidePanel(),
+    openCharacterChat,
+    selectCharacter,
     renderLayout: renderWindowLayout,
     selectConversation,
     openChatBackground: () => setChatBackgroundOpen(true),
     openPresetTools: () => {
       setPresetRequestedTab("tools");
       changeActiveSection("presets");
+      onMobileDetailOpen();
     },
-    openCharacterSection: () => chat.setActiveSection("character"),
+    openCharacterSection: () => changeActiveSection("character"),
   };
 
   let windowLayout;
-  if (chat.activeSection === "plugins") {
+  if (chat.activeSection === "plugins" && !isFrontendPage) {
     windowLayout = renderWindowLayout({
-      sidePanel: <PluginListPanel onNotify={chat.notify} />,
+      sidePanel: <PluginListPanel onNotify={chat.notify} onOpenDetail={onMobileDetailOpen} />,
       mainPanel: <PluginCenterSurface>{navigation?.renderPanel("plugins")}</PluginCenterSurface>,
     });
   } else if (isPluginPanel) {
@@ -203,13 +299,21 @@ export function MainWindow({ conversations, characters, characterConfiguration, 
         ...rightbarLayout.shellStyle,
       }}
       data-side-panel-dragging={sidePanelLayout.sidePanelDragging || undefined}
+      data-compact={sidePanelLayout.compact || undefined}
+      data-native-window={appWindow.available || undefined}
+      data-mobile-chat-active={sidePanelLayout.compact && chat.activeSection === 'messages' && Boolean(chat.sessionId || chat.chatCharacter?.character_id) || undefined}
+      data-mobile-detail-active={sidePanelLayout.compact && sidePanelLayout.sidePanelCollapsed && ['model', 'presets', 'character', 'plugins', 'settings'].includes(chat.activeSection) || undefined}
+      data-navigation-open={sidePanelLayout.compact && !sidePanelLayout.sidePanelCollapsed || undefined}
       data-rightbar-animating={rightbarLayout.animating || undefined}
       data-rightbar-dragging={rightbarLayout.dragging || undefined}
       data-rightbar-fullscreen={rightbarLayout.fullscreen || undefined}
+      data-rightbar-shown={rightbarLayout.shown || undefined}
+      data-rightbar-overlay={rightbarLayout.overlay || undefined}
       data-rightbar-instant={rightbarLayout.instant || undefined}
     >
       {showChatWallpaper ? <ChatWallpaperLayer wallpaper={chatWallpaper} /> : null}
       <MainPageContext.Provider value={pageView}>
+        {sidePanelLayout.compact ? (navigation?.renderSidebar ? navigation.renderSidebar(renderNavigationRail) : renderNavigationRail(null)) : null}
         <MainPageErrorBoundary
           key={chat.activeSection}
           fallback={(error) => renderWindowLayout({
@@ -222,7 +326,7 @@ export function MainWindow({ conversations, characters, characterConfiguration, 
           </Suspense>
         </MainPageErrorBoundary>
       </MainPageContext.Provider>
-      {!sidePanelLayout.sidePanelCollapsed && !isPluginPanel ? (
+      {!sidePanelLayout.compact && !sidePanelLayout.sidePanelCollapsed && !isPluginPanel ? (
         <SidePanelResizeHandle
           onStart={sidePanelLayout.startSidePanelResize}
           onDrag={sidePanelLayout.resizeSidePanel}

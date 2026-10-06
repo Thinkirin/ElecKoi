@@ -1,27 +1,35 @@
 .dsh-search-field {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
   align-items: center;
   min-width: 0;
-  height: 30px;
+  height: 44px;
+  padding-right: 6px;
   overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 10px;
-  background: transparent;
-  color: rgb(129, 133, 140);
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--control-bg);
+  color: var(--muted);
+  transition: background var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
 }
 
 .dsh-search-field:focus-within {
-  border-color: color-mix(in srgb, var(--blue) 48%, var(--line-strong));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue) 14%, transparent);
+  background: var(--active);
+  color: var(--blue);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue) 24%, transparent);
 }
 
 .dsh-search-field-icon {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 30px;
+  width: 34px;
+  height: 100%;
   pointer-events: none;
+}
+
+.dsh-search-field-icon svg {
+  width: 15px;
+  height: 15px;
 }
 
 .dsh-search-field input {
@@ -33,12 +41,12 @@
   outline: 0;
   background: transparent;
   color: var(--text);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 18px;
 }
 
 .dsh-search-field input::placeholder {
-  color: rgb(129, 133, 140);
+  color: var(--muted);
 }
 
 .dsh-search-field-clear {
@@ -49,11 +57,25 @@
   margin-right: 2px;
   padding: 0;
   border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: rgb(99, 104, 112);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--muted) 10%, transparent);
+  color: var(--muted);
+  transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
 }
 
-.dsh-search-field-clear:hover {
-  background: rgba(38, 49, 72, 0.06);
+@media (hover: hover) and (pointer: fine) {
+  .dsh-search-field-clear:hover {
+    background: var(--control-bg-hover);
+    color: var(--text);
+  }
+}
+
+.dsh-search-field-clear:active {
+  background: var(--control-bg-hover);
+  color: var(--text);
+}
+
+.dsh-search-field-clear:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
 }

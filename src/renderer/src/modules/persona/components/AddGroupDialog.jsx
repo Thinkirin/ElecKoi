@@ -1,21 +1,29 @@
+import { useEffect, useId, useRef } from "react";
+import { createPortal } from 'react-dom';
+import { useCharacterDialogFocus } from '../hooks/useCharacterDialogFocus.js';
+import { registerOverlayBack } from "../../../ui/hooks/overlayBack.js";
+
 export function AddGroupDialog({ title = "添加分组", value, onChange, onConfirm, onCancel }) {
-  return (
-    <div className="character-group-dialog-backdrop">
+  const titleId = useId(), dialogRef = useRef(null);
+  useCharacterDialogFocus(dialogRef);
+  useEffect(() => registerOverlayBack(() => { onCancel(); return true; }), [onCancel]);
+  return createPortal(
+    <div className="character-group-dialog-backdrop" onPointerDown={event => { if (event.target === event.currentTarget) onCancel(); }}>
       <form
+        ref={dialogRef}
+        role="dialog" tabIndex={-1} aria-modal="true" aria-labelledby={titleId}
         className="character-group-dialog"
         onSubmit={(event) => {
           event.preventDefault();
           onConfirm();
         }}
       >
-        <h3>{title}</h3>
+        <h3 id={titleId}>{title}</h3>
         <input
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") onCancel();
-          }}
           placeholder="填写分组"
+          aria-label="分组名称"
           autoFocus
         />
         <div>
@@ -27,6 +35,6 @@ export function AddGroupDialog({ title = "添加分组", value, onChange, onConf
           </button>
         </div>
       </form>
-    </div>
+    </div>, document.body
   );
 }

@@ -6,8 +6,15 @@ import { MessageChevronLeftIcon, MessageChevronRightIcon } from '../../../ui/ico
 import { isSubagentItem, processBlocks, processItemDetails, subagentDetailPresentation } from '../model/agentProcessDetails.js';
 import { delegatedProcessItems } from '../model/agentProcessHierarchy.js';
 import { AgentProcessIcon } from './AgentProcessIcon.jsx';
+import { useAnimatedClose } from '../../../ui/hooks/useAnimatedClose.js';
 
 export function AgentProcessDialog({ message, reasoningDisplayMode = 'collapsed', onClose }) {
+  const { closing, close } = useAnimatedClose(onClose, 200, true, { onBack: () => {
+    if (selectedItemId) setSelectedItemPath(current => current.slice(0, -1));
+    else if (selectedGroupId) setSelectedGroupId('');
+    else close();
+    return true;
+  } });
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [selectedItemPath, setSelectedItemPath] = useState([]);
   const scrollPositionsRef = useRef(new Map());
@@ -32,11 +39,11 @@ export function AgentProcessDialog({ message, reasoningDisplayMode = 'collapsed'
       if (event.key !== 'Escape') return;
       if (selectedItemId) setSelectedItemPath((current) => current.slice(0, -1));
       else if (selectedGroupId) setSelectedGroupId('');
-      else onClose();
+      else close();
     };
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [onClose, selectedGroupId, selectedItemId]);
+  }, [close, selectedGroupId, selectedItemId]);
 
   const goBack = () => {
     if (selectedItemId) setSelectedItemPath((current) => current.slice(0, -1));
@@ -56,12 +63,12 @@ export function AgentProcessDialog({ message, reasoningDisplayMode = 'collapsed'
     setSelectedGroupId(block.id);
   };
 
-  return createPortal(<div className="agent-process-backdrop" role="presentation" onMouseDown={onClose}>
+  return createPortal(<div className={`agent-process-backdrop${closing ? ' closing' : ''}`} role="presentation" onMouseDown={close}>
     <section className="agent-process-dialog" role="dialog" aria-modal="true" aria-label={showingDetails ? '详情' : '处理过程'} onMouseDown={(event) => event.stopPropagation()}>
       <header>
         {showingDetails ? <button type="button" className="agent-process-back" onClick={goBack} aria-label="返回"><MessageChevronLeftIcon /></button> : <span />}
         <h2>{showingDetails ? '详情' : `处理过程${duration ? ` · ${duration}` : ''}`}</h2>
-        <button type="button" className="agent-process-close" onClick={onClose} aria-label="关闭"><DshCloseIcon /></button>
+        <button type="button" className="agent-process-close" onClick={close} aria-label="关闭"><DshCloseIcon /></button>
       </header>
       {selectedItem
         ? <ProcessDetail

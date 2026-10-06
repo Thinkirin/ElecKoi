@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { Handle, NodeResizer, Position } from "@xyflow/react";
+import { registerOverlayBack } from "../../../ui/hooks/overlayBack.js";
 import {
   ArrowCounterClockwise,
   CaretRight,
@@ -7,6 +9,7 @@ import {
   CursorClick,
   FileText,
   FolderOpen,
+  Hand,
   ImageSquare,
   MagnifyingGlass,
   Minus,
@@ -15,6 +18,7 @@ import {
   PlayCircle,
   Plus,
   SidebarSimple,
+  SlidersHorizontal,
   Sparkle,
   Trash,
   UploadSimple,
@@ -56,16 +60,21 @@ export function CanvasIconButton({ label, children, className = "", ...props }) 
   >{children}</button>;
 }
 
-export function CanvasViewportTools({ assetLibraryOpen, viewport, onOpenAssets, onReset, onZoom }) {
-  return <div className={`creator-canvas-utility-dock${assetLibraryOpen ? " is-assets-open" : ""}`} role="toolbar" aria-label="画布视图工具">
+export function CanvasViewportTools({ panMode, onPanModeChange, assetLibraryOpen, viewport, onOpenAssets, onReset, onZoom }) {
+  const [expanded, setExpanded] = useState(false);
+  return <div className={`creator-canvas-utility-dock${assetLibraryOpen ? " is-assets-open" : ""}${expanded ? " is-expanded" : ""}`} role="toolbar" aria-label="画布视图工具">
     {!assetLibraryOpen ? <>
       <button className="creator-canvas-assets-trigger" type="button" onClick={onOpenAssets}><SidebarSimple size={16} aria-hidden="true" />资产库</button>
       <span className="creator-canvas-utility-divider" aria-hidden="true" />
     </> : null}
-    <CanvasIconButton label="重置画布位置" onClick={onReset}><ArrowCounterClockwise size={16} /></CanvasIconButton>
-    <CanvasIconButton label="缩小画布" onClick={() => onZoom(-0.1)} disabled={viewport.zoom <= 0.35}><Minus size={16} /></CanvasIconButton>
-    <button className="creator-canvas-zoom-value" type="button" onClick={onReset} title="直接滚动鼠标滚轮缩放画布">{Math.round(viewport.zoom * 100)}%</button>
-    <CanvasIconButton label="放大画布" onClick={() => onZoom(0.1)} disabled={viewport.zoom >= 2}><Plus size={16} /></CanvasIconButton>
+    <CanvasIconButton label="画布视图参数" className="creator-canvas-view-toggle" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}><SlidersHorizontal size={17} /></CanvasIconButton>
+    <CanvasIconButton label={panMode ? "切换到节点编辑" : "切换到画布平移"} aria-pressed={panMode} className={panMode ? "is-active" : ""} onClick={() => onPanModeChange(!panMode)}><Hand size={17} /></CanvasIconButton>
+    <div className="creator-canvas-view-controls">
+      <CanvasIconButton label="重置画布位置" onClick={onReset}><ArrowCounterClockwise size={16} /></CanvasIconButton>
+      <CanvasIconButton label="缩小画布" onClick={() => onZoom(-0.1)} disabled={viewport.zoom <= 0.35}><Minus size={16} /></CanvasIconButton>
+      <button className="creator-canvas-zoom-value" type="button" onClick={onReset} title="重置画布缩放">{Math.round(viewport.zoom * 100)}%</button>
+      <CanvasIconButton label="放大画布" onClick={() => onZoom(0.1)} disabled={viewport.zoom >= 2}><Plus size={16} /></CanvasIconButton>
+    </div>
   </div>;
 }
 
@@ -98,13 +107,13 @@ export function CanvasQuickCreate({ onCreate }) {
   </section>;
 }
 
-function NodeOperationComposer({ node, meta, prompt, onPromptChange, onOpenAssets, onSendPrompt }) {
+function NodeOperationComposer({ portalTarget, node, meta, prompt, onPromptChange, onOpenAssets, onSendPrompt }) {
   const submitPrompt = (event) => {
     event.preventDefault();
     if (prompt.trim()) onSendPrompt(prompt.trim());
   };
 
-  return <form className="creator-canvas-node-composer nodrag nowheel" aria-label={`${node.title}节点AI操作输入`} onSubmit={submitPrompt}>
+  const form = <form className={`creator-canvas-node-composer nodrag nowheel${portalTarget ? " is-overlay" : ""}`} onPointerDown={(event) => event.stopPropagation()} aria-label={`${node.title}节点AI操作输入`} onSubmit={submitPrompt}>
     <textarea
       value={prompt}
       onChange={(event) => onPromptChange(event.target.value)}
@@ -122,6 +131,7 @@ function NodeOperationComposer({ node, meta, prompt, onPromptChange, onOpenAsset
       </button>
     </footer>
   </form>;
+  return portalTarget ? createPortal(form, portalTarget) : form;
 }
 
 function TextNodeBody({ node, selected, dragging, onNodeChange }) {
@@ -295,6 +305,8 @@ export function CanvasNode({
   const wasDraggingRef = useRef(false);
   const {
     node,
+    editorPortalTarget,
+    panMode,
     prompt,
     connection,
     onPromptChange,
@@ -334,7 +346,7 @@ export function CanvasNode({
     onPointerLeave={() => setPointerResting(false)}
   >
     <NodeResizer
-      isVisible={selected && !dragging}
+      isVisible={selected && !dragging && !panMode}
       minWidth={minSize.width}
       minHeight={minSize.height}
       maxWidth={960}
@@ -355,7 +367,8 @@ export function CanvasNode({
       ? <TextNodeBody node={node} selected={selected} dragging={dragging} onNodeChange={onNodeChange} />
       : <MediaNodeBody node={node} meta={meta} onNodeChange={onNodeChange} onOpenAssets={onOpenAssets} />}
 
-    {selected && !dragging ? <NodeOperationComposer
+    {selected && !dragging && !panMode ? <NodeOperationComposer
+      portalTarget={editorPortalTarget}
       node={node}
       meta={meta}
       prompt={prompt}
@@ -383,20 +396,20 @@ export function CanvasNode({
 
 export function CanvasAssetLibrary({ nodes, onClose, onSelectNode }) {
   const [query, setQuery] = useState("");
+  useEffect(() => registerOverlayBack(() => { onClose(); return true; }), [onClose]);
   const visibleNodes = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     if (!normalized) return nodes;
     return nodes.filter((node) => node.title.toLocaleLowerCase().includes(normalized));
   }, [nodes, query]);
 
-  return <aside className="creator-canvas-assets" aria-label="项目资产库">
+  return <aside className="creator-canvas-assets" aria-label="画布资产库">
     <header>
       <h2>资产库</h2>
       <CanvasIconButton label="收起资产库" onClick={onClose}><X size={17} /></CanvasIconButton>
     </header>
-    <div className="creator-canvas-asset-tabs" role="tablist" aria-label="资产来源">
-      <button className="is-active" type="button" role="tab" aria-selected="true">画布对象</button>
-      <button type="button" role="tab" aria-selected="false">项目资产</button>
+    <div className="creator-canvas-asset-summary">
+      <strong>画布对象</strong><span>{nodes.length}</span>
     </div>
     <label className="creator-canvas-asset-search">
       <MagnifyingGlass size={16} aria-hidden="true" />
@@ -426,30 +439,74 @@ export function CanvasAssetLibrary({ nodes, onClose, onSelectNode }) {
   </aside>;
 }
 
-export function CanvasAssistant({ value, onChange, onClose }) {
+const EMPTY_ASSISTANT = { projectId: '', sessionId: '', history: [], messages: [], status: 'idle', running: false, error: '' };
+const assistantEmptySnapshot = () => EMPTY_ASSISTANT;
+const assistantEmptySubscribe = () => () => {};
+export function CanvasAssistant({ project, service, value, onChange, onClose }) {
+  const snapshot = useSyncExternalStore(service?.subscribeAssistant || assistantEmptySubscribe, service?.getAssistantSnapshot || assistantEmptySnapshot);
+  const [showHistory, setShowHistory] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState('');
+  const [files, setFiles] = useState([]);
+  useEffect(() => registerOverlayBack(() => {
+    if (showHistory) setShowHistory(false);
+    else onClose();
+    return true;
+  }), [onClose, showHistory]);
+  const uploadInput = useRef(null), messageEnd = useRef(null);
+  const current = snapshot.projectId === project?.id ? snapshot : EMPTY_ASSISTANT;
+  useEffect(() => {
+    if (!service || !project?.id) return;
+    setError('');
+    void service.enterProject(project.id).catch(cause => setError(cause.message || String(cause)));
+    return () => service.releaseAssistant();
+  }, [service, project?.id]);
+  useEffect(() => { messageEnd.current?.scrollIntoView({ block: 'end' }); }, [current.messages]);
+  const run = async action => { setPending(true); setError(''); try { await action(); } catch (cause) { setError(cause.message || String(cause)); } finally { setPending(false); } };
+  const send = () => run(async () => {
+    if (!service) throw new Error('创作助手服务尚未就绪。');
+    await service.sendAssistant(project.id, value, files);
+    onChange(''); setFiles([]);
+  });
   return <aside className="creator-canvas-assistant" aria-label="AI创作助手">
     <header>
       <span><Sparkle size={15} weight="fill" aria-hidden="true" />AI创作助手</span>
       <div>
-        <CanvasIconButton label="对话历史"><ClockCounterClockwise size={17} /></CanvasIconButton>
+        <CanvasIconButton label="新创作对话" disabled={pending || !service} onClick={() => run(() => service.createAssistantConversation(project.id))}><Plus size={17} /></CanvasIconButton>
+        <CanvasIconButton label="对话历史" onClick={() => setShowHistory(open => !open)}><ClockCounterClockwise size={17} /></CanvasIconButton>
         <CanvasIconButton label="关闭AI创作助手" onClick={onClose}><X size={17} /></CanvasIconButton>
       </div>
     </header>
-    <div className="creator-canvas-assistant-empty">
-      <span><Sparkle size={21} weight="duotone" aria-hidden="true" /></span>
-      <strong>从项目里的任何对象开始</strong>
+    <div className="creator-canvas-assistant-messages" aria-live="polite">
+      {showHistory ? <div className="creator-canvas-assistant-history">
+        {current.history.length ? current.history.map(item => <button key={item.sessionId} type="button" aria-pressed={item.sessionId === current.sessionId} disabled={pending} onClick={() => run(async () => { await service.openAssistantConversation(project.id, item.sessionId); setShowHistory(false); })}>{item.title}</button>) : <p>暂无创作对话</p>}
+      </div> : null}
+      {error || current.error ? <p className="creator-canvas-assistant-error" role="alert">{error || current.error}</p> : null}
+      {current.status === 'loading' ? <p>正在打开创作对话…</p> : null}
+      {!current.messages.length && current.status !== 'loading' ? <div className="creator-canvas-assistant-empty"><span><Sparkle size={21} weight="duotone" aria-hidden="true" /></span><strong>从项目里的任何对象开始</strong></div> : null}
+      {current.messages.map(message => <article key={message.id} className={`creator-canvas-assistant-message is-${message.role}`}>
+        <strong>{message.role === 'user' ? '你' : 'AI助手'}</strong>
+        {message.reasoning ? <details><summary>思考过程</summary><pre>{message.reasoning}</pre></details> : null}
+        {message.tools?.map((tool, index) => <details key={`${tool.id}-${index}`}><summary>{tool.kind === 'tool-result' ? '工具结果' : '调用工具'} · {tool.name}</summary><pre>{typeof tool.detail === 'string' ? tool.detail : JSON.stringify(tool.detail, null, 2)}</pre></details>)}
+        {message.content ? <pre>{message.content}</pre> : null}
+        {message.attachments?.map((attachment, index) => <small key={index}>{attachment.attachment?.name || (attachment.type === 'image' ? '图片附件' : '文件附件')}</small>)}
+      </article>)}
+      {current.running ? <p className="creator-canvas-assistant-activity">AI正在处理项目…</p> : null}
+      <div ref={messageEnd} />
     </div>
     <div className="creator-canvas-assistant-composer">
       <textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="描述要创作或修改的内容，支持 @ 引用"
+        placeholder="描述要创作或修改的内容"
         aria-label="与AI创作助手对话"
       />
       <footer>
-        <CanvasIconButton label="添加附件"><Paperclip size={18} /></CanvasIconButton>
-        <CanvasIconButton label="发送消息" className="is-send" disabled={!value.trim()}><PaperPlaneRight size={17} weight="fill" /></CanvasIconButton>
+        <input ref={uploadInput} type="file" multiple hidden onChange={event => { setFiles(Array.from(event.target.files || [])); event.target.value = ''; }} />
+        <CanvasIconButton label="添加附件" disabled={pending} onClick={() => uploadInput.current?.click()}><Paperclip size={18} /></CanvasIconButton>
+        {current.running ? <CanvasIconButton label="停止创作" disabled={pending} onClick={() => run(() => service.cancelAssistant(project.id))}><X size={17} /></CanvasIconButton> : <CanvasIconButton label="发送消息" className="is-send" disabled={pending || !service || (!value.trim() && !files.length)} onClick={send}><PaperPlaneRight size={17} weight="fill" /></CanvasIconButton>}
       </footer>
+      {files.length ? <div className="creator-canvas-assistant-attachments">{files.map((file, index) => <button key={index} type="button" onClick={() => setFiles(items => items.filter((_, position) => index !== position))}>{file.name} ×</button>)}</div> : null}
     </div>
   </aside>;
 }

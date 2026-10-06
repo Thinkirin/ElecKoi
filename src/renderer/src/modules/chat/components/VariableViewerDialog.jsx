@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, CaretDown, CaretRight, Database, X } from "@phosphor-icons/react";
+import { useAnimatedClose } from '../../../ui/hooks/useAnimatedClose.js';
 
 const EMPTY_TIMELINE = { id: "", status: "idle", timeline: null, error: "" };
 const subscribeEmptyTimeline = () => () => {};
 const getEmptyTimeline = () => EMPTY_TIMELINE;
 
 export function VariableViewerDialog({ conversationId, conversationModel, onClose, onNotify }) {
+  const { closing, close } = useAnimatedClose(onClose);
+  const [mobilePane, setMobilePane] = useState('timeline');
   const [selectedId, setSelectedId] = useState("");
   const closeRef = useRef(null);
   const dialogRef = useRef(null);
@@ -44,7 +47,7 @@ export function VariableViewerDialog({ conversationId, conversationModel, onClos
     closeRef.current?.focus();
     const handleDialogKeys = (event) => {
       if (event.key === "Escape") {
-        onClose();
+        close();
         return;
       }
       if (event.key !== "Tab") return;
@@ -62,16 +65,16 @@ export function VariableViewerDialog({ conversationId, conversationModel, onClos
     };
     window.addEventListener("keydown", handleDialogKeys);
     return () => window.removeEventListener("keydown", handleDialogKeys);
-  }, [onClose]);
+  }, [close]);
 
   const selectedFloor = visibleTimeline?.floors.find((floor) => floor.id === selectedId) || null;
   const latestId = visibleTimeline?.floors.at(-1)?.id || "";
 
   return createPortal(
-    <div className="variable-viewer-backdrop" role="presentation" onMouseDown={onClose}>
+    <div className={`variable-viewer-backdrop${closing ? ' closing' : ''}`} role="presentation" onMouseDown={close}>
       <section
         ref={dialogRef}
-        className="variable-viewer-dialog"
+        className={`variable-viewer-dialog mobile-pane-${mobilePane}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="variable-viewer-title"
@@ -80,15 +83,19 @@ export function VariableViewerDialog({ conversationId, conversationModel, onClos
         <header className="variable-viewer-header">
           <span className="variable-viewer-heading-icon" aria-hidden="true"><Database weight="fill" /></span>
           <h2 id="variable-viewer-title">变量查看器</h2>
-          <button ref={closeRef} type="button" onClick={onClose} aria-label="关闭变量查看器"><X /></button>
+          <button ref={closeRef} type="button" onClick={close} aria-label="关闭变量查看器"><X /></button>
         </header>
+        <nav className="variable-viewer-mobile-tabs" aria-label="变量视图">
+          <button type="button" aria-pressed={mobilePane === 'timeline'} onClick={() => setMobilePane('timeline')}>楼层时间线</button>
+          <button type="button" aria-pressed={mobilePane === 'snapshot'} onClick={() => setMobilePane('snapshot')}>变量详情</button>
+        </nav>
         <div className="variable-viewer-body">
           <TimelinePane
             timeline={visibleTimeline}
             loading={visibleLoading}
             error={visibleError}
             selectedId={selectedId}
-            onSelect={setSelectedId}
+            onSelect={id => { setSelectedId(id); setMobilePane('snapshot'); }}
           />
           <SnapshotPane timeline={visibleTimeline} floor={selectedFloor} latestId={latestId} loading={visibleLoading} error={visibleError} />
         </div>

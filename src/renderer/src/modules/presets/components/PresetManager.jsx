@@ -174,6 +174,7 @@ export function PresetManager({ catalogModel, catalog, selectedGroup, selectedPr
   }
 
   return <section className="preset-manager-window" aria-label="预设管理器">
+    <div className="preset-manager-layout">
       <aside className="preset-manager-groups" onContextMenu={(event) => openGroupMenu(event)}>
         <button type="button" className={selectedGroup === ALL_PRESETS ? 'active' : ''} onClick={() => onSelectGroup(ALL_PRESETS)} onContextMenu={(event) => openGroupMenu(event, null)}><span>{ALL_PRESETS}</span><em>{catalog.presets.length}</em></button>
         <small>分组</small>
@@ -185,16 +186,16 @@ export function PresetManager({ catalogModel, catalog, selectedGroup, selectedPr
           <h2>预设管理器</h2>
           <DshSearchField className="preset-manager-search" value={keyword} onValueChange={setKeyword} placeholder="搜索预设…" ariaLabel="搜索预设" />
           {!deleteMode ? <>
-            <button type="button" disabled={importing} onClick={onImport}><ImportIcon /><span>导入预设</span></button>
+            <button type="button" disabled={importing} onClick={onImport} aria-label="导入预设" title="导入预设"><ImportIcon /><span>导入预设</span></button>
             <div className="preset-manager-export" ref={exportControlRef}>
-              <button type="button" disabled={!selectedPresetId} aria-haspopup="menu" aria-expanded={exportOpen} onClick={() => { setExportError(''); setExportOpen((current) => !current); }}><ExportIcon /><span>导出预设</span></button>
+              <button type="button" disabled={!selectedPresetId} aria-label="导出预设" title="导出预设" aria-haspopup="menu" aria-expanded={exportOpen} onClick={() => { setExportError(''); setExportOpen((current) => !current); }}><ExportIcon /><span>导出预设</span></button>
               {exportOpen ? <div className="preset-manager-export-menu" ref={exportMenuRef} role="menu" aria-label="选择预设格式">
                 <button type="button" role="menuitem" disabled={exporting} onClick={() => void exportPreset('png')}>PNG 预设卡</button>
                 <button type="button" role="menuitem" disabled={exporting} onClick={() => void exportPreset('json')}>JSON 预设</button>
                 {exportError ? <span role="alert">{exportError}</span> : null}
               </div> : null}
             </div>
-            <button type="button" onClick={() => setDeleteMode(true)}><TrashIcon /><span>删除</span></button>
+            <button type="button" onClick={() => setDeleteMode(true)} aria-label="删除预设" title="删除预设"><TrashIcon /><span>删除</span></button>
           </> : <>
             <button className="preset-manager-confirm-delete" type="button" disabled={!selectedIds.length} onClick={() => void removeSelectedPresets()}>确认{selectedIds.length ? ` ${selectedIds.length}` : ''}</button>
             <button type="button" onClick={cancelDeleteMode}>取消</button>
@@ -213,6 +214,7 @@ export function PresetManager({ catalogModel, catalog, selectedGroup, selectedPr
           </article>;
         })}</div>
       </div>
+    </div>
       {groupMenu ? <div className="preset-manager-group-menu" role="menu" aria-label={groupMenu.group ? `${groupMenu.group.name}的操作` : '分组操作'} style={{ left: `${groupMenu.x}px`, top: `${groupMenu.y}px` }} onPointerDown={(event) => event.stopPropagation()}>
         <button type="button" role="menuitem" onClick={() => openGroupDialog()}><PlusIcon /><span>添加分组</span></button>
         {groupMenu.group ? <>

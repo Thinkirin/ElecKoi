@@ -1,6 +1,6 @@
 import { readFile, readdir, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import vm from 'node:vm'
 import {
   WorkspaceAnalyzer, CordisCatalogProjector, TypeGraphRenderer,
@@ -27,7 +27,7 @@ export function assertMembers(label, actual, expected) {
   }
 }
 
-export async function generatePluginApiReference(root, { check = false } = {}) {
+export async function generatePluginApiReference(root, { check = false, validate = false } = {}) {
   const runtime = JSON.parse(await readFile(resolve(root, 'resources/dsh/runtime-manifest.json'), 'utf8'))
   const upstream = `https://github.com/deepseek-ai/deepseek-harness/blob/${runtime.upstream.commit}`
   const manifests = []
@@ -94,6 +94,9 @@ export async function generatePluginApiReference(root, { check = false } = {}) {
     const links = Object.fromEntries(ownTypes.map(type => [type.name, `${typePage}#${type.name.toLowerCase()}`]))
     const exemptions = Object.fromEntries(closure.filter(type => !type.location.file.startsWith('packages/'))
       .map(type => [type.name, `${upstream}/docs/subsystems/README.zh.md`]))
+    // This nested input union is owned by the upstream SessionController API;
+    // the declaration closure does not include it when reached through a readonly array.
+    exemptions.PromptContentPart = `${upstream}/docs/subsystems/README.zh.md`
     const policy = { linkedTypePages: links, foundationTypeNames: foundationTypes,
       typeLinkExemptions: exemptions, inheritedServices: [], inheritedEvents: [] }
     const projector = new CordisCatalogProjector(selected, sources.filter(source => source.face === original.face), policy)
@@ -160,10 +163,13 @@ export async function generatePluginApiReference(root, { check = false } = {}) {
     + '\n\n```ts\n' + remote.dts + '```\n\n数据字段见 [Host 数据类型](types-host.md)。\n')
   const stale = []
   for (const [path, content] of artifacts) {
+    // Validation still analyzes every manifest, implementation and declaration.
+    // Only persisted Markdown is excluded; runtime API outputs remain strict.
+    if (validate && !check && path.endsWith('.md')) continue
     const normalized = content.replaceAll('\r\n', '\n')
     const generated = path.endsWith('.md') ? normalized.trimEnd() + '\n' : normalized
     const absolute = resolve(root, path)
-    if (check) {
+    if (check || validate) {
       const current = await readFile(absolute, 'utf8').catch(error => { if (error.code === 'ENOENT') return ''; throw error })
       if (current !== generated) stale.push(path)
     } else await writeFile(absolute, generated, 'utf8')
@@ -178,6 +184,20 @@ function internal(member) {
 }
 
 async function checkClientImplementation(root, row, members) {
+  if (row.id === 'eleckoiTavernShared') {
+    // This service is supplied by the real dynamically imported runtime. Its
+    // browser startup needs DOM and RPC; inspect the actual instance without
+    // starting a second application or replacing its methods with fixtures.
+    const entry = await readFile(resolve(root, row.packageRoot, 'src/client.js'), 'utf8')
+    if (!/ctx\.provide\('eleckoiTavernShared',\s*runtime\)/.test(entry)) {
+      throw new Error(`实现没有提供 ctx.${row.id}`)
+    }
+    const { TavernSharedClient } = await import(pathToFileURL(resolve(root, row.packageRoot, 'src/runtime.js')).href)
+    const service = new TavernSharedClient({ window: {}, remote: {}, sdk: {},
+      conversations: { getDetailsSnapshot: () => ({ id: '', status: 'idle', details: null }) } })
+    assertClientMethods(row, members, service)
+    return
+  }
   let plugin
   const services = new Map()
   const react = { lazy: () => () => null, createElement: () => null }
@@ -191,6 +211,10 @@ async function checkClientImplementation(root, row, members) {
     effect: () => {}, on: () => () => {}, slots: { inject: () => {} } })
   const service = services.get(row.id)
   if (!service) throw new Error(`实现没有提供 ctx.${row.id}`)
+  assertClientMethods(row, members, service)
+}
+
+function assertClientMethods(row, members, service) {
   for (const member of members) {
     if (typeof service[member.name] !== 'function') throw new Error(`实现没有提供 ctx.${row.id}.${member.name}`)
     if (service[member.name].length > member.signature.parameters.length) {
@@ -201,5 +225,5 @@ async function checkClientImplementation(root, row, members) {
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
-  console.log(await generatePluginApiReference(root, { check: process.argv.includes('--check') }))
+  console.log(await generatePluginApiReference(root, { check: process.argv.includes('--check'), validate: process.argv.includes('--validate') }))
 }

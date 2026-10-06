@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useAnimatedClose } from '../../../ui/hooks/useAnimatedClose.js';
 
 export function ModelProviderDeleteDialog({ target, deleting = false, error = "", onCancel, onConfirm }) {
   const titleId = useId();
@@ -7,10 +8,9 @@ export function ModelProviderDeleteDialog({ target, deleting = false, error = ""
   const dialogRef = useRef(null);
   const cancelRef = useRef(null);
   const deletingRef = useRef(deleting);
-  const onCancelRef = useRef(onCancel);
+  const { closing, close } = useAnimatedClose(onCancel, 200, Boolean(target), { busy: deleting });
 
   deletingRef.current = deleting;
-  onCancelRef.current = onCancel;
 
   useEffect(() => {
     if (!target) return undefined;
@@ -19,7 +19,7 @@ export function ModelProviderDeleteDialog({ target, deleting = false, error = ""
     function handleKeyDown(event) {
       if (event.key === "Escape" && !deletingRef.current) {
         event.preventDefault();
-        onCancelRef.current();
+        close();
         return;
       }
       if (event.key !== "Tab") return;
@@ -53,7 +53,7 @@ export function ModelProviderDeleteDialog({ target, deleting = false, error = ""
     : "这个尚未保存的模型入口将被移除。";
 
   return createPortal(
-    <div className="model-provider-delete-overlay" role="presentation" onMouseDown={() => !deleting && onCancel()}>
+    <div className={`model-provider-delete-overlay${closing ? ' is-closing' : ''}`} role="presentation" onMouseDown={close}>
       <section
         ref={dialogRef}
         className="model-provider-delete-dialog"
@@ -70,7 +70,7 @@ export function ModelProviderDeleteDialog({ target, deleting = false, error = ""
         </p>
         {error ? <span className="model-provider-delete-error" role="alert">{error}</span> : null}
         <div>
-          <button ref={cancelRef} type="button" disabled={deleting} onClick={onCancel}>取消</button>
+          <button ref={cancelRef} type="button" disabled={deleting} onClick={close}>取消</button>
           <button type="button" className="danger" disabled={deleting} onClick={onConfirm}>
             {deleting ? "删除中…" : "删除入口"}
           </button>

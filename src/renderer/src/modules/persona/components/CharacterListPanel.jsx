@@ -11,6 +11,7 @@ import { SidebarCreateButton } from "../../../ui/ui/SidebarCreateButton.jsx";
 import { useSidebarListScroll } from "../../../ui/hooks/useSidebarListScroll.js";
 import { LIST_COLLAPSE_AREAS, usePersistentCollapseState } from "../../settings/index.js";
 import { openCharacterManagerWindow } from "../window/openCharacterManagerWindow.js";
+import { useCharacterCreateMenuPosition } from '../hooks/useCharacterCreateMenuPosition.js';
 
 export function CharacterListPanel({ characters, activeCharacterId, artworkMode, onSelectCharacter, onOpenCharacterChat, onSaveCharacterGroups, onImportPreparedCharacters, onPrepareCharacterImports, onDiscardCharacterImports, onCreateCharacter, onDeleteCharacters }) {
   const [keyword, setKeyword] = useState("");
@@ -28,6 +29,8 @@ export function CharacterListPanel({ characters, activeCharacterId, artworkMode,
   const [deletingCharacter, setDeletingCharacter] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const characterMenuRef = useRef(null);
+  const searchRowRef = useRef(null);
+  const createMenuStyle = useCharacterCreateMenuPosition(createMenuOpen, searchRowRef);
   const scrollRef = useSidebarListScroll();
   const [draggingGroup, setDraggingGroup] = useState("");
   const [dragOverGroup, setDragOverGroup] = useState("");
@@ -189,7 +192,7 @@ export function CharacterListPanel({ characters, activeCharacterId, artworkMode,
 
   return (
     <aside className="character-list-panel">
-      <div className="search-row character-list-search">
+      <div ref={searchRowRef} className="search-row character-list-search">
         <DshSearchField value={keyword} onValueChange={setKeyword} placeholder="搜索角色…" ariaLabel="搜索角色" />
         <SidebarCreateButton
           title="新建"
@@ -202,25 +205,27 @@ export function CharacterListPanel({ characters, activeCharacterId, artworkMode,
         />
       </div>
 
-      {createMenuOpen ? (
-        <div className="character-create-menu" onPointerDown={(event) => event.stopPropagation()}>
+      {createMenuOpen && createMenuStyle ? createPortal(
+        <div style={createMenuStyle} className="character-create-menu" role="menu" onPointerDown={(event) => event.stopPropagation()}>
           <button type="button" onClick={createInSelectedGroup}><CharacterManagerIcon /><span>新建角色</span></button>
           <button type="button" onClick={openImportDialog}><ImportIcon /><span>导入角色卡</span></button>
-        </div>
+        </div>, document.body
       ) : null}
 
-      <button className="character-manager-entry" type="button" onClick={openCharacterManagerWindow}>
-        <CharacterManagerIcon />
-        <span>角色卡管理器</span>
-      </button>
+      <div className="character-list-toolbar">
+        <button className="character-manager-entry" type="button" title="角色卡管理器" aria-label="角色卡管理器" onClick={openCharacterManagerWindow}>
+          <CharacterManagerIcon />
+          <span>角色卡管理器</span>
+        </button>
 
-      <div className="character-list-tabs" role="tablist" aria-label="角色与群聊">
-        <button className={listTab === "characters" ? "active" : ""} type="button" onClick={() => setListTab("characters")}>
-          角色
-        </button>
-        <button className={listTab === "groups" ? "active" : ""} type="button" onClick={() => setListTab("groups")}>
-          群聊
-        </button>
+        <div className="character-list-tabs" role="tablist" aria-label="角色与群聊">
+          <button className={listTab === "characters" ? "active" : ""} type="button" onClick={() => setListTab("characters")}>
+            角色
+          </button>
+          <button className={listTab === "groups" ? "active" : ""} type="button" onClick={() => setListTab("groups")}>
+            群聊
+          </button>
+        </div>
       </div>
 
       <div ref={scrollRef} className="character-list-scroll">
@@ -257,8 +262,8 @@ export function CharacterListPanel({ characters, activeCharacterId, artworkMode,
         ) : null}
       </div>
 
-      {groupMenu ? (
-        <div className="character-group-context-menu" style={{ left: `${groupMenu.x}px`, top: `${groupMenu.y}px` }} onPointerDown={(event) => event.stopPropagation()}>
+      {groupMenu ? createPortal(
+        <div className="character-group-context-menu" role="menu" style={{ left: `clamp(12px, ${groupMenu.x}px, calc(100vw - 188px))`, top: `clamp(12px, ${groupMenu.y}px, calc(100dvh - 156px))` }} onPointerDown={(event) => event.stopPropagation()}>
           <button type="button" onClick={openAddGroupDialog}>
             <PlusIcon />
             <span>添加分组</span>
@@ -271,7 +276,7 @@ export function CharacterListPanel({ characters, activeCharacterId, artworkMode,
             <TrashIcon />
             <span>删除分组</span>
           </button>
-        </div>
+        </div>, document.body
       ) : null}
 
       {importOpen ? (
@@ -289,7 +294,7 @@ export function CharacterListPanel({ characters, activeCharacterId, artworkMode,
           className="character-context-menu"
           role="menu"
           aria-label={`${characterName(characterMenu.character)}的操作`}
-          style={{ left: `${characterMenu.x}px`, top: `${characterMenu.y}px` }}
+          style={{ left: `clamp(12px, ${characterMenu.x}px, calc(100vw - 188px))`, top: `clamp(12px, ${characterMenu.y}px, calc(100dvh - 68px))` }}
           onPointerDown={(event) => event.stopPropagation()}
         >
           <button type="button" role="menuitem" className="is-danger" onClick={requestDeleteCharacter}>

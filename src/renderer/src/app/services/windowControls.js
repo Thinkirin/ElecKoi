@@ -1,3 +1,5 @@
+import { closeProductWindow, getDesktopService } from './platform.js';
+
 let resizeModeInstalled = false;
 
 export function installResizePerformanceMode() {
@@ -28,15 +30,25 @@ export async function showCurrentWindow() {
 }
 
 export const appWindow = {
+  get available() {
+    return Boolean(getDesktopService('windowControls'));
+  },
   async minimize() {
-    await window.dshDesktop.windowControls?.minimize();
+    const controls = getDesktopService('windowControls');
+    if (!controls) throw new Error('当前平台不提供桌面窗口控制。');
+    await controls.minimize();
   },
 
   async maximizeToggle() {
-    await window.dshDesktop.windowControls?.maximizeToggle();
+    const controls = getDesktopService('windowControls');
+    if (!controls) throw new Error('当前平台不提供桌面窗口控制。');
+    await controls.maximizeToggle();
   },
 
   async close() {
-    await window.dshDesktop.windowControls?.close();
+    if (closeProductWindow()) return;
+    const controls = getDesktopService('windowControls');
+    if (!controls) throw new Error('当前平台不提供桌面窗口控制。');
+    await controls.close();
   },
 };

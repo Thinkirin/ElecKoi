@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { applyAppearanceTheme } from "../../modules/appearance/index.js";
 import {
   CharacterManager,
 } from "../../modules/persona/index.js";
 import { showCurrentWindow } from "../services/windowControls.js";
-import { TitleBar } from "./shell/components/TitleBar.jsx";
+import { ProductWindowTitleBar } from "./ProductWindowTitleBar.jsx";
 
 const EMPTY_CHARACTERS = { active_character_id: "", groups: [], items: [] };
 const EMPTY_PERSONA = { user_name: "用户", user_avatar: "" };
@@ -37,7 +36,6 @@ export function CharacterManagerWindow({ characterCatalog, personaModel, renderC
   }, [characterCatalog, personaModel]);
 
   useEffect(() => {
-    applyAppearanceTheme(null);
     document.title = "角色卡管理器 - ElecKoi";
     showCurrentWindow().catch(() => {});
     const updateCharacters = () => {
@@ -102,9 +100,9 @@ export function CharacterManagerWindow({ characterCatalog, personaModel, renderC
   />;
 
   return (
-    <main className="qq-shell management-window-shell">
-      <TitleBar splitSurface />
-      <section className="management-window-content">
+    <main className="qq-shell management-window-shell character-management-window-shell">
+      <ProductWindowTitleBar title="角色卡管理器" splitSurface />
+      <section className="management-window-content character-management-window-content">
         {!loaded ? <p className="management-window-state">正在读取…</p> : loadError ? (
           <div className="management-window-state is-error" role="alert">
             <span>{loadError}</span>

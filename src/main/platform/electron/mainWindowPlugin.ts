@@ -8,6 +8,8 @@ import { installWindowsNativeFrame } from './windowsNativeFrame'
 import { DesktopBrowserGuests } from './desktopBrowserGuests'
 import { authenticateDshClientHost, DSH_CLIENT_ORIGIN, forwardDshClientRequest, isDshClientAsset, resolveElecKoiClientAssets, serveDshClientAsset, serveElecKoiClientAsset } from './dshClientDocument'
 import { DESKTOP_SHELL_IPC } from '@shared/contracts/desktopShell'
+import { installDesktopSpeechIpc } from './desktopSpeechIpc'
+import { installDesktopFileIpc } from './desktopFileIpc'
 
 export const mainWindowPlugin = {
   name: 'eleckoi-main-window',
@@ -24,6 +26,14 @@ export const mainWindowPlugin = {
     let mainWindow: BrowserWindow | undefined
     let pluginHostReady: { url: string; injections: readonly unknown[]; cookie: string } | undefined
     const browserGuests = new DesktopBrowserGuests(() => pluginHostReady?.url)
+    const stopFiles = installDesktopFileIpc(event => {
+      assertTrustedDshClientFrame(event.sender, event.senderFrame?.url ?? '',
+        event.senderFrame === event.sender.mainFrame, windows.all().map(window => window.webContents))
+    })
+    const stopSpeech = installDesktopSpeechIpc(event => {
+      assertTrustedDshClientFrame(event.sender, event.senderFrame?.url ?? '',
+        event.senderFrame === event.sender.mainFrame, windows.all().map(window => window.webContents))
+    }, error => appLog.error({ error }, 'Desktop system speech cleanup failed'))
 
     windows.define('main', {
       singleton: true,
@@ -181,7 +191,7 @@ export const mainWindowPlugin = {
     const ready = await pluginHost.start()
     pluginHostReady = { ...ready, cookie: await authenticateDshClientHost(ready.url) }
     await windows.open('main')
-    return () => {
+    return async () => {
       ipcMain.removeHandler(DESKTOP_SHELL_IPC.windowControl)
       ipcMain.removeHandler(DESKTOP_SHELL_IPC.browserAcquire)
       ipcMain.removeHandler(DESKTOP_SHELL_IPC.browserRelease)
@@ -194,6 +204,8 @@ export const mainWindowPlugin = {
       app.removeListener('activate', focusMainWindow)
       app.removeListener('second-instance', focusMainWindow)
       windows.close()
+      stopFiles()
+      await stopSpeech()
     }
   }
 } satisfies Plugin.Object

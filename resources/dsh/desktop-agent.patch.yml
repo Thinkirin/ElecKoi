@@ -44,7 +44,9 @@
 
 - id: agent-preset-registry
   config:
-    default: eleckoi-default
+    # Workspace sessions use the real creation composition registered at boot.
+    # Roleplay sessions explicitly select their materialized active preset.
+    default: eleckoi-creator
 
 - id: tool-bash
   disabled: true

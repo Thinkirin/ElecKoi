@@ -20,6 +20,11 @@
   background: var(--chat);
 }
 
+.character-management-window-shell { grid-template-rows:40px minmax(0,1fr); }
+.character-management-window-shell > .client-titlebar { position:relative; grid-row:1; inset:auto; }
+.character-management-window-shell:has(> .product-window-titlebar) { grid-template-rows:52px minmax(0,1fr); }
+.character-management-window-content { grid-row:2; container:character-manager-host / inline-size; }
+
 .management-window-state {
   display: grid;
   place-items: center;
@@ -36,7 +41,7 @@
   height: 34px;
   padding: 0 16px;
   border: 1px solid var(--line-strong);
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   background: var(--surface-raised);
   color: var(--text);
 }
@@ -50,11 +55,11 @@
 }
 
 .character-manager-window {
-  --character-manager-canvas: #f7f7f8;
-  --character-manager-card-info: color-mix(in srgb, #fff 88%, var(--character-manager-canvas));
+  --character-manager-canvas: var(--chat);
+  --character-manager-card-info: var(--surface-raised);
   position: relative;
   display: grid;
-  grid-template-columns: 232px minmax(0, 1fr);
+  grid-template-columns: 184px minmax(0, 1fr);
   width: 100%;
   height: 100%;
   min-width: 0;
@@ -67,9 +72,12 @@
 .character-manager-groups {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
-  gap: 8px;
-  padding: 48px 16px 18px;
+  gap: 6px;
+  min-width: 0;
+  min-height: 0;
+  padding: 12px 10px;
   background: var(--list);
+  border-right: 1px solid var(--line);
 }
 
 .character-manager-groups small {
@@ -95,11 +103,11 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  min-height: 42px;
-  padding: 0 12px;
-  border-radius: 8px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: var(--radius-md);
   text-align: left;
-  font-size: 16px;
+  font-size: 13px;
 }
 
 .character-manager-group:hover,
@@ -108,10 +116,12 @@
 }
 
 .character-manager-group em {
+  flex: none;
   color: var(--muted);
   font-size: 13px;
   font-style: normal;
 }
+.character-manager-group > span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
 .character-add-group-button {
   display: grid;
@@ -121,7 +131,7 @@
   gap: 8px;
   height: 40px;
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--surface-raised);
   color: var(--text);
   font-size: 16px;
@@ -132,29 +142,37 @@
   grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
-  padding: 48px 34px 0;
+  padding: 8px 20px 0;
+  container:character-manager-main / inline-size;
   background: var(--character-manager-canvas);
 }
 
 .character-manager-titlebar {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(180px, auto) minmax(220px, 1fr) repeat(3, auto);
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   min-height: 44px;
-  margin-bottom: 22px;
+  margin-bottom: 12px;
 }
 
 .character-manager-titlebar h2 {
   margin: 0;
   color: var(--text);
-  font-size: 24px;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 17px;
   font-weight: 600;
 }
 
 .character-manager-search {
   width: 100%;
+  flex: 1 1 160px;
+  min-width: 120px;
 }
 
 .character-manager-titlebar button {
@@ -166,7 +184,7 @@
   height: 34px;
   min-width: 0;
   padding: 0 10px;
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--line-strong);
   background: var(--surface-raised);
   color: var(--text);
@@ -192,12 +210,12 @@
 
 .character-manager-titlebar .character-manager-confirm-delete {
   background: #ff4d4f;
-  color: #fff;
+  color: var(--surface-raised);
 }
 
 .character-manager-titlebar .character-manager-confirm-delete:not(:disabled):hover {
   background: #ff3437;
-  color: #fff;
+  color: var(--surface-raised);
 }
 
 /* 导出操作复用标题栏和下方原有间距，切换模式时卡片位置不变。 */
@@ -208,11 +226,13 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
+  width: 100%;
 }
 
 .character-manager-selection-summary,
 .character-manager-selection-actions {
   display: flex;
+  flex-wrap: wrap;
   min-width: 0;
   align-items: center;
   gap: 8px;
@@ -230,7 +250,7 @@
   flex: none;
   overflow: hidden;
   border: 1px solid var(--line-strong);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 /* 分段控件优先于选择条里 button 的通用外观（选择器更长，覆盖 border/height/padding）。 */
@@ -283,14 +303,11 @@
 
 /* 目标名称位于标题栏已有的下方间距中，不参与网格高度计算。 */
 .character-manager-selection-targets {
-  position: absolute;
-  top: calc(100% + 2px);
-  left: 0;
-  right: 0;
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 18px;
+  min-height: 18px;
   margin: 0;
   overflow: hidden;
   color: var(--muted);
@@ -345,10 +362,10 @@
 
 .character-manager-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr));
   grid-auto-flow: row;
   grid-auto-rows: 4px;
-  gap: 18px;
+  gap: 14px;
   align-items: start;
 }
 
@@ -442,6 +459,7 @@
   font-size: 11px;
   line-height: 1;
 }
+.character-manager-grid .character-card-owner > span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
 .character-manager-grid .character-card-owner-avatar {
   width: 18px;
@@ -480,41 +498,49 @@
 .character-group-dialog-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 330;
+  z-index: var(--z-modal, 2000);
   display: grid;
   place-items: center;
-  background: rgba(0, 0, 0, 0.46);
+  padding: 12px;
+  background: var(--overlay-scrim, rgba(0, 0, 0, 0.32));
 }
 
 .character-group-dialog {
   display: grid;
-  gap: 22px;
-  width: 420px;
-  padding: 0 28px 28px;
-  border-radius: 10px;
+  gap: 16px;
+  width: min(420px, calc(100vw - 24px));
+  min-width: 0;
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 0 20px 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
   background: var(--surface-raised);
   box-shadow: 0 14px 34px var(--shadow-color);
 }
 
 .character-group-dialog h3 {
-  margin: 0 -28px;
-  padding: 14px 28px;
+  margin: 0 -20px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--line);
   color: var(--text);
   text-align: center;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 500;
 }
 
 .character-group-dialog input {
+  width: 100%;
+  min-width: 0;
   height: 44px;
   border: 1px solid var(--line-strong);
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   outline: 0;
   padding: 0 12px;
   background: var(--field-bg);
   color: var(--text);
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .character-group-dialog div {
@@ -527,10 +553,10 @@
   min-width: 96px;
   height: 38px;
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--surface-raised);
   color: var(--text);
-  font-size: 16px;
+  font-size: 13px;
 }
 
 .character-group-dialog .character-dialog-confirm {
@@ -546,25 +572,28 @@
 
 .character-import-overlay {
   position: fixed;
-  z-index: 320;
+  z-index: var(--z-modal, 2000);
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 32px;
+  padding: 24px;
   background: color-mix(in srgb, #000 38%, transparent);
 }
 
 .character-import-dialog {
   position: relative;
   display: grid;
-  grid-template-rows: 54px minmax(0, auto) auto;
-  width: min(520px, calc(100vw - 64px));
-  max-height: min(680px, calc(100vh - 64px));
+  grid-template-rows: 48px minmax(0, auto);
+  grid-auto-rows: auto;
+  width: min(580px, calc(100vw - 48px));
+  max-height: min(720px, calc(100dvh - 48px));
+  min-width: 0;
+  box-sizing: border-box;
   overflow: hidden;
   color: var(--text);
   background: var(--surface-raised);
   border: 1px solid var(--line-strong);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 24px 70px color-mix(in srgb, #000 32%, transparent);
 }
 
@@ -586,10 +615,10 @@
 .character-import-dialog > header button {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 34px;
   color: var(--muted);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 .character-import-dialog > header button:hover:not(:disabled) {
@@ -614,7 +643,7 @@
   min-height: 62px;
   padding: 9px 12px;
   color: var(--text);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   text-align: left;
 }
 
@@ -650,7 +679,8 @@
 }
 
 .character-import-preview-list {
-  max-height: 460px;
+  max-height: none;
+  overscroll-behavior: contain;
 }
 
 .character-import-preview-item {
@@ -671,7 +701,7 @@
   overflow: hidden;
   color: var(--muted);
   background: var(--control-bg);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 .character-import-preview-image img {
@@ -693,6 +723,9 @@
   margin: 0;
   padding: 0 20px 12px;
   font-size: 12px;
+  max-height: min(160px,24dvh);
+  overflow: auto;
+  overflow-wrap: anywhere;
 }
 
 .character-import-dialog > footer {
@@ -710,12 +743,12 @@
   color: var(--text);
   background: var(--control-bg);
   border: 1px solid var(--line-strong);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 13px;
 }
 
 .character-import-dialog > footer button.primary {
-  color: #fff;
+  color: var(--surface-raised);
   background: var(--blue);
   border-color: var(--blue);
 }
@@ -727,7 +760,7 @@
 
 .character-import-busy {
   position: absolute;
-  inset: 54px 0 0;
+  inset: 48px 0 0;
   display: grid;
   place-items: center;
   color: var(--muted);
@@ -746,39 +779,32 @@
   }
 }
 
-@media (max-width: 1080px) {
-  .character-manager-window {
-    grid-template-columns: 190px minmax(0, 1fr);
-  }
-
-  .character-manager-main {
-    padding-right: 22px;
-    padding-left: 22px;
-  }
-
-  .character-manager-titlebar {
-    grid-template-columns: minmax(160px, auto) minmax(190px, 1fr) repeat(3, auto);
-  }
-
-  .character-manager-titlebar button {
-    padding: 0 8px;
-  }
-
-  .character-manager-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+@container character-manager-host (max-width:959px) {
+  .character-manager-window { grid-template-columns:minmax(0,1fr); grid-template-rows:auto minmax(0,1fr); }
+  .character-manager-groups { display:flex; gap:6px; padding:8px 12px; border-right:0; border-bottom:1px solid var(--line); overflow-x:auto; }
+  .character-manager-groups small { display:none; }
+  .character-manager-group-list { display:flex; flex:none; gap:6px; }
+  .character-manager-groups .character-manager-group,.character-manager-groups .character-add-group-button { flex:none; width:auto; min-width:max-content; min-height:36px; }
+  .character-manager-main { padding:6px 12px 0; }
 }
-
-@media (max-width: 960px) {
-  .character-manager-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+@container character-manager-main (max-width:899px) {
+  .character-manager-selection-bar { grid-template-columns:auto minmax(120px,1fr); }
+  .character-manager-selection-actions { grid-column:1 / -1; justify-content:flex-end; }
 }
-
-@media (min-width: 1700px) {
-  .character-manager-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
+@container character-manager-main (max-width:639px) {
+  .character-manager-window .character-manager-titlebar { gap:4px; }
+  .character-manager-titlebar > h2 { display:none; }
+  .character-manager-window .character-manager-titlebar > .character-manager-search { flex:1 1 0; width:0; min-width:0; order:0; }
+  .character-manager-window .character-manager-titlebar > .character-manager-toolbar-action { flex:0 0 36px; width:36px; padding:0; }
+  .character-manager-toolbar-action > span { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+  .character-manager-selection-bar { grid-template-columns:minmax(0,1fr); }
+  .character-manager-selection-actions { grid-column:1; justify-content:flex-start; }
+  .character-manager-selection-targets { flex-wrap:wrap; white-space:normal; overflow-wrap:anywhere; }
+  .character-manager-selection-notice { max-width:100%; }
+}
+@container character-manager-main (max-width:479px) {
+  .character-manager-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .character-manager-scroll { padding:2px 0 20px; scrollbar-gutter:auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -788,13 +814,52 @@
 }
 
 :root[data-theme="dark"] .character-manager-window {
-  --character-manager-canvas: #13131a;
-  --character-manager-card-info: color-mix(in srgb, #000 12%, var(--character-manager-canvas));
+  --character-manager-canvas: var(--chat);
+  --character-manager-card-info: var(--surface-raised);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) .character-manager-window {
-    --character-manager-canvas: #13131a;
-    --character-manager-card-info: color-mix(in srgb, #000 12%, var(--character-manager-canvas));
+    --character-manager-canvas: var(--chat);
+    --character-manager-card-info: var(--surface-raised);
   }
+}
+/* Compact gallery chrome: artwork stays primary, commands remain quiet. */
+.character-manager-window .character-manager-group { border-radius:20px; gap:8px; }
+.character-manager-window .character-manager-group.active { color:var(--blue); font-weight:600; }
+.character-manager-window .character-manager-group em { min-width:22px; padding:2px 6px; border-radius:12px; text-align:center; font-size:11px; background:var(--surface-subtle); }
+.character-manager-window .character-add-group-button { border:0; background:var(--surface-subtle); color:var(--tide-teal,var(--blue)); border-radius:12px; font-size:13px; }
+.character-manager-window .character-manager-titlebar > button { border-color:transparent; background:var(--surface-content); border-radius:11px; font-size:13px; }
+.character-manager-window .character-manager-titlebar > button > svg { color:var(--blue); }
+.character-manager-window .character-manager-format-switch { border-radius:20px; border-color:transparent; background:var(--surface-subtle); padding:3px; }
+.character-manager-window .character-manager-format-switch button { border-radius:16px; }
+.character-manager-window .character-manager-grid .character-card { border-radius:12px; box-shadow:0 1px 4px var(--shadow-color); }
+.character-manager-window .character-manager-grid .character-card:hover { transform:none; box-shadow:0 3px 12px var(--shadow-color); }
+.character-manager-window .character-manager-grid .character-card.selected { box-shadow:0 0 0 2px var(--blue); }
+.character-import-dialog { border-radius:16px; box-shadow:var(--shadow-elevated); }
+.character-import-source-list button { border-radius:10px; }
+.character-import-preview-image { border-radius:8px; }
+.character-import-preview-item > svg:last-child { color:var(--tide-teal,var(--success)); }
+.character-import-preview-item.is-error > svg:last-child,.character-import-error { color:var(--danger); }
+.character-import-dialog > footer button { border:0; border-radius:11px; min-height:36px; }
+.character-import-dialog > footer button.primary { color:var(--on-accent); }
+@media (max-width:760px) {
+  .character-manager-window .character-manager-titlebar { margin-bottom:0; gap:6px; border-bottom:1px solid var(--line); background:var(--surface-content); }
+  .character-manager-window .character-manager-titlebar > button { min-height:40px; }
+  .character-manager-window .character-manager-group { white-space:nowrap; }
+}
+@media (max-width:760px) {
+  .character-manager-window .character-manager-titlebar { flex-wrap:nowrap; gap:4px; padding:6px 10px; }
+  .character-manager-window .character-manager-titlebar > h2 { display:none; }
+  .character-manager-window .character-manager-titlebar > .character-manager-search { flex:1 1 0; width:0; min-width:0; order:0; }
+  .character-manager-window .character-manager-titlebar > .character-manager-toolbar-action { flex:0 0 44px; width:44px; height:44px; padding:0; border-radius:12px; }
+  .character-manager-window .character-manager-toolbar-action > span { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+  .character-manager-groups small { display:none; }
+  .character-import-dialog { grid-template-rows:52px minmax(0,auto); }
+  .character-import-dialog > header button { width:44px; height:44px; }
+  .character-import-busy { inset:52px 0 0; }
+  .character-import-dialog > footer button,.character-group-dialog button { min-height:44px; }
+}
+@media(pointer:coarse) {
+  .character-manager-group,.character-add-group-button,.character-editor-navigation button { min-height:44px; }
 }

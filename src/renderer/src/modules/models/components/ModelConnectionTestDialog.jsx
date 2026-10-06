@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { CheckCircle, CircleNotch, XCircle } from "@phosphor-icons/react";
 import { XIcon } from "../../../ui/icons/index.jsx";
+import { useAnimatedClose } from '../../../ui/hooks/useAnimatedClose.js';
 
 const FOCUSABLE = "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
 
@@ -14,8 +15,7 @@ function StatusMark({ status }) {
 
 export function ModelConnectionTestDialog({ state, onDismiss }) {
   const dialogRef = useRef(null);
-  const onDismissRef = useRef(onDismiss);
-  onDismissRef.current = onDismiss;
+  const { closing, close } = useAnimatedClose(onDismiss, 200, Boolean(state));
 
   useEffect(() => {
     if (!state) return undefined;
@@ -26,7 +26,7 @@ export function ModelConnectionTestDialog({ state, onDismiss }) {
     function handleKeyDown(event) {
       if (event.key === "Escape") {
         event.preventDefault();
-        onDismissRef.current?.();
+        close();
         return;
       }
       if (event.key !== "Tab" || !dialog) return;
@@ -64,7 +64,7 @@ export function ModelConnectionTestDialog({ state, onDismiss }) {
   );
 
   return createPortal(
-    <div className="model-connection-test-overlay" onMouseDown={onDismiss}>
+    <div className={`model-connection-test-overlay${closing ? ' is-closing' : ''}`} onMouseDown={close}>
       <section
         className="model-connection-test-dialog"
         ref={dialogRef}
@@ -81,7 +81,7 @@ export function ModelConnectionTestDialog({ state, onDismiss }) {
             <h2 id="model-connection-test-title">测试连接</h2>
             <p>{state.modelLabel || "未选择模型"}</p>
           </div>
-          <button type="button" aria-label="关闭测试连接弹窗" onClick={onDismiss}><XIcon /></button>
+          <button type="button" aria-label="关闭测试连接弹窗" onClick={close}><XIcon /></button>
         </header>
 
         <ol className="model-connection-test-steps">
@@ -100,7 +100,7 @@ export function ModelConnectionTestDialog({ state, onDismiss }) {
           {message}
         </p>
 
-        <button className="model-connection-test-done" type="button" onClick={onDismiss}>
+        <button className="model-connection-test-done" type="button" onClick={close}>
           {state.finished ? "完成" : "后台继续检测"}
         </button>
       </section>

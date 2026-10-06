@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { ModelIdentityIcon } from "./ModelIdentityIcon.jsx";
 import { UnsavedChangesDialog } from "../../../ui/ui/UnsavedChangesDialog.jsx";
+import { useAnimatedClose } from '../../../ui/hooks/useAnimatedClose.js';
+import { registerOverlayBack } from '../../../ui/hooks/overlayBack.js';
 import { modelOptionsKey } from "../model/modelProviderCatalog.js";
 import { modelParameterState } from "../model/modelConfigDraft.js";
 import { useModelCapabilities } from "../hooks/useModelCapabilities.js";
 import { ModelParametersSection } from "./ModelParametersSection.jsx";
+import { Cpu, SlidersHorizontal, Check } from '@phosphor-icons/react';
 import {
   DshChevronDownIcon,
   DshCloseIcon,
@@ -58,6 +61,7 @@ export function ModelPicker({
   onSelect,
   onSaveModelConfig,
   onNotify,
+  apiRef,
 }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState("models");
@@ -66,6 +70,7 @@ export function ModelPicker({
   const [query, setQuery] = useState("");
   const [loadingConfigId, setLoadingConfigId] = useState("");
   const [saving, setSaving] = useState(false);
+  const [closeAfterSave, setCloseAfterSave] = useState(false);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [leaveError, setLeaveError] = useState("");
   const [draftConfigs, setDraftConfigs] = useState([]);
@@ -110,20 +115,17 @@ export function ModelPicker({
   const modelCapabilities = useModelCapabilities(parameterForm, selectedModelId);
   const hasChanges = changedConfigIds.length > 0 || draftSelection.configId !== committedSelection.configId
     || draftSelection.model !== committedSelection.model;
+  const { closing, close } = useAnimatedClose(() => setOpen(false), 200, open, { busy: saving });
 
   useEffect(() => {
-    if (!open) return undefined;
-    const closeOnEscape = (event) => {
-      if (event.key !== "Escape" || leaveDialogOpen) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      requestClosePicker();
-    };
-    window.addEventListener("keydown", closeOnEscape, true);
-    return () => window.removeEventListener("keydown", closeOnEscape, true);
-  }, [hasChanges, leaveDialogOpen, open, saving]);
+    if (!open || leaveDialogOpen) return undefined;
+    // The picker guard runs before its animated close; the leave dialog takes over while open.
+    return registerOverlayBack(() => { requestClosePicker(); return true; }, window, 110);
+  }, [hasChanges, leaveDialogOpen, open, saving, closing]);
+  useEffect(() => { if (closeAfterSave && !saving) close(); }, [closeAfterSave, saving, close]);
 
   function openPicker() {
+    if (closing) return;
     const nextConfigs = configs.map(cloneConfig);
     setDraftConfigs(nextConfigs);
     setChangedConfigIds([]);
@@ -133,24 +135,26 @@ export function ModelPicker({
     setQuery("");
     setLeaveDialogOpen(false);
     setLeaveError("");
+    setCloseAfterSave(false);
     setOpen(true);
   }
+  useImperativeHandle(apiRef, () => ({ open: openPicker, close: requestClosePicker }));
 
   function requestClosePicker() {
-    if (saving) return;
+    if (saving || closing) return;
     if (hasChanges) {
       setLeaveError("");
       setLeaveDialogOpen(true);
       return;
     }
-    setOpen(false);
+    close();
   }
 
   function discardAndClosePicker() {
-    if (saving) return;
+    if (saving || closing) return;
     setLeaveDialogOpen(false);
     setLeaveError("");
-    setOpen(false);
+    close();
   }
 
   function chooseModel(config, modelId) {
@@ -219,7 +223,7 @@ export function ModelPicker({
       setChangedConfigIds([]);
       await onSelect?.(draftSelection);
       setLeaveDialogOpen(false);
-      setOpen(false);
+      setCloseAfterSave(true);
       onNotify?.("success", "模型选择已保存，将从下一次请求生效。");
       return true;
     } catch (error) {
@@ -261,11 +265,11 @@ export function ModelPicker({
     <div className="chat-model-picker">
       {trigger}
       {open ? createPortal(
-        <div className={`chat-model-backdrop${elevated ? " is-elevated" : ""}`} role="presentation" onMouseDown={requestClosePicker}>
-          <section className="chat-model-panel" role="dialog" aria-modal="true" aria-label={title} aria-busy={saving} onMouseDown={(event) => event.stopPropagation()}>
+        <div className={`chat-model-backdrop${elevated ? " is-elevated" : ""}${closing ? " is-closing" : ""}`} role="presentation" onMouseDown={requestClosePicker}>
+          <section className="chat-model-panel" data-model-provider={draftSelectedConfig?.provider || 'custom'} role="dialog" aria-modal="true" aria-label={title} aria-busy={saving} onMouseDown={(event) => event.stopPropagation()}>
             <header>
               <div className="chat-model-title">
-                <strong>{title}</strong>
+                <strong><Cpu size={18} aria-hidden="true" />{title}</strong>
                 {selectedModelId ? (
                   <span>
                     <ModelIdentityIcon
@@ -284,12 +288,12 @@ export function ModelPicker({
 
             <div className="chat-model-content">
             {onSaveModelConfig ? <div className="chat-model-tabs" role="tablist" aria-label="模型设置">
-              <button type="button" role="tab" aria-selected={tab === "models"} onClick={() => setTab("models")}>模型</button>
-              <button type="button" role="tab" aria-selected={tab === "parameters"} onClick={() => setTab("parameters")}>参数</button>
+              <button type="button" role="tab" aria-selected={tab === "models"} onClick={() => setTab("models")}><Cpu size={16} aria-hidden="true" />模型</button>
+              <button type="button" role="tab" aria-selected={tab === "parameters"} onClick={() => setTab("parameters")}><SlidersHorizontal size={16} aria-hidden="true" />参数</button>
             </div> : null}
-            {tab === "parameters" ? <div className="chat-model-parameters">
+            {tab === "parameters" ? <div key="parameters" className="chat-model-parameters">
               <ModelParametersSection form={parameterForm} {...parameterState} modelCapabilities={modelCapabilities} onChange={updateParameters} />
-            </div> : <div className="chat-model-browser">
+            </div> : <div key="models" className="chat-model-browser">
               <div className="chat-model-configs">
                 {allowFollowMain ? <section className="chat-model-provider-group chat-model-follow-group">
                   <button type="button" className={followingMain ? "active" : ""} aria-pressed={followingMain} onClick={followMainModel}>
@@ -298,7 +302,7 @@ export function ModelPicker({
                   </button>
                 </section> : null}
                 {activeConfigs.length ? activeConfigs.map((config) => (
-                  <section className="chat-model-provider-group" key={config.id}>
+                  <section className="chat-model-provider-group" data-model-provider={config.provider || 'custom'} key={config.id}>
                     <h3>
                       <ModelIdentityIcon modelName="" providerId={config.provider} className="chat-model-provider-icon" />
                       {configName(config)}
@@ -319,7 +323,7 @@ export function ModelPicker({
                         aria-label={`查看 ${configName(config)} 的模型`}
                         onClick={() => { setFocusedConfigId(config.id); setQuery(""); }}
                       >
-                        <span className="chat-model-config-copy"><strong>{configName(config)}</strong><small>{config.model || "未选择模型"}</small></span>
+                        <span className="chat-model-config-copy"><strong><ModelIdentityIcon modelName="" providerId={config.provider} className="chat-model-config-icon" />{configName(config)}</strong><small>{config.model || "未选择模型"}</small></span>
                       </button>
                     </div>
                   </section>
@@ -352,7 +356,7 @@ export function ModelPicker({
             <footer className="chat-model-actions">
               <button type="button" className="chat-model-cancel" disabled={saving} onClick={requestClosePicker}>取消</button>
               <button type="button" className="chat-model-save" disabled={!hasChanges || saving} onClick={saveChanges}>
-                {saving ? "保存中…" : "保存"}
+                <Check size={16} aria-hidden="true" />{saving ? "保存中…" : "保存"}
               </button>
             </footer>
           </section>

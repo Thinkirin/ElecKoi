@@ -11,7 +11,8 @@
 }
 
 .qq-shell {
-  --side-panel-motion-duration: 300ms;
+  container: app-shell / inline-size;
+  --side-panel-motion-duration: 220ms;
   position: relative;
   display: grid;
   grid-template-rows: 40px minmax(0, 1fr);
@@ -118,7 +119,7 @@
   height: 24px;
   padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--title-fg);
   cursor: pointer;

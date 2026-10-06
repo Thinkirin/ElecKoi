@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useAnimatedClose } from "../../../ui/hooks/useAnimatedClose.js";
 import { DshCheckIcon, DshCloseIcon } from "../../../ui/icons/dshComposerIcons.jsx";
 import { PictureFrameIcon } from "../../../ui/icons/openSourceIcons.jsx";
 import { Avatar } from "../../../ui/ui/Avatar.jsx";
@@ -115,6 +116,7 @@ export function ChatBackgroundModal({
   onSaveNewCharacterBackground,
   onNotify,
 }) {
+  const { closing, close } = useAnimatedClose(onClose, 200, open);
   const dialogRef = useRef(null);
   const fileRef = useRef(null);
   const [mode, setMode] = useState("character");
@@ -145,11 +147,11 @@ export function ChatBackgroundModal({
   useEffect(() => {
     if (!open) return undefined;
     const closeOnEscape = (event) => {
-      if (event.key === "Escape") onClose?.();
+      if (event.key === "Escape") close();
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [onClose, open]);
+  }, [close, open]);
 
   const cardImage = useMemo(() => characterArtwork(character, persona), [character, persona]);
   const previewImage = mode === "character"
@@ -232,7 +234,7 @@ export function ChatBackgroundModal({
       if (mode === "global") await onSaveGlobal?.(globalDraft);
       await onSaveCharacter?.(values);
       onNotify?.("success", "聊天背景已保存。");
-      onClose?.();
+      close();
     } catch (error) {
       onNotify?.("error", error?.message || "聊天背景保存失败。");
     } finally {
@@ -241,7 +243,7 @@ export function ChatBackgroundModal({
   }
 
   return createPortal((<>
-    <div className="chat-background-backdrop" role="presentation" onPointerDown={onClose}>
+    <div className={`chat-background-backdrop${closing ? " closing" : ""}`} role="presentation" onPointerDown={close}>
       <section
         className="chat-background-dialog"
         role="dialog"
@@ -256,7 +258,7 @@ export function ChatBackgroundModal({
             <strong id="chat-background-title">聊天背景</strong>
             <span>{character?.name || persona?.assistant_name || "当前角色"}</span>
           </div>
-          <button type="button" aria-label="关闭" title="关闭" onClick={onClose}><DshCloseIcon /></button>
+          <button type="button" aria-label="关闭" title="关闭" onClick={close}><DshCloseIcon /></button>
         </header>
 
         <div className="chat-background-body">
@@ -265,10 +267,14 @@ export function ChatBackgroundModal({
             <div className="chat-background-modes" role="radiogroup" aria-label="当前角色背景来源">
               {MODES.map(([value, label]) => {
                 const selected = mode === value;
+                const image = value === 'character' ? cardImage : value === 'custom' ? customImage : value === 'global' ? globalDraft.image : '';
                 return (
                   <button key={value} type="button" role="radio" aria-checked={selected} className={selected ? "active" : ""} onClick={() => setMode(value)}>
-                    <SelectionIndicator selected={selected} />
+                    <span className="chat-background-mode-preview" aria-hidden="true">
+                      {image ? <img src={image} alt="" /> : <PictureFrameIcon size={17} />}
+                    </span>
                     <span>{label}</span>
+                    <SelectionIndicator selected={selected} />
                   </button>
                 );
               })}
@@ -311,7 +317,6 @@ export function ChatBackgroundModal({
         <section className="chat-background-import-default" aria-labelledby="chat-background-import-title">
           <div>
             <h3 id="chat-background-import-title">新角色默认背景</h3>
-            <span>应用于之后新建或导入的角色，可随时单独覆盖</span>
           </div>
           <div className="chat-background-segmented" role="radiogroup" aria-label="新角色默认背景">
             <button type="button" role="radio" aria-checked={defaultBackground === "app"} className={defaultBackground === "app" ? "active" : ""} onClick={() => setDefaultBackground("app")}>纯色背景</button>
@@ -320,7 +325,7 @@ export function ChatBackgroundModal({
         </section>
 
         <footer>
-          <button type="button" onClick={onClose}>取消</button>
+          <button type="button" onClick={close}>取消</button>
           <button className="primary" type="button" disabled={busy} onClick={save}>保存</button>
         </footer>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={chooseImage} />

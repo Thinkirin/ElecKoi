@@ -1,0 +1,5 @@
+/* Catalog-specific responsive behavior belongs to mobile-catalog/mobile-settings.
+   Shell, chat and shared controls have one owner and one breakpoint policy. */
+@media print {
+  .preset-editor-header, .model-editor-header { display: none; }
+}

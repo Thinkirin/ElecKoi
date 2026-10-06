@@ -7,6 +7,7 @@ function stopDrag(event) {
 }
 
 export function WindowControls({ onClose }) {
+  if (!appWindow.available) return null;
   return (
     <div className="window-controls">
       <button className="window-control-button minimize" type="button" title="最小化" onPointerDown={stopDrag} onClick={() => appWindow.minimize()}>

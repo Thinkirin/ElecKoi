@@ -123,7 +123,7 @@
     - id: agent-preset-registry
       name: '@deepseek-ai/dsh-agent-preset-registry'
       config:
-        default: eleckoi-default
+        default: eleckoi-creator
 
     - id: agent-preset-bridge
       name: './agent-preset-bridge.mjs'

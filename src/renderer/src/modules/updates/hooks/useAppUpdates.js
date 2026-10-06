@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getDesktopService } from '../../../app/services/platform.js';
 export function useAppUpdates() {
   const [status, setStatus] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
-    const updates = window.dshDesktop.updates;
+    const updates = getDesktopService('updates');
     if (!updates) {
       setError("更新服务暂时不可用。");
       return undefined;
@@ -41,19 +42,19 @@ export function useAppUpdates() {
   }, []);
 
   const check = useCallback(() => requestStatus(() => {
-    const updates = window.dshDesktop.updates;
+    const updates = getDesktopService('updates');
     if (!updates) throw new Error("更新服务暂时不可用。");
     return updates.check();
   }), [requestStatus]);
   const download = useCallback(() => requestStatus(() => {
-    const updates = window.dshDesktop.updates;
+    const updates = getDesktopService('updates');
     if (!updates) throw new Error("更新服务暂时不可用。");
     return updates.download();
   }), [requestStatus]);
   const install = useCallback(async () => {
     setError("");
     try {
-      const updates = window.dshDesktop.updates;
+      const updates = getDesktopService('updates');
       if (!updates) throw new Error("更新服务暂时不可用。");
       return await updates.install();
     } catch (cause) {

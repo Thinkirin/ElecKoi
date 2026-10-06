@@ -1,10 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { CaretRight, MagnifyingGlass, MinusCircle, Plus, X } from '@phosphor-icons/react';
 import { normalizeRoleplayPlanDraft } from '@shared/contracts/presets/roleplayPlan';
 import { AgentToolGroupIcon } from '../../../ui/icons/index.jsx';
 import { RoleplayPlanEditor, SubagentSettingsLink, WebSearchSettings } from '../../agentTools/index.js';
 import { PresetContextMenu, usePresetContextMenu } from './PresetContextMenu.jsx';
+import { MainPageContext } from '../../../app/windows/MainPageContext.jsx';
+
+const EMPTY_MODEL_CATALOG = { status: 'loading', configs: [], error: '' };
+const subscribeEmptyModels = () => () => {};
+const getEmptyModels = () => EMPTY_MODEL_CATALOG;
+const IMAGE_GROUP = 'builtin:auto-illustration';
 
 export function PresetToolsEditor({
   preset,
@@ -13,7 +19,21 @@ export function PresetToolsEditor({
   onBeforeOpenSubagentSettings,
   savePromptOpen = false,
   saveAction,
+  modelCatalog,
 }) {
+  const view = useContext(MainPageContext);
+  const models = modelCatalog || view?.models;
+  const modelSnapshot = useSyncExternalStore(
+    models?.subscribe || subscribeEmptyModels,
+    models?.getSnapshot || getEmptyModels,
+    models?.getSnapshot || getEmptyModels,
+  );
+  const imageModels = modelSnapshot.configs.filter((config) => ['novelai_image', 'openai_image'].includes(config.provider));
+  const imageModelId = preset.toolModelConfigIds?.[IMAGE_GROUP] || '';
+  const imageModel = imageModels.find((config) => config.id === imageModelId);
+  const imageModelLabel = imageModel?.name || imageModel?.model || (!imageModelId ? '选择图片模型'
+    : modelSnapshot.status === 'ready' ? '图片模型已删除'
+      : modelSnapshot.error ? '无法读取图片模型' : '图片模型加载中');
   const [query, setQuery] = useState('');
   const [configGroupId, setConfigGroupId] = useState('');
   const [addOpen, setAddOpen] = useState(false);
@@ -59,8 +79,8 @@ export function PresetToolsEditor({
           <input value={query} placeholder="搜索工具" aria-label="搜索工具" onChange={(event) => setQuery(event.target.value)} />
         </label>
         <div className="preset-tools-add-wrap">
-          <button type="button" className="preset-tools-add-button" aria-expanded={addOpen} onClick={() => setAddOpen((value) => !value)}>
-            <Plus size={16} aria-hidden="true" />添加
+          <button type="button" className="preset-tools-add-button preset-toolbar-add" aria-label="添加工具" title="添加工具" aria-expanded={addOpen} onClick={() => setAddOpen((value) => !value)}>
+            <Plus size={18} aria-hidden="true" />
           </button>
           {addOpen ? <div className="preset-tools-add-popover" role="menu" aria-label="添加工具组">
             {availableGroups.map((group) => <button type="button" role="menuitem" key={group.id} onClick={() => addGroup(group.id)}>
@@ -76,10 +96,12 @@ export function PresetToolsEditor({
 
       <div className="preset-tools-list" tabIndex={0} aria-label="当前预设工具列表" onContextMenu={(event) => { setAddOpen(false); context.open(event); }}>
         {visibleGroups.length ? <div className="preset-tools-section-heading"><strong>预设自带</strong></div> : null}
-        {visibleGroups.map((group) => <section className={`preset-tool-row${group.enabled ? '' : ' is-disabled'}`} key={group.id} onContextMenu={(event) => { setAddOpen(false); context.open(event, group); }}>
-          <button type="button" className="preset-tool-summary" aria-haspopup="dialog" onClick={() => setConfigGroupId(group.id)}>
+        {visibleGroups.map((group) => <section className={`preset-tool-row${group.enabled ? '' : ' is-disabled'}`} data-tool-group-id={group.id} key={group.id} onContextMenu={(event) => { setAddOpen(false); context.open(event, group); }}>
+          <button type="button" className="preset-tool-summary" title={group.description || group.name} aria-haspopup="dialog" onClick={() => setConfigGroupId(group.id)}>
             <span className="preset-tool-icon"><AgentToolGroupIcon groupId={group.id} size={17} /></span>
-            <span><strong>{group.name}</strong><small>{group.description}</small></span>
+            <span><strong>{group.name}</strong><small className={group.id === IMAGE_GROUP ? 'preset-image-model-state' : undefined}>{group.id === IMAGE_GROUP
+              ? imageModelLabel
+              : group.description}</small></span>
             <span className="preset-tool-count">{group.members.length}</span>
             <CaretRight size={15} aria-hidden="true" />
           </button>
@@ -107,6 +129,17 @@ export function PresetToolsEditor({
         onNotify={onNotify}
         onBeforeOpenSubagentSettings={onBeforeOpenSubagentSettings}
         onRoleplayPlanChange={(roleplayPlan) => onChange({ ...preset, roleplayPlan })}
+        imageModels={imageModels}
+        imageModelId={imageModelId}
+        imageModelLabel={imageModelLabel}
+        modelStatus={modelSnapshot.status}
+        modelError={modelSnapshot.error}
+        onImageModelChange={(configId) => {
+          const bindings = { ...preset.toolModelConfigIds };
+          if (configId) bindings[IMAGE_GROUP] = configId;
+          else delete bindings[IMAGE_GROUP];
+          onChange({ ...preset, toolModelConfigIds: bindings });
+        }}
       /> : null}
     </section>
   );
@@ -121,6 +154,12 @@ function PresetToolConfigDialog({
   onNotify,
   onBeforeOpenSubagentSettings,
   onRoleplayPlanChange,
+  imageModels,
+  imageModelId,
+  imageModelLabel,
+  modelStatus,
+  modelError,
+  onImageModelChange,
 }) {
   useEffect(() => {
     function closeOnEscape(event) {
@@ -150,6 +189,17 @@ function PresetToolConfigDialog({
           ><i /></button>
         </section>
         {group.description ? <p className="preset-tool-config-description">{group.description}</p> : null}
+        {group.id === IMAGE_GROUP ? <>
+          <label className="preset-tool-config-card preset-image-model-field">
+            <span>图片模型</span>
+            <select aria-label="图片模型" disabled={modelStatus !== 'ready'} value={imageModelId} onChange={(event) => onImageModelChange(event.target.value)}>
+              <option value="">选择图片模型</option>
+              {imageModelId && !imageModels.some((config) => config.id === imageModelId) ? <option value={imageModelId}>{imageModelLabel}</option> : null}
+              {imageModels.map((config) => <option key={config.id} value={config.id}>{config.name || config.model}{config.name && config.model && config.name !== config.model ? ` · ${config.model}` : ''}</option>)}
+            </select>
+          </label>
+          {modelError ? <p className="preset-image-model-error" role="alert">{modelError}</p> : null}
+        </> : null}
         {group.id === 'builtin:collaboration' ? <SubagentSettingsLink
           onBeforeOpen={onBeforeOpenSubagentSettings}
           onOpen={onClose}

@@ -28,9 +28,28 @@ export function useAuthorFrontendActions({
   const inputRef = useRef(input);
   const hasInputImagesRef = useRef(Boolean(inputImages?.length));
   const sendMessageRef = useRef(sendMessage);
+  const loadChatRef = useRef(loadChat);
   inputRef.current = input;
   hasInputImagesRef.current = Boolean(inputImages?.length);
   sendMessageRef.current = sendMessage;
+  loadChatRef.current = loadChat;
+
+  useEffect(() => {
+    let attached, stop = () => {};
+    const connect = event => {
+      const runtime = event?.detail || window.__ElecKoiClientCompatibility;
+      if (!runtime?.registerConversationNavigation || runtime.conversations !== conversations || runtime === attached) return;
+      stop(); attached = runtime;
+      stop = runtime.registerConversationNavigation(async id => {
+        await loadChatRef.current(id);
+        const snapshot = conversations.getDetailsSnapshot();
+        if (snapshot.id !== id || snapshot.status !== 'ready') throw Object.assign(new Error('聊天选择没有完成，请停止生成或重新打开会话。'), { code: 'APPLICATION_OWNER_NOT_ACTIVE' });
+        return snapshot.details;
+      });
+    };
+    connect(); window.addEventListener('eleckoi:shared-runtime', connect);
+    return () => { window.removeEventListener('eleckoi:shared-runtime', connect); stop(); };
+  }, [conversations]);
 
   useEffect(() => {
     const refreshActiveChat = async (targetSessionId, resetWindow = false) => {

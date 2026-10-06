@@ -4,10 +4,10 @@ import type { StartupProfile } from '@shared/contracts/startup/schema'
 import { runtimeUserDataPath } from './runtimeUserDataPath'
 
 export function configureRuntimeUserData(): void {
-  const developmentDirectory = !app.isPackaged ? app.commandLine.getSwitchValue('user-data-dir') : ''
-  if (developmentDirectory) {
-    mkdirSync(developmentDirectory, { recursive: true })
-    app.setPath('userData', developmentDirectory)
+  const requestedDirectory = app.commandLine.getSwitchValue('user-data-dir')
+  if (requestedDirectory) {
+    mkdirSync(requestedDirectory, { recursive: true })
+    app.setPath('userData', requestedDirectory)
     return
   }
   const currentPath = app.getPath('userData')

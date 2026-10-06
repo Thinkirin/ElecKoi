@@ -27,7 +27,8 @@ export class MessageDisplayProjector {
   project(
     message: ChatMessage,
     collection: RegexRuleCollection,
-    macroValues?: CharacterCardMacroValues
+    macroValues?: CharacterCardMacroValues,
+    depth?: number
   ): ChatMessage {
     const target: RegexRuleTarget = message.role === 'user' ? 'UserInput' : 'AiOutput'
     const completedAssistant = message.role === 'assistant' && message.status !== 'streaming'
@@ -36,7 +37,7 @@ export class MessageDisplayProjector {
       this.cache.clear()
       this.activeScope = scope
     }
-    const cacheKey = `${message.id}\u0000${target}`
+    const cacheKey = `${message.id}\u0000${target}\u0000${depth ?? ''}`
     const macroScope = macroValues
       ? `${macroValues.userName}\u0000${macroValues.characterName}`
       : ''
@@ -61,7 +62,13 @@ export class MessageDisplayProjector {
       : message.content
     const transformed = transformWithRegexRules(prepared, rules, target, {
       replacementDecorator: decorateRichDisplayReplacement,
-      protectDecoratedReplacements: true
+      protectDecoratedReplacements: true,
+      ...(depth === undefined ? {} : { depth }),
+      expandMacros: (text, escape) => {
+        const source = macroValues ? resolveCharacterCardMacros(text, { userName: escape?.(macroValues.userName) ?? macroValues.userName,
+          characterName: escape?.(macroValues.characterName) ?? macroValues.characterName }) : text
+        return this.compatibility.resolveVariableMacros(source, message.variableStateJson)
+      }
     })
     const displayVariableStateJson = macroValues
       ? resolveCharacterCardMacrosInJson(message.variableStateJson, macroValues)

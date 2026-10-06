@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
+import { registerOverlayBack } from "../../../ui/hooks/overlayBack.js";
 
 export function DeleteCharacterDialog({ character, deleting = false, error = "", returnFocus, onCancel, onConfirm }) {
   const titleId = useId();
@@ -14,14 +15,12 @@ export function DeleteCharacterDialog({ character, deleting = false, error = "",
 
   useEffect(() => {
     cancelRef.current?.focus();
+    const unregisterBack = registerOverlayBack(() => {
+      if (!deletingRef.current) onCancelRef.current();
+      return true;
+    });
 
     function handleKeyDown(event) {
-      if (event.key === "Escape" && !deletingRef.current) {
-        event.preventDefault();
-        onCancelRef.current();
-        return;
-      }
-
       if (event.key !== "Tab") return;
       const focusable = Array.from(dialogRef.current?.querySelectorAll("button:not(:disabled)") || []);
       if (!focusable.length) return;
@@ -38,6 +37,7 @@ export function DeleteCharacterDialog({ character, deleting = false, error = "",
 
     window.addEventListener("keydown", handleKeyDown);
     return () => {
+      unregisterBack();
       window.removeEventListener("keydown", handleKeyDown);
       if (returnFocus?.isConnected) returnFocus.focus();
     };

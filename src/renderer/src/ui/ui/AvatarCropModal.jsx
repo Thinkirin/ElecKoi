@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { RotateLeftIcon, RotateRightIcon, XIcon } from "../icons/index.jsx";
+import { ArrowCounterClockwise, ArrowClockwise, X, Crop, Check } from "@phosphor-icons/react";
+import { useAnimatedClose } from "../hooks/useAnimatedClose.js";
 
 const STAGE_WIDTH = 440;
 const STAGE_HEIGHT = 320;
@@ -14,6 +15,11 @@ function clamp(value, min, max) {
 function fileBaseName(file) {
   const name = file?.name || "avatar";
   return name.replace(/\.[^.]+$/, "") || "avatar";
+}
+
+export function fitAvatarCrop(width, height, stage) {
+  const scale = Math.min(1, Math.max(1, stage.width - 24) / width, Math.max(1, stage.height - 24) / height);
+  return { width: width * scale, height: height * scale };
 }
 
 export function AvatarCropModal({
@@ -30,8 +36,6 @@ export function AvatarCropModal({
 }) {
   const windowRef = useRef(null);
   const closeRef = useRef(null);
-  const cancelRef = useRef(onCancel);
-  const savingRef = useRef(false);
   const stageRef = useRef(null);
   const imageRef = useRef(null);
   const dragRef = useRef(null);
@@ -42,10 +46,9 @@ export function AvatarCropModal({
   const [rotation, setRotation] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    cancelRef.current = onCancel;
-  }, [onCancel]);
+  const [stageSize, setStageSize] = useState({ width: STAGE_WIDTH, height: STAGE_HEIGHT });
+  const crop = fitAvatarCrop(cropWidth, cropHeight, stageSize);
+  const { closing, close } = useAnimatedClose(onCancel, 180, Boolean(file), { busy: saving });
 
   const quarterTurn = Math.abs(rotation % 180) === 90;
   const orientedSize = useMemo(
@@ -58,8 +61,8 @@ export function AvatarCropModal({
 
   const baseScale = useMemo(() => {
     if (!orientedSize.width || !orientedSize.height) return 1;
-    return Math.max(cropWidth / orientedSize.width, cropHeight / orientedSize.height);
-  }, [cropHeight, cropWidth, orientedSize]);
+    return Math.max(crop.width / orientedSize.width, crop.height / orientedSize.height);
+  }, [crop.height, crop.width, orientedSize]);
 
   const displaySize = useMemo(
     () => ({
@@ -83,16 +86,23 @@ export function AvatarCropModal({
   }, [file]);
 
   useEffect(() => {
+    if (!file || !stageRef.current) return undefined;
+    const update = () => {
+      const rect = stageRef.current.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) setStageSize({ width: rect.width, height: rect.height });
+    };
+    update();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    observer?.observe(stageRef.current);
+    return () => observer?.disconnect();
+  }, [file]);
+
+  useEffect(() => {
     if (!file || typeof document === "undefined") return undefined;
     const previousFocus = document.activeElement;
     const focusClose = window.requestAnimationFrame(() => closeRef.current?.focus());
 
     function handleKeyDown(event) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        if (!savingRef.current) cancelRef.current?.();
-        return;
-      }
       if (event.key !== "Tab" || !windowRef.current) return;
       const focusable = [...windowRef.current.querySelectorAll("button:not(:disabled), input:not(:disabled)")];
       if (!focusable.length) return;
@@ -118,13 +128,17 @@ export function AvatarCropModal({
   function clampOffset(nextOffset, nextZoom = zoom) {
     const width = orientedSize.width * baseScale * nextZoom;
     const height = orientedSize.height * baseScale * nextZoom;
-    const maxX = Math.max(0, (width - cropWidth) / 2);
-    const maxY = Math.max(0, (height - cropHeight) / 2);
+    const maxX = Math.max(0, (width - crop.width) / 2);
+    const maxY = Math.max(0, (height - crop.height) / 2);
     return {
       x: clamp(nextOffset.x, -maxX, maxX),
       y: clamp(nextOffset.y, -maxY, maxY),
     };
   }
+
+  useEffect(() => {
+    setOffset(current => clampOffset(current));
+  }, [baseScale, crop.width, crop.height]);
 
   function handleImageLoad(event) {
     setNaturalSize({
@@ -177,7 +191,6 @@ export function AvatarCropModal({
   async function saveCrop() {
     if (!file || !stageRef.current || !imageRef.current || !naturalSize.width || !naturalSize.height) return;
     setSaving(true);
-    savingRef.current = true;
     setError("");
 
     try {
@@ -185,14 +198,14 @@ export function AvatarCropModal({
       const stage = stageRef.current.getBoundingClientRect();
       const stageWidth = stage.width || STAGE_WIDTH;
       const stageHeight = stage.height || STAGE_HEIGHT;
-      const cropLeft = stageWidth / 2 - cropWidth / 2;
-      const cropTop = stageHeight / 2 - cropHeight / 2;
+      const cropLeft = stageWidth / 2 - crop.width / 2;
+      const cropTop = stageHeight / 2 - crop.height / 2;
       const imageLeft = stageWidth / 2 + offset.x - displaySize.width / 2;
       const imageTop = stageHeight / 2 + offset.y - displaySize.height / 2;
       const sourceX = clamp((cropLeft - imageLeft) / scale, 0, orientedSize.width);
       const sourceY = clamp((cropTop - imageTop) / scale, 0, orientedSize.height);
-      const sourceWidth = cropWidth / scale;
-      const sourceHeight = cropHeight / scale;
+      const sourceWidth = crop.width / scale;
+      const sourceHeight = crop.height / scale;
 
       const normalizedRotation = ((rotation % 360) + 360) % 360;
       const orientedCanvas = document.createElement("canvas");
@@ -225,7 +238,6 @@ export function AvatarCropModal({
     } catch (nextError) {
       setError(nextError?.message || "图片保存失败，请稍后重试。");
     } finally {
-      savingRef.current = false;
       setSaving(false);
     }
   }
@@ -233,22 +245,22 @@ export function AvatarCropModal({
   if (!file) return null;
 
   const frameStyle = {
-    width: `${cropWidth}px`,
-    height: `${cropHeight}px`,
-    top: `calc(50% - ${cropHeight / 2}px)`,
-    left: `calc(50% - ${cropWidth / 2}px)`,
+    width: `${crop.width}px`,
+    height: `${crop.height}px`,
+    top: `calc(50% - ${crop.height / 2}px)`,
+    left: `calc(50% - ${crop.width / 2}px)`,
     borderRadius: cropRadius,
   };
 
   const modal = (
-    <div className="avatar-crop-overlay" role="dialog" aria-modal="true" aria-label={title} onPointerDown={(event) => {
-      if (event.target === event.currentTarget && !saving) onCancel?.();
+    <div className={`avatar-crop-overlay${closing ? " is-closing" : ""}`} role="dialog" aria-modal="true" aria-label={title} onPointerDown={(event) => {
+      if (event.target === event.currentTarget && !saving) close();
     }}>
       <div ref={windowRef} className="avatar-crop-window">
-        <button ref={closeRef} className="avatar-crop-close" type="button" title="关闭" aria-label="关闭" disabled={saving} onClick={onCancel}>
-          <XIcon />
+        <button ref={closeRef} className="avatar-crop-close" type="button" title="关闭" aria-label="关闭" disabled={saving} onClick={close}>
+          <X size={18} />
         </button>
-        <h2>{title}</h2>
+        <h2><Crop size={19} aria-hidden="true" />{title}</h2>
 
         <div
           ref={stageRef}
@@ -288,22 +300,23 @@ export function AvatarCropModal({
 
         <div className="avatar-crop-controls">
           <button type="button" title="向左旋转 90°" aria-label="向左旋转 90°" onClick={() => rotateBy(-90)}>
-            <RotateLeftIcon />
+            <ArrowCounterClockwise size={18} />
           </button>
           <input className="avatar-crop-zoom" aria-label="缩放图片" type="range" min="1" max="3" step="0.01" value={zoom} onChange={handleZoomChange} />
           <button type="button" title="向右旋转 90°" aria-label="向右旋转 90°" onClick={() => rotateBy(90)}>
-            <RotateRightIcon />
+            <ArrowClockwise size={18} />
           </button>
         </div>
         <p className={error ? "avatar-crop-error" : "avatar-crop-hint"} role={error ? "alert" : undefined}>
-          {error || "拖动图片调整位置，滚轮可缩放"}
+          {error || "拖动调整位置，用下方滑杆缩放"}
         </p>
 
         <div className="avatar-crop-actions">
-          <button type="button" className="avatar-crop-cancel" disabled={saving} onClick={onCancel}>
+          <button type="button" className="avatar-crop-cancel" disabled={saving} onClick={close}>
             取消
           </button>
           <button type="button" className="avatar-crop-save" onClick={saveCrop} disabled={saving || !naturalSize.width}>
+            <Check size={16} aria-hidden="true" />
             {saving ? "保存中" : "保存"}
           </button>
         </div>

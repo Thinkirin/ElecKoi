@@ -1,7 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Eye, EyeSlash } from "@phosphor-icons/react";
+import { Eye, EyeSlash, GlobeSimple, Key, PlugsConnected } from "@phosphor-icons/react";
 import { ChevronRightIcon, DownloadIcon, PlugIcon, PlusIcon, TrashIcon } from "../../../ui/icons/index.jsx";
-import { configVersionName } from "../model/modelProviderCatalog.js";
 
 const API_FORMATS = [
   { id: "responses", label: "Responses API" },
@@ -20,23 +19,7 @@ export function ModelBasicConfigSection({ editor }) {
     form,
     activeProvider,
     isImageProvider,
-    versionPickerRef,
-    versionMenuOpen,
-    setVersionMenuOpen,
-    selectedVersionName,
-    providerVersionItems,
     selectedConfigId,
-    selectConfigId,
-    createConfigPlaceholder,
-    willClearCurrentConfig,
-    confirmDeleteConfig,
-    setConfirmDeleteConfig,
-    canDeleteCurrent,
-    currentVersionConfig,
-    setDeleteTargetConfig,
-    deleteTargetVersionName,
-    deleting,
-    deleteCurrentConfig,
     modelPickerRef,
     manualModelRef,
     modelMenuOpen,
@@ -60,6 +43,7 @@ export function ModelBasicConfigSection({ editor }) {
     onCredentialError,
   } = editor;
   const isDedicatedDeepSeek = activeProvider.id === "deepseek";
+  const isNovelAi = ["novelai_image", "novelai"].includes(activeProvider.id);
 
   useEffect(() => {
     revealGeneration.current += 1;
@@ -95,74 +79,33 @@ export function ModelBasicConfigSection({ editor }) {
   }
 
   return (
-    <section className="model-form-section">
-      <h3>基础配置</h3>
-      <div className={`model-form-row model-name-version-row${isImageProvider ? " is-image" : ""}`}>
-        <label>
+    <section className="model-form-section model-basic-section">
+      <div className="model-form-single-row">
+        <label className="model-config-name-field">
           <span>配置名称</span>
           <input value={form.name || ""} onChange={(event) => updateField("name", event.target.value)} placeholder="待命名" />
         </label>
-        {!isImageProvider ? <div className="model-version-control">
-          <label>
-            <span>配置版本</span>
-            <div className="model-version-picker" ref={versionPickerRef}>
-              <button className="model-split-select-value" type="button" onClick={() => setVersionMenuOpen((current) => !current)}>
-                {selectedVersionName}
-              </button>
-              <button className="model-split-select-arrow" type="button" title="展开配置版本" onClick={() => setVersionMenuOpen((current) => !current)}>
-                <ChevronRightIcon />
-              </button>
-              <div className={`model-version-menu ${versionMenuOpen ? "open" : ""}`}>
-                {providerVersionItems.length ? providerVersionItems.map((item) => (
-                  <button
-                    key={item.id}
-                    className={item.id === selectedConfigId ? "active" : ""}
-                    type="button"
-                    onClick={() => {
-                      setVersionMenuOpen(false);
-                      selectConfigId(item.id);
-                    }}
-                  >
-                    {configVersionName({ ...item, name: item.id === form.id ? form.name : item.name }, providerVersionItems)}
-                  </button>
-                )) : <div className="model-picker-empty">暂无配置</div>}
-              </div>
-            </div>
-          </label>
-          <button className="model-icon-button" type="button" title="新建配置" onClick={() => createConfigPlaceholder()}><PlusIcon /></button>
-          <div className="model-delete-menu">
-            <button
-              className="model-icon-button danger"
-              type="button"
-              title={willClearCurrentConfig ? "清空当前配置" : "删除当前配置"}
-              aria-expanded={confirmDeleteConfig}
-              disabled={!canDeleteCurrent}
-              onClick={() => {
-                const nextOpen = !confirmDeleteConfig;
-                setDeleteTargetConfig(nextOpen ? currentVersionConfig : null);
-                setConfirmDeleteConfig(nextOpen);
-              }}
-            ><TrashIcon /></button>
-            {confirmDeleteConfig ? (
-              <div className="model-delete-popover">
-                <strong>{willClearCurrentConfig ? "清空配置：" : "删除配置："}{deleteTargetVersionName}</strong>
-                <span>{willClearCurrentConfig ? "这是当前模型库的最后一个配置，会清空参数并还原成初始配置。" : "当前配置会从本地删除，其他模型配置不受影响。"}</span>
-                <div>
-                  <button type="button" onClick={() => { setConfirmDeleteConfig(false); setDeleteTargetConfig(null); }}>取消</button>
-                  <button type="button" className="danger" disabled={deleting} onClick={deleteCurrentConfig}>确认删除</button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </div> : null}
       </div>
+      <div className="model-connection-fields" role="group" aria-label="连接配置">
       {!isImageProvider ? <div className="model-form-single-row">
         <label>
-          <span>接口格式</span>
+          <span className="model-connection-label"><PlugsConnected size={15} aria-hidden="true" />接口格式</span>
           <div className="model-api-format-control">
-            <select disabled={isDedicatedDeepSeek} value={form.api_format === "deepseek_messages" ? "anthropic_messages" : form.api_format || "responses"} onChange={(event) => updateField("api_format", event.target.value)}>
+            <select disabled={isDedicatedDeepSeek} title={isDedicatedDeepSeek ? "DeepSeek 官方配置使用 DSH Messages 专用适配器；其他协议可在自定义模型提供商中选择" : "选择服务商支持的 API 协议"} value={form.api_format === "deepseek_messages" ? "anthropic_messages" : form.api_format || "responses"} onChange={(event) => updateField("api_format", event.target.value)}>
               {(isDedicatedDeepSeek ? API_FORMATS.filter((format) => format.id === "anthropic_messages") : API_FORMATS)
                 .map((format) => <option key={format.id} value={format.id}>{format.label}</option>)}
+            </select>
+            {!isDedicatedDeepSeek ? <ChevronRightIcon /> : null}
+          </div>
+        </label>
+      </div> : null}
+      {isNovelAi ? <div className="model-form-single-row">
+        <label>
+          <span className="model-connection-label"><PlugsConnected size={15} aria-hidden="true" />请求格式</span>
+          <div className="model-api-format-control">
+            <select value={form.image_settings?.transport === "json" ? "json" : "multipart"} onChange={(event) => updateField("image_settings", { ...form.image_settings, transport: event.target.value })}>
+              <option value="json">JSON兼容</option>
+              <option value="multipart">Multipart官方</option>
             </select>
             <ChevronRightIcon />
           </div>
@@ -170,13 +113,13 @@ export function ModelBasicConfigSection({ editor }) {
       </div> : null}
       <div className="model-form-single-row">
         <label>
-          <span>API 地址</span>
+          <span className="model-connection-label"><GlobeSimple size={15} aria-hidden="true" />API 地址</span>
           <input value={form.base_url || ""} onChange={(event) => updateField("base_url", event.target.value)} placeholder={activeProvider.baseUrlPlaceholder} />
         </label>
       </div>
       <div className="model-form-single-row">
         <div className="model-api-key-field">
-          <label htmlFor={apiKeyInputId}><span>API Key</span></label>
+          <label htmlFor={apiKeyInputId}><span className="model-connection-label"><Key size={15} aria-hidden="true" />API Key</span></label>
           <div className="model-api-key-control">
             <input id={apiKeyInputId} type={showApiKey ? "text" : "password"} autoComplete="off" value={form.api_key || (showApiKey ? savedApiKey : "")} onChange={(event) => { revealGeneration.current += 1; setReadingApiKey(false); setSavedApiKey(""); updateField("api_key", event.target.value); }} placeholder={form.credentialConfigured ? "已保存，留空保留" : activeProvider.apiKeyPlaceholder} />
             <button type="button" aria-label={showApiKey ? "隐藏 API Key" : "显示 API Key"} aria-pressed={showApiKey} aria-busy={readingApiKey} disabled={readingApiKey} onClick={toggleApiKey}>
@@ -184,6 +127,7 @@ export function ModelBasicConfigSection({ editor }) {
             </button>
           </div>
         </div>
+      </div>
       </div>
       {isImageProvider ? (
         <div className="model-form-single-row">
@@ -229,13 +173,15 @@ export function ModelBasicConfigSection({ editor }) {
               <button
                 className="model-add-button"
                 type="button"
+                title="添加模型"
+                aria-label="添加模型"
                 aria-expanded={manualModelOpen}
                 aria-controls="model-manual-add-popover"
                 onClick={() => {
                   setModelMenuOpen(false);
                   setManualModelOpen((current) => !current);
                 }}
-              ><PlusIcon /><span>添加模型</span></button>
+              ><PlusIcon /><span className="model-control-label">添加模型</span></button>
               {manualModelOpen ? (
                 <div className="model-manual-add" id="model-manual-add-popover">
                   <input
@@ -256,12 +202,12 @@ export function ModelBasicConfigSection({ editor }) {
                 </div>
               ) : null}
             </div>
-            <button className="model-fetch-button" type="button" onClick={fetchModels} disabled={loadingModels}>
-              <DownloadIcon /><span>{loadingModels ? "读取中" : "读取模型"}</span>
+            <button className="model-fetch-button" type="button" title="读取模型" aria-label={loadingModels ? "读取中" : "读取模型"} onClick={fetchModels} disabled={loadingModels}>
+              <DownloadIcon /><span className="model-control-label">{loadingModels ? "读取中" : "读取模型"}</span>
             </button>
-            <button className={`model-test-button ${connectionTest.status === "success" ? "success" : ""}`} type="button" onClick={testConnection} disabled={testingConnection}>
+            <button className={`model-test-button ${connectionTest.status === "success" ? "success" : ""}`} type="button" title="测试连接" aria-label={testingConnection ? "测试中" : connectionTest.status === "success" ? "连接成功" : "测试连接"} onClick={testConnection} disabled={testingConnection}>
               {testingConnection ? <span className="model-test-spinner" aria-hidden="true" /> : connectionTest.status === "success" ? <span className="model-test-check" aria-hidden="true" /> : <PlugIcon size={17} />}
-              <span>{testingConnection ? "测试中" : connectionTest.status === "success" ? "成功" : "测试连接"}</span>
+              <span className="model-control-label">{testingConnection ? "测试中" : connectionTest.status === "success" ? "成功" : "测试连接"}</span>
             </button>
           </div>
         </label>

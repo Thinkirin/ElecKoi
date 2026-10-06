@@ -11,9 +11,10 @@ function sourceFiles(path) {
   if (!existsSync(absolute)) return []
   const result = []
   for (const entry of readdirSync(absolute, { withFileTypes: true })) {
+    if (['node_modules', 'dist', 'build', '.git'].includes(entry.name)) continue
     const child = join(absolute, entry.name)
     if (entry.isDirectory()) result.push(...sourceFiles(relative(root, child)))
-    else if (sourceExtensions.has(extname(entry.name))) result.push(child)
+    else if (entry.isFile() && sourceExtensions.has(extname(entry.name))) result.push(child)
   }
   return result
 }
@@ -335,7 +336,10 @@ for (const file of sourceFiles('src')) {
   if (!file.startsWith(join(root, 'src/preload') + sep) && /\bipcRenderer\b/.test(content)) {
     failures.push(`${relative(root, file)} 在 Preload 之外直接使用 ipcRenderer。`)
   }
-  if (/\blocalStorage\b|\bsessionStorage\b/.test(content)) {
+  // This platform adapter retains only the transient child-window return stack
+  // across document navigation. Product preferences/data still belong to Host.
+  const navigationAdapter = file === join(root, 'src/renderer/src/app/services/platform.js')
+  if ((/\blocalStorage\b/.test(content)) || (!navigationAdapter && /\bsessionStorage\b/.test(content))) {
     failures.push(`${relative(root, file)} 使用浏览器临时存储；产品状态必须由 DSH Host 所有的正式存储合同持久化。`)
   }
 }

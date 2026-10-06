@@ -5,7 +5,7 @@ export { ModelNavIcon as NavigationIcon } from "../../../src/renderer/src/ui/ico
 
 export function ModelPage() {
   const view = useMainPageView();
-  const { chat, models, modelNavigationGuardRef, renderLayout } = view;
+  const { chat, models, modelNavigationGuardRef, renderLayout, onMobileDetailOpen } = view;
   const snapshot = useSyncExternalStore(models.subscribe, models.getSnapshot);
   const panelRef = useRef(null);
   const initialConfig = useRef(null);
@@ -34,5 +34,7 @@ export function ModelPage() {
     onTestConnection={draft => models.testConnection(draft)}
     onNotify={chat.notify}
     renderLayout={renderLayout}
+    onBack={view.onMobileListOpen}
+    onNavigate={onMobileDetailOpen}
   />;
 }

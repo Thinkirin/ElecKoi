@@ -39,7 +39,7 @@ function PluginIcon({ item }) {
 
 export { applySidebarListWheel as applyPluginListWheel } from "../../../../ui/hooks/useSidebarListScroll.js";
 
-export function PluginListPanel({ onNotify }) {
+export function PluginListPanel({ onNotify, onOpenDetail }) {
   const [entries, setEntries] = useState([]);
   const [keyword, setKeyword] = useState("");
   const [collapsed, setCollapsed, collapseStateReady] = usePersistentCollapseState(
@@ -49,6 +49,7 @@ export function PluginListPanel({ onNotify }) {
   );
   const [selectedId, setSelectedId] = useState("");
   const [error, setError] = useState("");
+  const [status, setStatus] = useState("loading");
   const scrollRef = useSidebarListScroll();
 
   useEffect(() => {
@@ -56,6 +57,7 @@ export function PluginListPanel({ onNotify }) {
       setEntries(event.detail?.entries || []);
       setSelectedId(event.detail?.selected || "");
       setError(event.detail?.status === "error" ? "插件列表加载失败" : "");
+      setStatus(event.detail?.status || "");
     };
     window.addEventListener("eleckoi:dsh-plugins:state", receive);
     window.dispatchEvent(new Event("eleckoi:dsh-plugins:request"));
@@ -72,18 +74,24 @@ export function PluginListPanel({ onNotify }) {
   function select(item) {
     const result = { id: item.id, kind: item.kind, opened: false, error: null };
     window.dispatchEvent(new CustomEvent("eleckoi:dsh-plugins:select", { detail: result }));
-    if (result.opened) setSelectedId(`${item.kind}:${item.id}`);
+    if (result.opened) {
+      setSelectedId(`${item.kind}:${item.id}`);
+      onOpenDetail?.();
+    }
     else onNotify("error", result.error || "插件详情暂时无法打开");
   }
 
   function add() {
     const result = { opened: false, error: null };
     window.dispatchEvent(new CustomEvent("eleckoi:dsh-plugins:add", { detail: result }));
-    if (result.opened) setSelectedId("");
+    if (result.opened) {
+      setSelectedId("");
+      onOpenDetail?.();
+    }
     else onNotify("error", result.error || "添加插件入口暂时无法打开");
   }
 
-  return <aside className="character-list-panel plugin-list-panel" aria-label="插件列表">
+  return <aside className="character-list-panel plugin-list-panel" aria-label="插件列表" aria-busy={status === 'loading' || undefined}>
     <div className="preset-list-title-row">
       <h2>插件</h2>
     </div>
@@ -94,21 +102,25 @@ export function PluginListPanel({ onNotify }) {
     <div ref={scrollRef} className="character-list-scroll preset-list-scroll">
       {collapseStateReady ? GROUPS.map((group) => {
         const items = filtered.filter((entry) => entry.group === group.id);
+        if (keyword.trim() && !items.length) return null;
         const isCollapsed = Boolean(collapsed[group.id]);
-        return <section className="character-group-block preset-list-group" key={group.id}>
+        return <section className="character-group-block preset-list-group" data-plugin-group={group.id} key={group.id}>
           <button type="button" className="character-group-row preset-group-heading" aria-expanded={!isCollapsed} onClick={() => setCollapsed((current) => ({ ...current, [group.id]: !current[group.id] }))}>
             <span><span className={`character-group-toggle${isCollapsed ? " collapsed" : ""}`}><ChevronRightIcon /></span>{group.label}</span>
             <em>{items.length}</em>
           </button>
           {!isCollapsed ? <div className="character-contact-list preset-list-rows">
-            {items.map((item) => <button type="button" key={`${item.kind}:${item.id}`} className={`character-contact-row plugin-list-row${selectedId === `${item.kind}:${item.id}` ? " active" : ""}`} onClick={() => select(item)} title={item.name}>
+            {items.map((item) => <button type="button" key={`${item.kind}:${item.id}`} aria-current={selectedId === `${item.kind}:${item.id}` ? 'page' : undefined} className={`character-contact-row plugin-list-row${selectedId === `${item.kind}:${item.id}` ? " active" : ""}`} onClick={() => select(item)} title={item.name}>
               <PluginIcon item={item} />
-              <span className="character-contact-copy"><strong>{item.name}</strong></span>
+              <span className="character-contact-copy"><strong>{item.name}</strong>{item.version ? <small className="plugin-list-version">{item.version}</small> : null}</span>
+              <ChevronRightIcon />
             </button>)}
           </div> : null}
         </section>;
       }) : null}
-      {error ? <p className="preset-list-state is-error">{error}</p> : null}
+      {status === 'loading' ? <p className="preset-list-state" role="status">正在加载插件…</p> : null}
+      {status !== 'loading' && !error && keyword.trim() && !filtered.length ? <p className="preset-list-state" role="status">没有匹配的插件</p> : null}
+      {error ? <p className="preset-list-state is-error" role="alert">{error}</p> : null}
     </div>
   </aside>;
 }

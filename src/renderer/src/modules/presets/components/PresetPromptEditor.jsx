@@ -200,7 +200,7 @@ export function PresetPromptEditor({ preset, onChange, saveAction }) {
   );
 
   return (
-    <section className="preset-prompt-editor setting-library-layout" aria-label="预设提示词" onMouseDown={() => setAddOpen(false)}>
+    <section className={`preset-prompt-editor setting-library-layout${selectedValue ? ' is-inspector-open' : ''}`} aria-label="预设提示词" onMouseDown={() => setAddOpen(false)}>
       <div className="setting-library-browser">
         <div className="setting-library-toolbar" onMouseDown={(event) => event.stopPropagation()}>
           <label className="setting-library-search">
@@ -208,7 +208,7 @@ export function PresetPromptEditor({ preset, onChange, saveAction }) {
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索提示词" aria-label="搜索提示词" />
           </label>
           <div className="setting-library-add-wrap">
-            <button type="button" className="setting-library-create-button" aria-expanded={addOpen} onClick={() => setAddOpen((value) => !value)}><Plus size={16} />新建</button>
+            <button type="button" className="setting-library-create-button preset-toolbar-add" aria-label="新建提示词或文件夹" title="新建提示词或文件夹" aria-expanded={addOpen} onClick={() => setAddOpen((value) => !value)}><Plus size={18} aria-hidden="true" /></button>
             {addOpen ? <div className="setting-library-popover" role="menu">
               <button type="button" role="menuitem" onClick={() => createNode('group')}><CreateFolderIcon size={16} />文件夹</button>
               <button type="button" role="menuitem" onClick={() => createNode('entry')}><CreateEntryIcon size={16} />提示词</button>
@@ -248,6 +248,7 @@ export function PresetPromptEditor({ preset, onChange, saveAction }) {
       </div>
 
       {selectedValue ? <SettingLibraryInspector
+        saveAction={saveAction}
         selected={{ kind: selected.kind, value: selectedValue }}
         library={library}
         allowCustomPromptPositions

@@ -66,7 +66,9 @@ function migratePresetVersionContents(database: Database.Database): void {
  * product presets. Subagent model authorization now belongs exclusively to
  * DSH's Host setting, while presets retain only prompts, tools and tool policy.
  *
- * This is a one-way data migration. Runtime code does not read the removed key.
+ * This historical step is irreversible for installations that already upgraded.
+ * Later Android migration may restore an optional preset selection from an actual
+ * raw backup; it cannot reconstruct the value deleted by this earlier PC upgrade.
  *
  * TODO(迁移清理)：停止支持所有低于 schema v7 的数据库直接升级后，移除此步骤、
  * installSchema 登记和对应 v6 fixture。当前预设与历史版本都必须完成字段转换；

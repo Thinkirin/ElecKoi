@@ -18,6 +18,8 @@ export const ELECKOI_DESKTOP_BUNDLES = [
   '@eleckoi/dsh-client-shell',
   '@eleckoi/dsh-client-roleplay',
   '@eleckoi/dsh-product-api',
+  '@eleckoi/dsh-compatibility-host',
+  '@eleckoi/dsh-client-tavern-shared',
   '@eleckoi/dsh-runtime'
 ] as const
 
@@ -28,7 +30,7 @@ export const ELECKOI_DESKTOP_BUNDLES = [
  * ELECKOI_DESKTOP_BUNDLES 与新 profile 的 initProfile 初始化及正常启停测试。
  */
 export function registerDesktopBundles(profile: string): void {
-  const marker = join(profile, '.eleckoi-desktop-bundles-v5')
+  const marker = join(profile, '.eleckoi-desktop-bundles-v6')
   if (existsSync(marker)) return
   const manifest = readProfileManifest('dsh', profile)
   const selected = manifest.dsh?.profile?.bundles ?? []

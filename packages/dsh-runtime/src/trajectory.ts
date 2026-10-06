@@ -483,7 +483,7 @@ function projectionSnapshotFromEnvelope(envelope: NormalizedEvent | undefined): 
   })
   if (Array.isArray(value)) return { plan }
   const history = isRecord(value) && Array.isArray(value.history)
-    ? value.history.flatMap((entry) => isRecord(entry)
+    ? value.history.flatMap<{ role: 'user' | 'assistant'; content: string }>((entry) => isRecord(entry)
       && (entry.role === 'user' || entry.role === 'assistant')
       && typeof entry.content === 'string' && entry.content.trim()
       ? [{ role: entry.role, content: entry.content }]
@@ -983,9 +983,11 @@ function locateSessionLog(sessionRoot: string, runtimeThreadId: string): string 
 
 function latestSessionLog(directory: string): string | undefined {
   const candidates = readdirSync(directory, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && !entry.isSymbolicLink())
     .map((entry) => ({ name: entry.name, version: sessionLogVersion(entry.name) }))
     .filter((entry): entry is { name: string; version: number } => entry.version !== undefined)
+    // PRoot implements the official JSONL publisher's hard links as symlinks.
+    // Inspect the committed artifact through its canonical name, like DSH does.
+    .filter((entry) => statSync(join(directory, entry.name)).isFile())
     .sort((left, right) => right.version - left.version)
   return candidates[0] === undefined ? undefined : join(directory, candidates[0].name)
 }

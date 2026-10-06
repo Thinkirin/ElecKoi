@@ -237,10 +237,10 @@ export const RegexRulesPanel = forwardRef(function RegexRulesPanel({ characterId
         <div className="regex-toolbar" onMouseDown={(event) => event.stopPropagation()}>
           <label className="regex-search"><MagnifyingGlass size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索正则" aria-label="搜索正则" /></label>
           <div className="regex-add-wrap">
-            <button type="button" className="regex-create-button" aria-expanded={addOpen} onClick={() => setAddOpen((open) => !open)}><Plus size={16} />新建</button>
+            <button type="button" className="regex-create-button" title="新建" aria-label="新建" aria-expanded={addOpen} onClick={() => setAddOpen((open) => !open)}><Plus size={16} /><span>新建</span></button>
             {addOpen ? <div className="regex-popover" role="menu">{REGEX_SCOPES.map((scope) => <button type="button" role="menuitem" key={scope.id} onClick={() => addRule(scope.id)}>{scope.label}</button>)}</div> : null}
           </div>
-          <button type="button" className="regex-manage-button" aria-expanded={managerOpen} onClick={() => { setAddOpen(false); setManagerOpen(true); }}><SlidersHorizontal size={16} />管理</button>
+          <button type="button" className="regex-manage-button" aria-label="管理" title="管理" aria-expanded={managerOpen} onClick={() => { setAddOpen(false); setManagerOpen(true); }}><SlidersHorizontal size={16} /><span>管理</span></button>
           <SaveControl dirty={dirty} error={error} notice={notice} saving={saving} onSave={save} />
         </div>
         <div className="regex-list-scroll" onMouseDown={(event) => { if (!event.target.closest(".regex-rule-row")) setSelectedId(""); }}>
@@ -261,6 +261,7 @@ export const RegexRulesPanel = forwardRef(function RegexRulesPanel({ characterId
 
       {selected ? (
         <RegexRuleInspector
+          saveAction={<SaveControl dirty={dirty} error={error} notice={notice} saving={saving} onSave={save} />}
           scope={selected.scope}
           rule={selected.rule}
           onTest={(text, rule, target) => regexRules.test(text, rule, target)}

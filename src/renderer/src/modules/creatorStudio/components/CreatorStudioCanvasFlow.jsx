@@ -32,7 +32,7 @@ export function createCanvasConnectionMenuState(point, viewportSize, xOffset = 0
   return {
     open: true,
     source: "connection",
-    x: clamp(point.x + xOffset, 12, viewportSize.width - 312),
+    x: clamp(point.x + xOffset, 12, Math.max(12, viewportSize.width - 324)),
     y: clampCanvasOverlayCenter(point.y, CANVAS_ADD_MENU_HEIGHT, viewportSize.height),
   };
 }
@@ -207,6 +207,7 @@ export const FLOW_NODE_TYPES = { creatorCanvasNode: CanvasNode };
 export const FLOW_EDGE_TYPES = { creatorCanvasEdge: CreatorCanvasEdge };
 
 export function CreatorCanvasFlowSurface({
+  panMode = false,
   nodes,
   edges,
   viewport,
@@ -262,7 +263,9 @@ export function CreatorCanvasFlowSurface({
       zoomOnPinch
       minZoom={0.35}
       maxZoom={2}
-      elementsSelectable
+      nodesDraggable={!panMode}
+      nodesConnectable={!panMode}
+      elementsSelectable={!panMode}
       selectNodesOnDrag={false}
       selectionOnDrag={false}
       deleteKeyCode={null}

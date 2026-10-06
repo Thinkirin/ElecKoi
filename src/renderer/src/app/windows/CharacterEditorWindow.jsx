@@ -10,14 +10,13 @@ import logoIcon from "../../assets/eleckoi-app-icon.png";
 import {
   CharacterBasicInfoPanel,
 } from "../../modules/persona/index.js";
-import { applyAppearanceTheme } from "../../modules/appearance/index.js";
 import { DynamicSettingsPanel, SettingLibraryPanel } from "../../modules/settingLibraries/index.js";
 import { VariableConfigPanel } from "../../modules/variables/index.js";
 import { RegexRulesPanel } from "../../modules/regex/index.js";
 import { UnsavedChangesDialog } from "../../ui/ui/UnsavedChangesDialog.jsx";
 import { characterName } from "../../utils/characterDisplay.js";
 import { appWindow, showCurrentWindow } from "../services/windowControls.js";
-import { TitleBar } from "./shell/components/TitleBar.jsx";
+import { ProductWindowTitleBar } from "./ProductWindowTitleBar.jsx";
 
 const EDITOR_SECTIONS = [
   { id: "card", label: "基础资料", Icon: IdentificationCard },
@@ -100,10 +99,6 @@ export function CharacterEditorWindow({ characterCatalog, characterConfiguration
         : activeSection === "dynamic"
           ? dynamicDirty
         : basicDirty;
-
-  useEffect(() => {
-    applyAppearanceTheme(null);
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -400,7 +395,7 @@ export function CharacterEditorWindow({ characterCatalog, characterConfiguration
       </aside>
 
       <section className="character-editor-main-panel">
-        <TitleBar splitSurface onClose={requestClose} />
+        <ProductWindowTitleBar title={character ? characterName(character) : '角色编辑器'} splitSurface onClose={requestClose} />
         <section
           className={`character-editor-workspace${activeSection === "card" ? " is-basic-info" : ""}${activeSection === "lore" ? " is-setting-library" : ""}${activeSection === "variables" ? " is-variable-config" : ""}${activeSection === "regex" ? " is-regex-rules" : ""}${activeSection === "dynamic" ? " is-dynamic-settings" : ""}`}
           aria-label={activeLabel}

@@ -322,15 +322,15 @@ export const VariableConfigPanel = forwardRef(function VariableConfigPanel({ cha
   if (!config) return <div className="variable-loading">{error || "正在读取…"}</div>;
 
   return (
-    <section className="variable-layout" aria-label="变量配置" onMouseDown={() => { setAddOpen(false); setContextMenu(null); }}>
+    <section className={`variable-layout${selected.value && !managerOpen ? " has-inspector" : ""}`} aria-label="变量配置" onMouseDown={() => { setAddOpen(false); setContextMenu(null); }}>
       <div className="variable-browser">
         <div className="variable-toolbar" onMouseDown={(event) => event.stopPropagation()}>
           <label className="variable-search"><MagnifyingGlass size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索变量" aria-label="搜索变量" /></label>
           <div className="variable-add-wrap">
-            <button type="button" className="variable-create-button" aria-expanded={addOpen} onClick={() => setAddOpen((open) => !open)}><Plus size={16} />新建</button>
+            <button type="button" className="variable-create-button" title="新建" aria-label="新建" aria-expanded={addOpen} onClick={() => setAddOpen((open) => !open)}><Plus size={16} /><span>新建</span></button>
             {addOpen ? <div className="variable-popover" role="menu"><button type="button" role="menuitem" onClick={() => addNode("object")}><VariableGroupIcon size={16} />变量组</button><button type="button" role="menuitem" onClick={() => addNode("variable")}><VariableEntryIcon type="string" size={16} />变量</button></div> : null}
           </div>
-          <button type="button" className="variable-manage-button" aria-expanded={managerOpen} onClick={() => { setAddOpen(false); setManagerOpen(true); }}><SlidersHorizontal size={16} />管理</button>
+          <button type="button" className="variable-manage-button" aria-label="管理" title="管理" aria-expanded={managerOpen} onClick={() => { setAddOpen(false); setManagerOpen(true); }}><SlidersHorizontal size={16} /><span>管理</span></button>
           <SaveControl dirty={dirty} error={error} notice={notice} saving={saving} onSave={save} />
         </div>
         <div className="variable-tree" onContextMenu={openBackgroundMenu} onMouseDown={(event) => { if (event.button === 0 && !event.target.closest('[role="treeitem"]')) closeInspector(); }}>
@@ -354,6 +354,7 @@ export const VariableConfigPanel = forwardRef(function VariableConfigPanel({ cha
         <VariableConfigManager config={config} onChange={applyManagerChange} onClose={() => setManagerOpen(false)} onError={setError} />
       ) : selected.value ? (
         <VariableConfigInspector
+          saveAction={<SaveControl dirty={dirty} error={error} notice={notice} saving={saving} onSave={save} />}
           config={config}
           selected={selected}
           nameInputRef={nameInputRef}

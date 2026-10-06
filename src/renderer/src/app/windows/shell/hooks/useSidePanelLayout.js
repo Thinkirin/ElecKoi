@@ -1,85 +1,62 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { ensureInitialWindowSizeOnce } from "../../../services/windowControls.js";
+import { COMPACT_WIDTH, MAIN_PANEL_MIN, RAIL_MIN, SIDE_PANEL_DEFAULT, SIDE_PANEL_MIN, SIDE_PANEL_MAX } from './shellLayout.js';
 
-const SIDE_PANEL_DEFAULT = 328;
-const SIDE_PANEL_MIN = 264;
-const SIDE_PANEL_MAX = 420;
-const MAIN_PANEL_MIN = 640;
-const CLIENT_HORIZONTAL_INSET = 8;
-const RAIL_WIDTH_FOR_LAYOUT = 51;
-
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max);
-}
+function clamp(value, min, max) { return Math.min(Math.max(value, min), max); }
 
 export function useSidePanelLayout() {
-  const [sidePanelWidth, setSidePanelWidth] = useState(SIDE_PANEL_DEFAULT);
-  const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);
-  const [sidePanelDragging, setSidePanelDragging] = useState(false);
-  const [viewportWidth, setViewportWidth] = useState(() => (typeof window === "undefined" ? 960 : window.innerWidth));
   const shellRef = useRef(null);
+  const [shellWidth, setShellWidth] = useState(() => typeof window === 'undefined' ? COMPACT_WIDTH : window.innerWidth);
+  const [sidePanelWidth, setSidePanelWidth] = useState(SIDE_PANEL_DEFAULT);
+  // Temporary compact navigation never overwrites the user's docked-sidebar preference.
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
+  const [drawerCollapsed, setDrawerCollapsed] = useState(true);
+  const [sidePanelDragging, setSidePanelDragging] = useState(false);
   const sidePanelDragBaseRef = useRef(SIDE_PANEL_DEFAULT);
   const sidePanelDragMaxRef = useRef(SIDE_PANEL_MAX);
+  const compact = shellWidth <= COMPACT_WIDTH;
+  const railWidth = shellWidth <= 1280 ? RAIL_MIN : 56;
+  const sidePanelCollapsed = compact ? drawerCollapsed : desktopCollapsed;
 
-  useEffect(() => {
-    function handleResize() {
-      setViewportWidth(window.innerWidth);
-    }
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    ensureInitialWindowSizeOnce().finally(() => {
-      if (!cancelled) setViewportWidth(window.innerWidth);
-    });
-    return () => {
-      cancelled = true;
+  useLayoutEffect(() => {
+    let disposed = false;
+    const measure = () => {
+      if (disposed) return;
+      const width = shellRef.current?.getBoundingClientRect().width || window.innerWidth;
+      if (width > 0) setShellWidth(width);
     };
+    measure();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    if (shellRef.current) observer?.observe(shellRef.current);
+    window.addEventListener('resize', measure);
+    ensureInitialWindowSizeOnce().finally(measure);
+    return () => { disposed = true; observer?.disconnect(); window.removeEventListener('resize', measure); };
   }, []);
 
-  const sidePanelMax = useMemo(() => {
-    const bodyWidth = Math.max(0, viewportWidth - CLIENT_HORIZONTAL_INSET);
-    const available = bodyWidth - RAIL_WIDTH_FOR_LAYOUT - MAIN_PANEL_MIN;
-    return Math.max(SIDE_PANEL_MIN, Math.min(SIDE_PANEL_MAX, available));
-  }, [viewportWidth]);
-  const effectiveSidePanelWidth = clamp(sidePanelWidth || SIDE_PANEL_DEFAULT, SIDE_PANEL_MIN, sidePanelMax);
+  const collapseSidePanel = useCallback(() => (compact ? setDrawerCollapsed : setDesktopCollapsed)(true), [compact]);
+  const expandSidePanel = useCallback(() => (compact ? setDrawerCollapsed : setDesktopCollapsed)(false), [compact]);
+  const sidePanelMax = Math.max(SIDE_PANEL_MIN, Math.min(SIDE_PANEL_MAX, shellWidth - railWidth - MAIN_PANEL_MIN - 4));
+  const effectiveSidePanelWidth = compact ? shellWidth : clamp(sidePanelWidth, SIDE_PANEL_MIN, sidePanelMax);
 
   const startSidePanelResize = useCallback(() => {
     const shell = shellRef.current;
-    const renderedWidth = shell
-      ? parseFloat(getComputedStyle(shell).getPropertyValue("--side-panel-width"))
-      : effectiveSidePanelWidth;
-    const frameWidth = shell?.getBoundingClientRect().width || viewportWidth;
+    const renderedWidth = shell ? parseFloat(getComputedStyle(shell).getPropertyValue('--side-panel-width')) : effectiveSidePanelWidth;
     sidePanelDragBaseRef.current = Number.isFinite(renderedWidth) ? renderedWidth : effectiveSidePanelWidth;
-    sidePanelDragMaxRef.current = Math.max(
-      SIDE_PANEL_MIN,
-      Math.min(SIDE_PANEL_MAX, frameWidth - RAIL_WIDTH_FOR_LAYOUT - MAIN_PANEL_MIN),
-    );
+    sidePanelDragMaxRef.current = sidePanelMax;
     setSidePanelDragging(true);
-  }, [effectiveSidePanelWidth, viewportWidth]);
-
-  const resizeSidePanel = useCallback((deltaX) => {
-    setSidePanelWidth(clamp(
-      sidePanelDragBaseRef.current + deltaX,
-      SIDE_PANEL_MIN,
-      sidePanelDragMaxRef.current,
-    ));
+  }, [effectiveSidePanelWidth, sidePanelMax]);
+  const resizeSidePanel = useCallback(deltaX => {
+    setSidePanelWidth(clamp(sidePanelDragBaseRef.current + deltaX, SIDE_PANEL_MIN, sidePanelDragMaxRef.current));
   }, []);
 
   return {
-    shellRef,
+    shellRef, shellWidth, sidePanelWidth:effectiveSidePanelWidth,
     shellStyle: {
-      "--side-panel-width": sidePanelCollapsed ? "0px" : `${effectiveSidePanelWidth}px`,
-      "--side-panel-content-width": `${effectiveSidePanelWidth}px`,
+      '--rail-column-width': `${railWidth}px`,
+      '--side-panel-width': sidePanelCollapsed ? '0px' : `${effectiveSidePanelWidth}px`,
+      '--side-panel-content-width': `${effectiveSidePanelWidth}px`,
     },
-    sidePanelCollapsed,
-    sidePanelDragging,
-    collapseSidePanel: () => setSidePanelCollapsed(true),
-    expandSidePanel: () => setSidePanelCollapsed(false),
-    startSidePanelResize,
-    resizeSidePanel,
-    endSidePanelResize: () => setSidePanelDragging(false),
+    sidePanelCollapsed, compact, sidePanelDragging, collapseSidePanel, expandSidePanel,
+    startSidePanelResize, resizeSidePanel, endSidePanelResize: () => setSidePanelDragging(false),
   };
 }

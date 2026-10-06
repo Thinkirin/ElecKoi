@@ -4,13 +4,13 @@ export { PersonNavIcon as NavigationIcon } from "../../../src/renderer/src/ui/ic
 
 export function CharacterPage() {
   const view = useMainPageView();
-  const { chat, appearance, renderCharacterPageSection, renderLayout } = view;
+  const { chat, appearance, selectCharacter, openCharacterChat, renderCharacterPageSection, renderLayout } = view;
   const listOwner = {
     characters: chat.characters,
     activeCharacterId: chat.selectedCharacterId || chat.characters.active_character_id,
     artworkMode: appearance.sidebarCharacterArtwork,
-    onSelectCharacter: chat.selectCharacter,
-    onOpenCharacterChat: chat.openCharacterChat,
+    onSelectCharacter: selectCharacter,
+    onOpenCharacterChat: openCharacterChat,
     onSaveCharacterGroups: chat.saveCharacterGroups,
     onImportPreparedCharacters: chat.importPreparedCharacters,
     onPrepareCharacterImports: chat.prepareCharacterImports,
@@ -20,10 +20,11 @@ export function CharacterPage() {
   };
   const listFallback = <CharacterListPanel {...listOwner} />;
   const profileOwner = {
+    onBack: view.onMobileListOpen,
     characters: chat.characters,
     selectedCharacterId: chat.selectedCharacterId,
-    onSelectCharacter: chat.selectCharacter,
-    onStartConversation: chat.openCharacterChat,
+    onSelectCharacter: selectCharacter,
+    onStartConversation: openCharacterChat,
     onEditCharacter: openCharacterEditorWindow,
     onCreateFirstCharacter: () => chat.createCharacter(),
   };

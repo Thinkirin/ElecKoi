@@ -14,16 +14,21 @@ const THEME_VARIABLES = [
   "--bubble-bg", "--bubble-fg", "--bubble-fg-shadow", "--bubble-blue", "--bubble-white",
   "--glass-border", "--chat-header-fg",
   "--chat-header-fg-shadow", "--composer-icon-fg", "--composer-icon-shadow",
+  "--surface-content", "--surface-raised", "--surface-subtle", "--surface-muted",
+  "--text", "--muted", "--soft-text", "--line", "--line-strong", "--on-accent",
+  "--field-bg", "--field-disabled", "--rail-divider", "--divider-core",
+  "--tree-folder-fg", "--tree-chevron-fg", "--sidebar-primary-action-bg",
+  "--sidebar-primary-action-hover", "--markdown-code-block-bg", "--markdown-code-block-fg",
 ];
 
 const DEFAULT_THEME = {
-  titleFg: "#111111", titleLogoFilter: "none", shellBackdrop: "#ffffff", rail: "#f0f3f6",
-  railFg: "#252525", list: "#f0f3f6", chat: "#ffffff", active: "rgba(38, 49, 72, 0.06)",
-  blue: "#13a8ff", blueHover: "#079cf0", controlBg: "#ebebeb", controlBgHover: "#e2e2e2",
-  bubbleBg: "#ffffff", bubbleFg: "#181818", bubbleFgShadow: "rgba(255, 255, 255, 0.18)",
-  bubbleBlue: "#cdeeff", bubbleWhite: "#ffffff", glassBorder: "rgba(255, 255, 255, 0.62)",
-  chatHeaderFg: "#111111", chatHeaderFgShadow: "rgba(255, 255, 255, 0.22)",
-  composerIconFg: "#111111", composerIconShadow: "rgba(255, 255, 255, 0.22)",
+  titleFg: "#161616", titleLogoFilter: "none", shellBackdrop: "#f5f5f5", rail: "#ffffff",
+  railFg: "#414141", list: "#ffffff", chat: "#f5f5f5", active: "#e5edff",
+  blue: "#285dd8", blueHover: "#204db5", controlBg: "#f0f0f0", controlBgHover: "#e5e5e5",
+  bubbleBg: "#ffffff", bubbleFg: "#161616", bubbleFgShadow: "transparent",
+  bubbleBlue: "#e5edff", bubbleWhite: "#ffffff", glassBorder: "#b8b8b8",
+  chatHeaderFg: "#161616", chatHeaderFgShadow: "transparent",
+  composerIconFg: "#414141", composerIconShadow: "transparent",
 };
 
 const SAMPLE_MAX = 144;
@@ -31,6 +36,7 @@ const GRID_COLS = 4;
 const GRID_ROWS = 6;
 const QUANTIZE_MAX = 128;
 const FALLBACK_SEED = 0xff4285f4 | 0;
+let activeAppearanceTheme = null;
 
 function clamp(value, min = 0, max = 1) {
   return Math.min(Math.max(value, min), max);
@@ -297,13 +303,65 @@ function centerCrop(image, aspect) {
   };
 }
 
+function generatedColors(generated) {
+  return {
+    text: generated.text, muted: generated.muted, softText: generated.soft,
+    line: generated.line, lineStrong: generated.line,
+    surfaceContent: generated.surface, surfaceRaised: generated.messageBg,
+    surfaceSubtle: generated.searchBg, surfaceMuted: generated.tabbarBg,
+    onAccent: generated.accentFg,
+    titleFg: generated.text, titleLogoFilter: "none", shellBackdrop: generated.bg,
+    rail: generated.surface, railFg: generated.text, list: generated.surface, chat: generated.chatBg,
+    active: generated.pinned, blue: generated.accent, blueHover: generated.accent,
+    controlBg: generated.searchBg, controlBgHover: generated.tabbarBg,
+    bubbleBg: generated.messageBg, bubbleFg: generated.messageFg,
+    bubbleFgShadow: "transparent", bubbleBlue: generated.userBg, bubbleWhite: generated.messageBg,
+    glassBorder: generated.line, chatHeaderFg: generated.text, chatHeaderFgShadow: "transparent",
+    composerIconFg: generated.text, composerIconShadow: "transparent",
+  };
+}
+
+function projectThemeColors(theme, resolvedMode) {
+  const dark = resolvedMode === "dark";
+  const originalDark = theme.mode
+    ? theme.mode === "deep" || theme.mode === "dark"
+    : /^#[0-9a-f]{6}$/i.test(theme.colors?.chat)
+      ? luminance(theme.colors.chat) < .32
+      : null;
+  if (originalDark === null || originalDark === dark) return theme.colors;
+  // Re-project image palettes without changing the saved image, seed or colors.
+  const seedHex = /^#[0-9a-f]{6}$/i.test(theme.seed) ? theme.seed : theme.colors?.blue;
+  // Migrated partial palettes can contain only a dark surface and light text.
+  // Without a seed, use this mode's built-in palette rather than combining that
+  // saved foreground with the opposite mode's default surfaces. The original
+  // palette remains intact and is restored when its own mode is selected again.
+  if (!/^#[0-9a-f]{6}$/i.test(seedHex)) return {};
+  const argb = (0xff000000 | Number.parseInt(seedHex.slice(1), 16)) | 0;
+  const generated = buildTheme({ argb, achromatic: Hct.fromInt(argb).chroma < 5 }, { dark });
+  return { ...theme.colors, ...generatedColors(generated) };
+}
+
 export function applyAppearanceTheme(theme) {
+  activeAppearanceTheme = theme || null;
+  refreshAppearanceTheme();
+}
+
+export function refreshAppearanceTheme() {
+  const theme = activeAppearanceTheme;
   const root = document.documentElement;
+  // Remove the previous palette first so a partial/custom palette never inherits
+  // stale inline values. The built-in light/dark palette remains CSS-owned.
+  for (const name of THEME_VARIABLES) root.style.removeProperty(name);
   if (!theme?.colors) {
-    for (const name of THEME_VARIABLES) root.style.removeProperty(name);
+    delete root.dataset.appearancePalette;
     return;
   }
-  const colors = { ...DEFAULT_THEME, ...theme.colors };
+  const base = getComputedStyle(root);
+  const defaults = Object.fromEntries(Object.entries(DEFAULT_THEME).map(([key, fallback]) => {
+    const variable = `--${key.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`)}`;
+    return [key, base.getPropertyValue(variable).trim() || fallback];
+  }));
+  const colors = { ...defaults, ...projectThemeColors(theme, root.dataset.theme) };
   const values = {
     "--title-fg": colors.titleFg, "--title-logo-filter": colors.titleLogoFilter,
     "--shell-backdrop": colors.shellBackdrop, "--rail": colors.rail, "--rail-fg": colors.railFg,
@@ -315,6 +373,30 @@ export function applyAppearanceTheme(theme) {
     "--chat-header-fg": colors.chatHeaderFg, "--chat-header-fg-shadow": colors.chatHeaderFgShadow,
     "--composer-icon-fg": colors.composerIconFg, "--composer-icon-shadow": colors.composerIconShadow,
   };
+  const foreground = colors.text || colors.titleFg;
+  const content = colors.surfaceContent || colors.rail;
+  const surface = colors.surfaceRaised || colors.bubbleBg;
+  const muted = colors.muted || `color-mix(in srgb, ${foreground} 74%, ${content})`;
+  const line = colors.line || `color-mix(in srgb, ${foreground} 18%, ${content})`;
+  const accent = /^#[0-9a-f]{6}$/i.test(colors.blue) ? colors.blue : null;
+  const onAccent = colors.onAccent || (accent
+    ? (contrast("#ffffff", accent) >= contrast("#102342", accent) ? "#ffffff" : "#102342")
+    : (base.getPropertyValue("--on-accent").trim() || "#ffffff"));
+  Object.assign(values, {
+    "--surface-content": content, "--surface-raised": surface,
+    "--surface-subtle": colors.surfaceSubtle || colors.controlBg,
+    "--surface-muted": colors.surfaceMuted || colors.controlBgHover,
+    "--text": foreground, "--muted": muted,
+    "--soft-text": colors.softText || muted,
+    "--line": line, "--line-strong": colors.lineStrong || colors.glassBorder || line,
+    "--on-accent": onAccent, "--field-bg": colors.fieldBg || surface,
+    "--field-disabled": colors.controlBg,
+    "--rail-divider": line, "--divider-core": line,
+    "--tree-folder-fg": muted, "--tree-chevron-fg": muted,
+    "--sidebar-primary-action-bg": colors.blue, "--sidebar-primary-action-hover": colors.blueHover,
+    "--markdown-code-block-bg": colors.controlBg, "--markdown-code-block-fg": foreground,
+  });
+  root.dataset.appearancePalette = "custom";
   for (const [name, value] of Object.entries(values)) root.style.setProperty(name, value);
 }
 
@@ -329,6 +411,11 @@ export async function createAppearanceThemeFromImageSource(dataUrl, source = {})
   const seed = pickSeed(paletteReading);
   const generated = buildTheme(seed, polarity);
   const colors = {
+    text: generated.text, muted: generated.muted, softText: generated.soft,
+    line: generated.line, lineStrong: generated.line,
+    surfaceContent: generated.surface, surfaceRaised: generated.messageBg,
+    surfaceSubtle: generated.searchBg, surfaceMuted: generated.tabbarBg,
+    onAccent: generated.accentFg,
     titleFg: generated.text, titleLogoFilter: "none", shellBackdrop: generated.bg,
     rail: generated.surface, railFg: generated.text, list: generated.surface, chat: generated.chatBg,
     active: generated.pinned, blue: generated.accent, blueHover: generated.accent,

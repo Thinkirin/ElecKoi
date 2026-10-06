@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
-import { ArrowLeft, Camera } from '@phosphor-icons/react';
+import { Camera, Check } from '@phosphor-icons/react';
 import { Avatar } from '../../../ui/ui/Avatar.jsx';
 import { AvatarCropModal } from '../../../ui/ui/AvatarCropModal.jsx';
+import { EditorHeader } from '../../../ui/ui/EditorHeader.jsx';
 import defaultPresetAvatar from '../../../assets/eleckoi-app-icon.png';
 
 function readImage(file) {
@@ -57,20 +58,13 @@ export function PresetProfileEditor({ preset, dirty, saving, error, onChange, on
   }
 
   return <div className="preset-profile-editor-page">
-    <header>
-      <button type="button" aria-label="返回预设资料" onClick={onCancel}><ArrowLeft size={19} /></button>
-      <h1>编辑预设资料</h1>
-    </header>
+    <EditorHeader title="预设资料" onBack={onCancel} backLabel="返回预设资料" saveAction={<button type="button" disabled={!dirty || saving} onClick={onSave}><Check size={17} aria-hidden="true" /><span>{saving ? '保存中' : '保存'}</span></button>} />
     <div className="preset-profile-editor-layout">
       <form onSubmit={(event) => { event.preventDefault(); if (dirty && !saving) void onSave(); }}>
         <label><span>名称</span><input value={preset.name} maxLength={60} onChange={(event) => onChange({ ...preset, name: event.target.value })} /></label>
         <label><span>作者</span><input value={profile.authorName} maxLength={40} placeholder="未填写作者" onChange={(event) => updateProfile({ authorName: event.target.value })} /></label>
         <label><span>模型标签</span><input value={modelTagText} maxLength={160} placeholder="用逗号分隔" onChange={(event) => updateModelTags(event.target.value)} /></label>
         {error || imageError ? <p className="preset-profile-editor-error">{error || imageError}</p> : null}
-        <div className="preset-profile-editor-actions">
-          <button type="submit" className="is-primary" disabled={!dirty || saving}>{saving ? '保存中…' : '保存'}</button>
-          <button type="button" onClick={onCancel}>取消</button>
-        </div>
       </form>
 
       <div className="preset-profile-editor-avatar">

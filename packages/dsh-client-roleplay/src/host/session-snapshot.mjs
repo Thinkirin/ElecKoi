@@ -53,6 +53,7 @@ export function inheritSessionSnapshot(root, parentSessionId, childSessionId) {
   const path = snapshotPath(root, childSessionId)
   const content = `${JSON.stringify({
     ...snapshot,
+    model: snapshot.subagentModel ?? snapshot.model,
     inheritedFromSessionId: String(parentSessionId),
     rootRuntimeThreadId: snapshot.rootRuntimeThreadId ?? snapshot.runtimeThreadId ?? String(parentSessionId)
   }, null, 2)}\n`

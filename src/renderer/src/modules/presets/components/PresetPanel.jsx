@@ -1,17 +1,17 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { CheckCircle } from '@phosphor-icons/react';
+import { CheckCircle, DotsThree, NotePencil, Info, TextAlignLeft, Toolbox, Code } from '@phosphor-icons/react';
 import { CharacterManagerIcon, ChevronRightIcon, ImportIcon, PlusIcon, TrashIcon } from '../../../ui/icons/index.jsx';
 import { Avatar } from '../../../ui/ui/Avatar.jsx';
 import { DshSearchField } from '../../../ui/ui/DshSearchField.jsx';
 import { SidebarCreateButton } from '../../../ui/ui/SidebarCreateButton.jsx';
 import { useSidebarListScroll } from '../../../ui/hooks/useSidebarListScroll.js';
 import { UnsavedChangesDialog } from '../../../ui/ui/UnsavedChangesDialog.jsx';
+import { EditorHeader } from '../../../ui/ui/EditorHeader.jsx';
 import defaultPresetAvatar from '../../../assets/eleckoi-app-icon.png';
 import { SaveControl } from '../../settingLibraries/index.js';
 import { LIST_COLLAPSE_AREAS, usePersistentCollapseState } from '../../settings/index.js';
 import { PresetIntroductionEditor } from './PresetIntroductionEditor.jsx';
 import { PresetContextMenu, usePresetContextMenu } from './PresetContextMenu.jsx';
-import { PresetProfileHeader } from './PresetProfileHeader.jsx';
 import { PresetProfileEditor } from './PresetProfileEditor.jsx';
 import { PresetPromptEditor } from './PresetPromptEditor.jsx';
 import { PresetRegexEditor } from './PresetRegexEditor.jsx';
@@ -23,10 +23,10 @@ const PresetContext = createContext(null);
 const ALL_PRESETS = '全部预设';
 const DEFAULT_PRESET_ID = 'agent-preset-standard';
 const TABS = [
-  { id: 'introduction', label: '使用说明' },
-  { id: 'prompts', label: '预设提示词' },
-  { id: 'tools', label: '工具' },
-  { id: 'regex', label: '预设正则' },
+  { id: 'introduction', label: '使用说明', icon: Info },
+  { id: 'prompts', label: '预设提示词', icon: TextAlignLeft },
+  { id: 'tools', label: '工具', icon: Toolbox },
+  { id: 'regex', label: '预设正则', icon: Code },
 ];
 const EMPTY_PRESET_CATALOG = { status: 'loading', catalog: null, error: '' };
 const subscribeEmptyCatalog = () => () => {};
@@ -53,7 +53,7 @@ export function shouldShowPresetCatalogLoading(catalog, error) {
   return !catalog && !error;
 }
 
-export function PresetProvider({ children, catalogModel, navigationGuardRef: externalNavigationGuardRef }) {
+export function PresetProvider({ children, catalogModel, navigationGuardRef: externalNavigationGuardRef, onSelect }) {
   const snapshot = useSyncExternalStore(
     catalogModel?.subscribe || subscribeEmptyCatalog,
     catalogModel?.getSnapshot || getEmptyCatalog,
@@ -70,8 +70,14 @@ export function PresetProvider({ children, catalogModel, navigationGuardRef: ext
   }
 
   function setSelectedPresetId(id) {
-    if (id === selectedPresetId) return;
-    const select = () => commitSelectedPresetId(id);
+    if (id === selectedPresetId) {
+      onSelect?.();
+      return;
+    }
+    const select = () => {
+      commitSelectedPresetId(id);
+      onSelect?.();
+    };
     if (navigationGuard.current) navigationGuard.current(select);
     else select();
   }
@@ -100,7 +106,7 @@ export function PresetProvider({ children, catalogModel, navigationGuardRef: ext
       return catalog.presets.some((item) => item.id === requested) ? requested : catalog.presets[0]?.id || '';
     });
   }, [catalog, catalogModel]);
-  const value = useMemo(() => ({ catalog, catalogModel, setCatalog, selectedPresetId, setSelectedPresetId, navigationGuard, refresh, error, setError }), [catalog, catalogModel, selectedPresetId, error]);
+  const value = useMemo(() => ({ catalog, catalogModel, setCatalog, selectedPresetId, setSelectedPresetId, navigationGuard, refresh, error, setError }), [catalog, catalogModel, selectedPresetId, error, onSelect]);
   return <PresetContext.Provider value={value}>{children}</PresetContext.Provider>;
 }
 
@@ -299,11 +305,13 @@ export function PresetWorkspace({
   onNotify,
   onTestRegex,
   renderEditorSection,
+  onBack,
 }) {
   const { catalog, catalogModel, selectedPresetId, setCatalog, navigationGuard, refresh, error: catalogError } = usePresets();
   const [preset, setPreset] = useState(null);
   const [persisted, setPersisted] = useState(null);
   const [tab, setTab] = useState('introduction');
+  const [introductionDraft, setIntroductionDraft] = useState({ dirty: false, hasDraft: false });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -464,7 +472,10 @@ export function PresetWorkspace({
     tools: preset.toolGroups.filter((group) => group.included).length,
     regex: preset.regexRules.length,
   };
-  const saveAction = <SaveControl dirty={dirty} error={error} saving={saving} onSave={() => void save()} />;
+  const saveAction = <SaveControl dirty={dirty || (tab === 'introduction' && introductionDraft.dirty)} error={error} saving={saving} onSave={() => {
+    if (tab === 'introduction' && introductionRef.current?.hasDraft) void introductionRef.current.save();
+    else void save();
+  }} />;
   const leaveDialog = <UnsavedChangesDialog
     open={Boolean(pendingAction)}
     title="保存修改？"
@@ -513,7 +524,7 @@ export function PresetWorkspace({
         saving={saving}
         error={error}
         onChange={setPreset}
-        onCancel={() => { discardChanges(); setProfileEditing(false); }}
+        onCancel={() => navigate(() => setProfileEditing(false))}
         onSave={async () => { if (await save()) setProfileEditing(false); }}
       />
     </section>;
@@ -528,7 +539,7 @@ export function PresetWorkspace({
 
   let tabEditor = null;
   if (tab === 'introduction') {
-    tabEditor = <PresetIntroductionEditor key={preset.id} preset={preset} editorRef={introductionRef} saving={saving} error={error} onClearError={() => setError('')} onSaveProfile={(patch) => save({ ...preset, profile: { ...preset.profile, ...patch } })} />;
+    tabEditor = <PresetIntroductionEditor key={preset.id} preset={preset} editorRef={introductionRef} saving={saving} error={error} onDraftStateChange={setIntroductionDraft} onClearError={() => setError('')} onSaveProfile={(patch) => save({ ...preset, profile: { ...preset.profile, ...patch } })} />;
   } else if (tab === 'prompts') {
     tabEditor = <PresetPromptEditor preset={preset} onChange={setPreset} saveAction={saveAction} />;
   } else if (tab === 'tools') {
@@ -547,11 +558,15 @@ export function PresetWorkspace({
 
   return <>
     <section className="preset-workspace" aria-label="预设编辑器">
-      <PresetProfileHeader preset={preset} active={catalog?.activePresetId === preset.id} onActivate={() => navigate(activate)} onEdit={() => navigate(() => setProfileEditing(true))} />
+      <EditorHeader className="preset-editor-header" title={preset.name} onBack={() => navigate(onBack || (() => window.dispatchEvent(new CustomEvent('eleckoi:platform-back', { cancelable: true }))))} backLabel="返回预设列表" saveAction={saveAction}
+        moreAction={<details className="compact-editor-more"><summary aria-label="预设操作"><DotsThree size={22} /></summary><div>
+          <button type="button" onClick={() => navigate(() => setProfileEditing(true))}><NotePencil size={16} />编辑资料</button>
+          <button type="button" disabled={catalog?.activePresetId === preset.id} onClick={() => navigate(activate)}><CheckCircle size={16} />{catalog?.activePresetId === preset.id ? '使用中' : '使用此预设'}</button>
+        </div></details>} />
       <nav className="preset-workspace-tabs" aria-label="预设编辑区域">
-        <div className="preset-workspace-tab-list">{TABS.map((item) => <button type="button" key={item.id} aria-current={tab === item.id ? 'page' : undefined} onClick={() => { if (tab !== item.id) navigate(() => setTab(item.id)); }}><span>{item.label}</span>{tabCounts[item.id] !== undefined ? <em>{tabCounts[item.id]}</em> : null}</button>)}</div>
+        <div className="preset-workspace-tab-list">{TABS.map((item) => <button type="button" key={item.id} aria-current={tab === item.id ? 'page' : undefined} onClick={() => { if (tab !== item.id) navigate(() => setTab(item.id)); }}><item.icon size={16} aria-hidden="true" /><span>{item.label}</span>{tabCounts[item.id] !== undefined ? <em>{tabCounts[item.id]}</em> : null}</button>)}</div>
       </nav>
-      <div className={`preset-workspace-body is-${tab}`}>
+      <div key={tab} className={`preset-workspace-body is-${tab}`}>
         {renderedTabEditor}
       </div>
     </section>

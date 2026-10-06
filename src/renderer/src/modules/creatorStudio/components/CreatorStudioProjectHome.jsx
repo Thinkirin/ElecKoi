@@ -18,6 +18,7 @@ import {
   DshPlusIcon,
 } from "../../../ui/icons/dshComposerIcons.jsx";
 import { TrashIcon } from "../../../ui/icons/index.jsx";
+import { registerOverlayBack } from "../../../ui/hooks/overlayBack.js";
 import {
   CreatorStudioAssetsIcon,
   CreatorStudioProjectsIcon,
@@ -66,11 +67,17 @@ function formatProjectTime(value) {
 }
 
 function ProjectPreview({ project }) {
-  if (project.coverImage) return <img src={project.coverImage} alt="" draggable="false" />;
-  return <span className="creator-studio-project-fallback" aria-hidden="true"><Folder size={30} /></span>;
+  const [failedSource, setFailedSource] = useState("");
+  const source = globalThis.__ElecKoiResolveAsset?.(project.coverImage) ?? project.coverImage;
+  if (source && source !== failedSource) return <img src={source} alt="" draggable="false" onError={() => setFailedSource(source)} />;
+  return <span className="creator-studio-project-fallback" aria-hidden="true"><Folder size={28} weight="duotone" /></span>;
 }
 
 function ProjectDeleteConfirm({ project, busy, error, onCancel, onConfirm }) {
+  useEffect(() => registerOverlayBack(() => {
+    if (!busy) onCancel();
+    return true;
+  }), [busy, onCancel]);
   return <div className="creator-studio-delete-confirm" role="dialog" aria-modal="false" aria-labelledby={`delete-project-${project.id}`} onClick={(event) => event.stopPropagation()}>
     <strong id={`delete-project-${project.id}`}>删除项目</strong>
     <p>“{project.name}”及其中的本地文件会被永久删除，此操作不可撤销。</p>
@@ -104,9 +111,8 @@ export function ProjectCollection({ projects, viewMode, pendingDeletionId, delet
           disabled={pendingDeletionId === project.id}
           onClick={() => onOpenProject(project)}
         />
-        <div className={`creator-studio-grid-preview${project.coverImage ? " has-cover" : ""}`}>
+        <div className="creator-studio-grid-preview">
           <ProjectPreview project={project} />
-          <h2>{project.name}</h2>
           <div className="creator-studio-grid-overlay">
             <div className="creator-studio-card-actions">
               <button className="is-delete" type="button" onClick={(event) => { event.stopPropagation(); onRequestDelete(project); }} title="删除项目" aria-label={`删除项目 ${project.name}`}>
@@ -117,7 +123,10 @@ export function ProjectCollection({ projects, viewMode, pendingDeletionId, delet
               </button>
             </div>
           </div>
-          <div className="creator-studio-grid-overlay-meta"><span>角色项目</span><time>{formatProjectTime(project.updatedAt)}</time></div>
+        </div>
+        <div className="creator-studio-grid-caption">
+          <h2 title={project.name}>{project.name}</h2>
+          <div className="creator-studio-grid-caption-meta"><span><IdentificationCard size={12} weight="duotone" aria-hidden="true" />角色项目</span><time>{formatProjectTime(project.updatedAt)}</time></div>
         </div>
         {pendingDeletionId === project.id ? <ProjectDeleteConfirm
           project={project}
@@ -312,14 +321,16 @@ function CreateProjectDialog({ characters, projectCatalog, onClose, onCreated })
   const [sourceCharacterId, setSourceCharacterId] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [selectingDirectory, setSelectingDirectory] = useState(false);
   const nameRef = useRef(null);
   const directoryRequestRef = useRef(null);
 
   useEffect(() => {
     nameRef.current?.focus();
-    const handleKeyDown = (event) => { if (event.key === "Escape" && !busy) onClose(); };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    return registerOverlayBack(() => {
+      if (!busy) onClose();
+      return true;
+    });
   }, [busy, onClose]);
 
   useEffect(() => () => directoryRequestRef.current?.abort(), []);
@@ -329,13 +340,17 @@ function CreateProjectDialog({ characters, projectCatalog, onClose, onCreated })
     directoryRequestRef.current?.abort();
     const request = new AbortController();
     directoryRequestRef.current = request;
+    setSelectingDirectory(true);
     try {
       const directory = await projectCatalog.selectDirectory(request.signal);
       if (directory && !request.signal.aborted) setParentDirectory(directory);
     } catch (requestError) {
       if (!request.signal.aborted) setError(requestError instanceof Error ? requestError.message : "无法选择保存位置。");
     } finally {
-      if (directoryRequestRef.current === request) directoryRequestRef.current = null;
+      if (directoryRequestRef.current === request) {
+        directoryRequestRef.current = null;
+        if (!request.signal.aborted) setSelectingDirectory(false);
+      }
     }
   };
 
@@ -394,14 +409,14 @@ function CreateProjectDialog({ characters, projectCatalog, onClose, onCreated })
           <span>保存位置</span>
           <div className="creator-studio-directory-field">
             <input value={parentDirectory} readOnly placeholder="选择本地文件夹" aria-label="项目保存位置" />
-            <button type="button" onClick={chooseDirectory}>选择文件夹</button>
+            <button type="button" onClick={chooseDirectory} disabled={busy || selectingDirectory} aria-busy={selectingDirectory || undefined}>{selectingDirectory ? '正在选择…' : '选择文件夹'}</button>
           </div>
         </div>
 
         {error ? <p className="creator-studio-form-error" role="alert">{error}</p> : null}
         <footer>
           <button type="button" onClick={onClose} disabled={busy}>取消</button>
-          <button className="is-primary" type="submit" disabled={busy}>{busy ? "创建中…" : "创建项目"}</button>
+          <button className="is-primary" type="submit" disabled={busy || selectingDirectory}>{busy ? "创建中…" : "创建项目"}</button>
         </footer>
       </form>
     </section>
@@ -528,7 +543,7 @@ export function CreatorStudioProjectHome({ sidebarCollapsed = false, characterCa
     <div className="creator-studio-home">
       {activePage === "projects" ? <div className="creator-studio-home-inner">
         <div className="creator-studio-home-heading">
-          <h1>创作项目</h1>
+          <div className="creator-studio-home-title"><h1>创作项目</h1>{projects.length ? <p className="creator-studio-project-count">{filteredProjects.length} 个项目</p> : null}</div>
           <button className="creator-studio-new-project-button" type="button" onClick={() => setCreateDialogOpen(true)}><DshPlusIcon size={16} />新建项目</button>
         </div>
         <div className="creator-studio-project-toolbar">
@@ -544,7 +559,6 @@ export function CreatorStudioProjectHome({ sidebarCollapsed = false, characterCa
             <button className={viewMode === "grid" ? "is-active" : ""} type="button" aria-label="网格视图" aria-pressed={viewMode === "grid"} title="网格视图" onClick={() => setViewMode("grid")}><SquaresFour size={18} weight="fill" aria-hidden="true" /></button>
           </div>
         </div>
-        {projects.length ? <p className="creator-studio-project-count">{filteredProjects.length} 个项目</p> : null}
         <section className="creator-studio-project-collection" data-view={viewMode} aria-label="项目列表">
           <ProjectCollection
             projects={visibleProjects}

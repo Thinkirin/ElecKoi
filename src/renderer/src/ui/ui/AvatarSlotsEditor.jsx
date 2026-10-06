@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
-import { ArrowLeft } from "@phosphor-icons/react";
+import { ArrowLeft, Crop, ImageSquare, UserCircle, Rectangle } from "@phosphor-icons/react";
 import { Avatar } from "./Avatar.jsx";
 import { AvatarCropModal } from "./AvatarCropModal.jsx";
+import { assetSrc } from "../../app/services/assets.js";
 
 const PORTRAIT_OUTPUT_WIDTH = 900;
 const SQUARE_OUTPUT_WIDTH = 420;
@@ -58,7 +59,7 @@ async function centerCrop(file, outputWidth, outputHeight) {
 }
 
 async function sourceToFile(source, name) {
-  const response = await fetch(source);
+  const response = await fetch(assetSrc(source));
   if (!response.ok) throw new Error("头像图片读取失败");
   const blob = await response.blob();
   return new File([blob], name, { type: blob.type || "image/png" });
@@ -177,6 +178,7 @@ export function AvatarManagerEditor({ value, name, saving = false, onBack, onSav
         <div className="avatar-manager-header-actions">
           {error ? <span className="error" role="alert">{error}</span> : null}
           <button type="button" className="settings-primary-button" disabled={busy} onClick={chooseImage}>
+            <ImageSquare size={17} aria-hidden="true" />
             {reading ? "正在处理" : saving ? "正在保存" : preparing ? "正在载入" : "更换图片"}
           </button>
         </div>
@@ -185,8 +187,8 @@ export function AvatarManagerEditor({ value, name, saving = false, onBack, onSav
       <div className="avatar-manager-results">
         <section className="avatar-manager-result-group is-portrait" aria-labelledby="rectangle-avatar-heading">
           <header>
-            <h2 id="rectangle-avatar-heading">矩形头像</h2>
-            <button type="button" disabled={busy} onClick={() => openCrop("portrait")}>调整裁剪</button>
+            <h2 id="rectangle-avatar-heading"><Rectangle size={17} aria-hidden="true" />矩形头像</h2>
+            <button type="button" disabled={busy} onClick={() => openCrop("portrait")}><Crop size={15} aria-hidden="true" />调整裁剪</button>
           </header>
           <PreviewButton
             className="is-portrait"
@@ -200,8 +202,8 @@ export function AvatarManagerEditor({ value, name, saving = false, onBack, onSav
 
         <section className="avatar-manager-result-group is-shared" aria-labelledby="shared-avatar-heading">
           <header>
-            <h2 id="shared-avatar-heading">圆形与方形</h2>
-            <button type="button" disabled={busy} onClick={() => openCrop("shared")}>调整裁剪</button>
+            <h2 id="shared-avatar-heading"><UserCircle size={17} aria-hidden="true" />圆形与方形</h2>
+            <button type="button" disabled={busy} onClick={() => openCrop("shared")}><Crop size={15} aria-hidden="true" />调整裁剪</button>
           </header>
           <div className="avatar-manager-shared-previews">
             <PreviewButton

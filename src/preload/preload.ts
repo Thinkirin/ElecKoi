@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { DESKTOP_SHELL_IPC, type DesktopBrowserBridge, type DesktopBrowserLeaseId, type DshDesktopProductApi } from '@shared/contracts/desktopShell'
+import { DESKTOP_SHELL_IPC, type DesktopBrowserBridge, type DesktopBrowserLeaseId, type DshDesktopProductApi, type DesktopTextFileResult } from '@shared/contracts/desktopShell'
 import type { UpdateInstallResult, UpdateStatus } from '@shared/contracts/updates/schemas'
+import type { PlatformSpeechBridge } from '@shared/contracts/platformSpeech'
 
 function createDesktopBrowserBridge(): DesktopBrowserBridge {
   const listeners = new Map<DesktopBrowserLeaseId, Set<(url: string) => void>>()
@@ -39,6 +40,16 @@ function createDesktopProductApi(): DshDesktopProductApi {
   return {
     protocolVersion: 1,
     browser: createDesktopBrowserBridge(),
+    files: {
+      saveText: request => ipcRenderer.invoke(DESKTOP_SHELL_IPC.filesSaveText, request) as Promise<DesktopTextFileResult>
+    },
+    tts: {
+      voices: () => ipcRenderer.invoke(DESKTOP_SHELL_IPC.ttsVoices) as ReturnType<PlatformSpeechBridge['voices']>,
+      synthesize: (request) => ipcRenderer.invoke(DESKTOP_SHELL_IPC.ttsSynthesize, request) as ReturnType<PlatformSpeechBridge['synthesize']>,
+      cancel: (id) => ipcRenderer.invoke(DESKTOP_SHELL_IPC.ttsCancel, id) as ReturnType<PlatformSpeechBridge['cancel']>,
+      readAudio: (token, offset, count) => ipcRenderer.invoke(DESKTOP_SHELL_IPC.ttsReadAudio, token, offset, count) as ReturnType<PlatformSpeechBridge['readAudio']>,
+      releaseAudio: (token) => ipcRenderer.invoke(DESKTOP_SHELL_IPC.ttsReleaseAudio, token) as ReturnType<PlatformSpeechBridge['releaseAudio']>
+    },
     updates: {
       status: () => ipcRenderer.invoke(DESKTOP_SHELL_IPC.updatesStatus) as Promise<UpdateStatus>,
       check: () => ipcRenderer.invoke(DESKTOP_SHELL_IPC.updatesCheck) as Promise<UpdateStatus>,

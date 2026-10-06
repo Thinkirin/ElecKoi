@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, CaretRight, X } from '@phosphor-icons/react';
 import { AgentToolGroupIcon } from '../../../ui/icons/index.jsx';
 import { RoleplayPlanEditor, SubagentSettingsLink, WebSearchSettings } from '../../agentTools/index.js';
 import { loadAgentTools, setAgentToolGroupEnabled, setRoleplayPlanSettings } from '../api/agentToolsApi.js';
+import { useAnimatedClose } from '../../../ui/hooks/useAnimatedClose.js';
 
 export function AgentToolsDialog({
   presetCatalog,
@@ -11,6 +12,7 @@ export function AgentToolsDialog({
   onManage,
   onNotify,
 }) {
+  const { closing, close } = useAnimatedClose(onClose);
   const [catalog, setCatalog] = useState(null);
   const [selectedId, setSelectedId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -32,11 +34,11 @@ export function AgentToolsDialog({
     const closeOnEscape = (event) => {
       if (event.key !== 'Escape') return;
       if (selectedId) setSelectedId('');
-      else onClose();
+      else close();
     };
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [onClose, selectedId]);
+  }, [close, selectedId]);
 
   async function changeEnabled(group, enabled) {
     if (changingId) return;
@@ -75,12 +77,12 @@ export function AgentToolsDialog({
     }
   }
 
-  return createPortal(<div className="agent-tools-backdrop" role="presentation" onMouseDown={onClose}>
+  return createPortal(<div className={`agent-tools-backdrop${closing ? ' closing' : ''}`} role="presentation" onMouseDown={close}>
     <section className="agent-tools-dialog" role="dialog" aria-modal="true" aria-label="预设工具" onMouseDown={(event) => event.stopPropagation()}>
       <header>
         {selected ? <button type="button" onClick={() => setSelectedId('')} aria-label="返回工具列表"><ArrowLeft /></button> : <span />}
         <h2>预设工具</h2>
-        <button type="button" onClick={onClose} aria-label="关闭"><X /></button>
+        <button type="button" onClick={close} aria-label="关闭"><X /></button>
       </header>
       <div className="agent-tools-content">
         {selected ? <ToolDetail

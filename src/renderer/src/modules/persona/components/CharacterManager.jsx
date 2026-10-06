@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from 'react-dom';
 import { ExportIcon, ImportIcon, PencilIcon, PlusIcon, TrashIcon } from "../../../ui/icons/index.jsx";
 import { DshSearchField } from "../../../ui/ui/DshSearchField.jsx";
 import { GroupAssignmentMenu } from "../../../ui/ui/GroupAssignmentMenu.jsx";
@@ -390,11 +391,11 @@ export function CharacterManager({ characters, persona, onSaveGroups, onDeleteCh
                 </>
               ) : (
                 <>
-                  <button type="button" onClick={() => setImportOpen(true)}><ImportIcon />导入角色</button>
-                  <button type="button" disabled={!characters.items?.length} onClick={startExport}>
-                    <ExportIcon />导出角色
+                  <button className="character-manager-toolbar-action" type="button" title="导入角色" aria-label="导入角色" onClick={() => setImportOpen(true)}><ImportIcon /><span>导入角色</span></button>
+                  <button className="character-manager-toolbar-action" type="button" title="导出角色" aria-label="导出角色" disabled={!characters.items?.length} onClick={startExport}>
+                    <ExportIcon /><span>导出角色</span>
                   </button>
-                  <button type="button" disabled={!characters.items?.length} onClick={() => setDeleteMode(true)}><TrashIcon />删除</button>
+                  <button className="character-manager-toolbar-action" type="button" title="删除" aria-label="删除" disabled={!characters.items?.length} onClick={() => setDeleteMode(true)}><TrashIcon /><span>删除</span></button>
                 </>
               )}
             </>
@@ -424,8 +425,8 @@ export function CharacterManager({ characters, persona, onSaveGroups, onDeleteCh
         </div>
       </section>
 
-      {groupMenu ? (
-        <div className="character-group-context-menu" style={{ left: `${groupMenu.x}px`, top: `${groupMenu.y}px` }} onPointerDown={(event) => event.stopPropagation()}>
+      {groupMenu ? createPortal(
+        <div className="character-group-context-menu" role="menu" style={{ left: `clamp(12px, ${groupMenu.x}px, calc(100vw - 188px))`, top: `clamp(12px, ${groupMenu.y}px, calc(100dvh - 156px))` }} onPointerDown={(event) => event.stopPropagation()}>
           <button type="button" onClick={() => openGroupDialog("add")}><PlusIcon /><span>添加分组</span></button>
           {groupMenu.group ? (
             <>
@@ -433,7 +434,7 @@ export function CharacterManager({ characters, persona, onSaveGroups, onDeleteCh
               <button type="button" onClick={() => deleteGroup(groupMenu.group)}><TrashIcon /><span>删除分组</span></button>
             </>
           ) : null}
-        </div>
+        </div>, document.body
       ) : null}
 
       {cardGroupMenu ? (

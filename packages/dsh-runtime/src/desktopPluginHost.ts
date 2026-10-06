@@ -1,29 +1,12 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { existsSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
-import { initProfile, PROFILE_TEMPLATES, readProfileManifest, writeProfileBundles } from '@deepseek-ai/dsh-app-boot'
-import { ELECKOI_DESKTOP_BUNDLES, registerDesktopBundles } from './desktopPluginBundles'
+import { preparePluginHost } from './pluginHostConfiguration'
 import type { ChildHostMessage, ParentHostMessage } from './hostSessionProtocol'
 
 const require = createRequire(import.meta.url)
 const runtimeRequire = createRequire(require.resolve('@eleckoi/dsh-runtime'))
-const TAVILY_BUNDLE = '@eleckoi/dsh-web-search-tavily'
-
-/**
- * TODO(迁移清理)：受支持的升级及 profile 恢复入口都已完成 tavily-bundle-v1 登记后，
- * 删除本函数、start 调用及对应旧 profile 用例。保留新 profile 的 Tavily 默认选择，
- * 以及通过正式 profile 保存用户启停选择的正常流程；不要删除现有用户配置或标记文件。
- */
-function selectTavilyBundleOnce(profile: string): void {
-  const marker = join(profile, '.eleckoi-tavily-bundle-v1')
-  if (existsSync(marker)) return
-  const manifest = readProfileManifest('dsh', profile)
-  const bundles = manifest.dsh?.profile?.bundles ?? []
-  if (!bundles.includes(TAVILY_BUNDLE)) writeProfileBundles(profile, manifest, [...bundles, TAVILY_BUNDLE])
-  writeFileSync(marker, 'initialized\n', { flag: 'wx' })
-}
 
 export function resolveDshWebFrontendDirectory(): string {
   return join(dirname(runtimeRequire.resolve('@deepseek-ai/dsh-web-frontend/package.json')), 'dist')
@@ -84,55 +67,20 @@ export class DshDesktopPluginHost {
   start(environment: DshDesktopPluginHostEnvironment = {}): Promise<DshDesktopPluginHostReady> {
     if (this.readyTask !== undefined) return this.readyTask
     if (this.stopping) return Promise.reject(new Error('DSH 插件宿主正在停止。'))
-    const home = join(this.options.runtimeDataRoot, 'home')
-    const profile = join(home, 'profiles', 'desktop')
-    initProfile(profile, [...PROFILE_TEMPLATES.web.bundles, ...ELECKOI_DESKTOP_BUNDLES, TAVILY_BUNDLE])
-    registerDesktopBundles(profile)
-    selectTavilyBundleOnce(profile)
-    const overlayPath = join(profile, 'eleckoi-plugin-host.patch.yml')
-    const sessionRoot = join(this.options.runtimeDataRoot, 'sessions')
-    writeFileSync(overlayPath, [
-      '- id: session-persistence-jsonl',
-      '  config:',
-      `    root: ${JSON.stringify(sessionRoot)}`,
-      '    compression: none',
-      '- id: desktop-product-telemetry',
-      '  disabled: true',
-      '- id: product-analytics',
-      '  disabled: true',
-      '- id: ui-layout',
-      '  disabled: true',
-      '- id: ui-sidebar',
-      '  disabled: true',
-      '- id: ui-settings-general',
-      '  disabled: true',
-      '- id: ui-settings-models',
-      '  disabled: true',
-      ''
-    ].join('\n'))
+    const prepared = preparePluginHost(this.options)
     const child = spawn(this.options.executablePath, [
       require.resolve('@eleckoi/dsh-runtime/desktop-plugin-host'),
-      profile,
-      overlayPath,
+      prepared.profileDirectory,
+      prepared.overlayPath,
       this.options.packageManager?.entryPath ?? '',
       this.options.packageManager?.nodeBinPath ?? '',
       this.options.agentPatchPath
     ], {
-      cwd: profile,
+      cwd: prepared.profileDirectory,
       env: {
         ...process.env,
         ...environment,
-        DSH_HOME: home,
-        DSH_SESSION_ROOT: sessionRoot,
-        DSH_CWD: this.options.workspaceRoot,
-        ELECKOI_SESSION_SNAPSHOT_ROOT: join(this.options.runtimeDataRoot, 'session-snapshots'),
-        ELECKOI_PRESET_ROOT: join(this.options.runtimeDataRoot, 'generated-presets'),
-        ELECKOI_PRESET_TEMPLATE_PATH: this.options.presetTemplatePath,
-        ELECKOI_SESSION_BRIDGE_ROOT: join(this.options.runtimeDataRoot, 'session-bridges'),
-        ELECKOI_DATABASE_PATH: this.options.productDatabasePath,
-        ELECKOI_MEDIA_ROOT: this.options.productMediaRoot,
-        ELECKOI_WORKSPACE_ROOT: this.options.workspaceRoot,
-        DSH_TELEMETRY_DISABLED: '1',
+        ...prepared.environment,
         ELECTRON_RUN_AS_NODE: '1'
       },
       stdio: ['ignore', 'pipe', 'pipe', 'ipc'],

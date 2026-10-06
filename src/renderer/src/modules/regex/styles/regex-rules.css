@@ -1,4 +1,6 @@
 .regex-layout {
+  container: regex-catalog / inline-size;
+  --catalog-toolbar-height: 46px;
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -13,17 +15,18 @@
 
 .regex-browser {
   display: grid;
-  grid-template-rows: 58px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
 }
 
 .regex-toolbar {
   display: grid;
-  grid-template-columns: minmax(240px, 480px) auto auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
-  gap: 12px;
-  padding: 10px 22px 9px;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 16px;
   background: color-mix(in srgb, var(--chat) 94%, var(--list));
   box-shadow: inset 0 -1px color-mix(in srgb, var(--text) 6%, transparent);
 }
@@ -37,8 +40,8 @@
   padding: 0 10px;
   color: var(--soft-text);
   background: color-mix(in srgb, var(--field-bg) 82%, transparent);
-  border: 1px solid color-mix(in srgb, var(--text) 13%, transparent);
-  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  border-radius: 12px;
 }
 
 .regex-search:focus-within {
@@ -66,14 +69,15 @@
   align-items: center;
   gap: 6px;
   padding: 0 12px;
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: 999px;
+  font-size: 12px;
   font-weight: 600;
 }
 
 .regex-create-button {
-  color: #fff;
-  background: var(--blue);
+  color: var(--tide-teal, var(--blue));
+  background: color-mix(in srgb, var(--tide-teal, var(--blue)) 9%, var(--chat));
+  border: 1px solid color-mix(in srgb, var(--tide-teal, var(--blue)) 18%, transparent);
 }
 
 .regex-create-button:hover {
@@ -81,9 +85,9 @@
 }
 
 .regex-manage-button {
-  color: var(--text);
-  background: var(--field-bg);
-  border: 1px solid color-mix(in srgb, var(--text) 13%, transparent);
+  color: var(--tide-lilac, var(--blue));
+  background: color-mix(in srgb, var(--tide-lilac, var(--blue)) 7%, var(--chat));
+  border: 1px solid color-mix(in srgb, var(--tide-lilac, var(--blue)) 18%, transparent);
 }
 
 .regex-manage-button:hover,
@@ -94,14 +98,14 @@
 .regex-popover {
   position: absolute;
   z-index: 130;
-  top: 39px;
-  left: 0;
+  top: calc(100% + 4px);
+  right: 0;
   display: grid;
   width: 150px;
   padding: 5px;
   background: var(--chat);
   border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   box-shadow: 0 12px 32px color-mix(in srgb, var(--shadow-color) 24%, transparent);
 }
 
@@ -109,7 +113,7 @@
   height: 31px;
   padding: 0 9px;
   color: var(--text);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
   text-align: left;
 }
@@ -121,16 +125,16 @@
 .regex-list-scroll {
   min-width: 0;
   min-height: 0;
-  padding: 18px 28px 48px;
+  padding: 8px 12px 24px;
   overflow: auto;
 }
 
 .regex-rule-groups {
-  width: min(620px, 100%);
+  width: 100%;
 }
 
 .regex-rule-group + .regex-rule-group {
-  margin-top: 18px;
+  margin-top: 12px;
 }
 
 .regex-group-heading {
@@ -141,7 +145,7 @@
   gap: 8px;
   padding: 0 7px;
   color: var(--text);
-  border-radius: 7px;
+  border-radius: 10px;
   text-align: left;
 }
 
@@ -158,18 +162,22 @@
 }
 
 .regex-group-heading strong {
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 650;
 }
 
 .regex-group-heading span {
-  color: var(--soft-text);
-  font-size: 12px;
+  color: var(--tide-lilac, var(--blue));
+  font-size: 10px;
   font-weight: 400;
+  background: color-mix(in srgb, var(--tide-lilac, var(--blue)) 9%, transparent);
+  padding: 3px 7px;
+  border-radius: 999px;
 }
 
 .regex-group-rows {
   display: grid;
-  gap: 3px;
+  gap: 1px;
   width: min(340px, 100%);
   padding: 3px 0 0 30px;
 }
@@ -180,8 +188,9 @@
   height: 42px;
   align-items: center;
   padding: 0 12px 0 10px;
-  border-radius: 8px;
+  border-radius: 10px;
   transition: background-color 120ms ease, opacity 120ms ease, transform 120ms ease;
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 5%, transparent);
 }
 
 .regex-rule-row:hover {
@@ -189,7 +198,8 @@
 }
 
 .regex-rule-row.is-selected {
-  background: var(--active);
+  background: color-mix(in srgb, var(--tide-teal, var(--blue)) 9%, var(--chat));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tide-teal, var(--blue)) 20%, transparent);
 }
 
 .regex-rule-row.is-dragging {
@@ -219,13 +229,13 @@
 
 .regex-rule-main svg {
   flex: 0 0 auto;
-  color: color-mix(in srgb, var(--text) 78%, transparent);
+  color: var(--tide-teal, var(--blue));
 }
 
 .regex-rule-main span {
   overflow: hidden;
   color: var(--text);
-  font-size: 13.5px;
+  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -271,7 +281,7 @@
 
 .regex-rule-switch input:checked + i,
 .regex-inline-switch input:checked + i {
-  background: var(--blue);
+  background: var(--tide-teal, var(--blue));
 }
 
 .regex-rule-switch input:checked + i::after,
@@ -297,11 +307,13 @@
 }
 
 .regex-inspector {
+  container: regex-entry / inline-size;
+  overflow: hidden;
   position: absolute;
   z-index: 50;
-  inset: 58px 0 0 auto;
+  inset: var(--catalog-toolbar-height) 0 0 auto;
   display: grid;
-  grid-template-rows: 50px minmax(0, 1fr) 52px;
+  grid-template-rows: auto minmax(0, 1fr);
   width: min(480px, calc(100% - 56px));
   min-width: 0;
   min-height: 0;
@@ -336,7 +348,7 @@
   height: 30px;
   place-items: center;
   color: var(--text);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 .regex-inspector-header button:hover,
@@ -345,12 +357,17 @@
 }
 
 .regex-inspector-scroll {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  min-width: 0;
   min-height: 0;
   padding: 18px;
   overflow: auto;
 }
 
 .regex-field {
+  min-width: 0;
   display: grid;
   gap: 7px;
   margin-bottom: 15px;
@@ -372,8 +389,8 @@
   box-sizing: border-box;
   color: var(--text);
   background: var(--field-bg);
-  border: 1px solid color-mix(in srgb, var(--text) 13%, transparent);
-  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  border-radius: 10px;
   outline: 0;
   font: inherit;
 }
@@ -393,6 +410,7 @@
   resize: vertical;
   font-size: 13px;
   line-height: 1.55;
+  border-radius: 12px;
 }
 
 .regex-field textarea.is-code {
@@ -426,6 +444,10 @@
   align-items: center;
   gap: 6px;
   font-size: 12.5px;
+  border-radius: 999px;
+  padding: 6px 9px;
+  background: var(--surface-subtle);
+  border: 1px solid transparent;
 }
 
 .regex-behavior {
@@ -442,7 +464,8 @@
 }
 
 .regex-test {
-  padding-top: 17px;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--text) 6%, transparent);
 }
 
 .regex-test-heading {
@@ -464,7 +487,7 @@
   justify-content: center;
   gap: 6px;
   color: var(--text);
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   font-size: 12.5px;
 }
 
@@ -510,12 +533,91 @@
   color: #cf3737;
 }
 
-@media (max-width: 1050px) {
-  .regex-toolbar {
-    grid-template-columns: minmax(190px, 1fr) auto auto auto;
-  }
 
-  .regex-inspector {
-    width: calc(100% - 28px);
-  }
+
+.regex-test-heading > strong {
+  color: var(--tide-teal, var(--blue));
+}
+
+.regex-test-heading button {
+  color: var(--tide-teal, var(--blue));
+  background: color-mix(in srgb, var(--tide-teal, var(--blue)) 9%, var(--chat));
+  border-color: color-mix(in srgb, var(--tide-teal, var(--blue)) 18%, transparent);
+  border-radius: 999px;
+}
+
+.regex-targets label:has(input:checked) {
+  color: var(--tide-lilac, var(--blue));
+  background: color-mix(in srgb, var(--tide-lilac, var(--blue)) 9%, var(--chat));
+  border-color: color-mix(in srgb, var(--tide-lilac, var(--blue)) 16%, transparent);
+}
+
+.regex-targets input {
+  accent-color: var(--tide-lilac, var(--blue));
+}
+
+.regex-field-caption {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.regex-field-caption.is-scope > svg {
+  color: var(--tide-amber, var(--blue));
+}
+
+.regex-field-caption.is-pattern > svg {
+  color: var(--tide-teal, var(--blue));
+}
+
+.regex-field-caption.is-replacement > svg {
+  color: var(--tide-lilac, var(--blue));
+}
+
+.regex-behavior .regex-inline-switch {
+  padding: 7px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 5%, transparent);
+}
+
+/* Catalog panes share density while retaining their own state and scroll owners. */
+
+@container regex-catalog (min-width: 960px) {
+  .regex-inspector { width: clamp(420px, 56%, 680px); }
+  .regex-layout.has-inspector .regex-list-scroll { margin-inline-end: calc(clamp(420px, 56%, 680px) + 8px); }
+}
+@container regex-catalog (max-width: 959px) {
+  .regex-layout.has-inspector > .regex-browser { display: none; }
+  .regex-layout.has-inspector > .regex-inspector { position: relative; inset: auto; width: 100%; height: 100%; min-width: 0; overflow: hidden; border-left: 0; }
+}
+@container regex-catalog (max-width: 639px) {
+  .regex-toolbar { grid-template-columns: minmax(0, 1fr) 36px 36px auto; gap: 6px; padding: 8px 12px; }
+  .regex-toolbar .regex-search { height: 44px; }
+  .regex-toolbar :is(.regex-create-button,.regex-manage-button) { width: 36px; min-width: 36px; min-height: 36px; justify-content: center; gap: 0; padding: 0; }
+  .regex-toolbar :is(.regex-create-button,.regex-manage-button) > span { display: none; }
+  .regex-toolbar .setting-library-save-control { justify-self: end; gap: 0; }
+  .regex-toolbar .setting-library-save-feedback { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .regex-list-scroll { padding: 6px 10px 20px; }
+}
+
+@media (pointer: coarse) {
+  .regex-layout { --catalog-toolbar-height: 60px; }
+  .regex-toolbar :is(button,.regex-search) { min-height: 44px; }
+}
+
+.regex-rule-fields { min-width: 0; }
+@container regex-entry (min-width: 700px) {
+  .regex-inspector-scroll { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+  .regex-test { position: sticky; top: 0; border-top: 0; padding-top: 0; }
+}
+@container regex-entry (max-width: 479px) {
+  .regex-inspector-scroll { padding: 12px; }
+  .regex-targets > div { gap: 6px; }
+  .regex-inline-switch { gap: 8px; }
+}
+@media (pointer: coarse) {
+  .regex-field input, .regex-field select, .regex-test-heading button, .regex-targets label { min-height: 44px; }
+}
+
+@media (pointer: coarse) {
+  .regex-toolbar :is(.regex-create-button,.regex-manage-button) { width: auto; min-width: 44px; }
 }

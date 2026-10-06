@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useAnimatedClose } from "../../../ui/hooks/useAnimatedClose.js";
 import {
   ArrowLeft,
   ArrowsMerge,
@@ -37,13 +38,14 @@ function suggestedVersionName(library, sourceId) {
   return uniqueName(base, new Set(library.versions.map((version) => version.name.trim())));
 }
 
-function Modal({ title, children, actions, onClose, labelledBy = "setting-library-modal-title" }) {
+function Modal({ title, children, actions, onClose: onDismiss, labelledBy = "setting-library-modal-title" }) {
+  const { closing, close: onClose } = useAnimatedClose(onDismiss);
   return (
-    <div className="setting-library-dialog-overlay" role="presentation" onMouseDown={onClose}>
+    <div className={`setting-library-dialog-overlay${closing ? ' is-closing' : ''}`} role="presentation" onMouseDown={onClose}>
       <section className="setting-library-dialog setting-library-manager-dialog" role="dialog" aria-modal="true" aria-labelledby={labelledBy} onMouseDown={(event) => event.stopPropagation()}>
         <h2 id={labelledBy}>{title}</h2>
         <div className="setting-library-manager-dialog-body">{children}</div>
-        <div className="setting-library-manager-dialog-actions">{actions}</div>
+        <div className="setting-library-manager-dialog-actions">{typeof actions === 'function' ? actions(onClose) : actions}</div>
       </section>
     </div>
   );
@@ -73,7 +75,7 @@ function CreateVersionDialog({ library, onCancel, onCreate }) {
     <Modal
       title="新建版本"
       onClose={onCancel}
-      actions={<><button type="button" onClick={onCancel}>取消</button><button type="button" className="is-primary" onClick={submit}>创建版本</button></>}
+      actions={close => <><button type="button" onClick={close}>取消</button><button type="button" className="is-primary" onClick={submit}>创建版本</button></>}
     >
       <label className="setting-library-manager-field">
         <span>版本名称</span>
@@ -99,7 +101,7 @@ function CreateVersionDialog({ library, onCancel, onCreate }) {
 
 function ImportTypeDialog({ onCancel, onPick }) {
   return (
-    <Modal title="导入设定库" onClose={onCancel} actions={<button type="button" onClick={onCancel}>取消</button>}>
+    <Modal title="导入设定库" onClose={onCancel} actions={close => <button type="button" onClick={close}>取消</button>}>
       <div className="setting-library-manager-choice-list">
         <button type="button" onClick={() => onPick("eleckoi")}><ImportIcon size={20} /><span><strong>ElecKoi 设定库</strong><small>导入 ElecKoi 导出的 JSON</small></span><CaretRight size={16} /></button>
         <button type="button" onClick={() => onPick("sillytavern")}><ImportIcon size={20} /><span><strong>酒馆世界书</strong><small>导入 SillyTavern 世界书 JSON</small></span><CaretRight size={16} /></button>
@@ -113,7 +115,7 @@ function DeleteVersionDialog({ version, onCancel, onDelete }) {
     <Modal
       title={`删除“${versionLabel(version)}”？`}
       onClose={onCancel}
-      actions={<><button type="button" onClick={onCancel}>取消</button><button type="button" className="is-destructive" onClick={onDelete}>删除版本</button></>}
+      actions={close => <><button type="button" onClick={close}>取消</button><button type="button" className="is-destructive" onClick={onDelete}>删除版本</button></>}
     >
       <p className="setting-library-manager-confirm-copy">删除会在保存后生效；关闭窗口前仍可放弃更改。</p>
     </Modal>
@@ -125,7 +127,7 @@ function MergeConfirmDialog({ sourceName, version, plan, onCancel, onMerge }) {
     <Modal
       title={`并入 ${plan.entryCount} 条设定？`}
       onClose={onCancel}
-      actions={<><button type="button" onClick={onCancel}>返回检查</button><button type="button" className="is-primary" onClick={onMerge}>并入设定</button></>}
+      actions={close => <><button type="button" onClick={close}>返回检查</button><button type="button" className="is-primary" onClick={onMerge}>并入设定</button></>}
     >
       <p className="setting-library-manager-confirm-copy">来源：{sourceName} · {versionLabel(version)}</p>
       <dl className="setting-library-merge-summary">
@@ -215,7 +217,7 @@ async function saveJsonFile(json, suggestedName) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function SettingLibraryManager({ characterId, settingLibraries, library, onChange, onClose, onError }) {
+export function SettingLibraryManager({ characterId, settingLibraries, library, onChange, onClose: onDismiss, onError }) {
   const [page, setPage] = useState("home");
   const [dialog, setDialog] = useState("");
   const [notice, setNotice] = useState("");
@@ -226,6 +228,13 @@ export function SettingLibraryManager({ characterId, settingLibraries, library, 
   const [checkedIds, setCheckedIds] = useState(new Set());
   const [destinationGroupId, setDestinationGroupId] = useState("");
   const [mergePreview, setMergePreview] = useState(null);
+  const { closing, close: onClose } = useAnimatedClose(onDismiss, 200, !dialog && !mergePreview, {
+    onBack: () => {
+      if (page !== 'home') { setPage(page === 'picker' ? 'sources' : 'home'); setSource(null); }
+      else onClose();
+      return true;
+    },
+  });
   const fileInputRef = useRef(null);
   const fileActionRef = useRef(null);
   const current = useMemo(() => syncActiveVersion(library), [library]);
@@ -338,7 +347,7 @@ export function SettingLibraryManager({ characterId, settingLibraries, library, 
   const title = page === "home" ? "设定库管理" : page === "sources" ? "并入设定库" : source?.name || "选择设定";
 
   return (
-    <div className="setting-library-manager-overlay" role="presentation" onMouseDown={onClose}>
+    <div className={`setting-library-manager-overlay${closing ? ' is-closing' : ''}`} role="presentation" onMouseDown={onClose}>
       <aside className="setting-library-manager" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(event) => event.stopPropagation()}>
         <input ref={fileInputRef} className="setting-library-file-input" type="file" accept=".json,application/json" onChange={handleFile} />
         <header className="setting-library-manager-header">

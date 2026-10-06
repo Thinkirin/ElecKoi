@@ -26,6 +26,8 @@
       "@eleckoi/dsh-client-shell",
       "@eleckoi/dsh-client-roleplay",
       "@eleckoi/dsh-product-api",
+      "@eleckoi/dsh-compatibility-host",
+      "@eleckoi/dsh-client-tavern-shared",
       "@eleckoi/dsh-runtime",
       "@eleckoi/dsh-web-search-tavily"
     ]

@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useAnimatedClose } from "../hooks/useAnimatedClose.js";
 
 export function ConfirmationDialog({
   open,
@@ -9,6 +10,7 @@ export function ConfirmationDialog({
   cancelLabel = "取消",
   destructive = false,
   busy = false,
+  confirmDisabled = false,
   onCancel,
   onConfirm,
 }) {
@@ -17,10 +19,9 @@ export function ConfirmationDialog({
   const dialogRef = useRef(null);
   const cancelRef = useRef(null);
   const busyRef = useRef(busy);
-  const onCancelRef = useRef(onCancel);
+  const { closing, close } = useAnimatedClose(onCancel, 200, open, { busy });
 
   busyRef.current = busy;
-  onCancelRef.current = onCancel;
 
   useEffect(() => {
     if (!open || typeof document === "undefined") return undefined;
@@ -30,7 +31,7 @@ export function ConfirmationDialog({
     function handleKeyDown(event) {
       if (event.key === "Escape") {
         event.preventDefault();
-        if (!busyRef.current) onCancelRef.current?.();
+        if (!busyRef.current) close();
         return;
       }
       if (event.key !== "Tab") return;
@@ -61,7 +62,7 @@ export function ConfirmationDialog({
   if (!open) return null;
 
   const dialog = (
-    <div className="confirmation-overlay" role="presentation" onMouseDown={() => !busy && onCancel?.()}>
+    <div className={`confirmation-overlay${closing ? " is-closing" : ""}`} role="presentation" onMouseDown={() => !busy && close()}>
       <section
         ref={dialogRef}
         className="confirmation-dialog"
@@ -73,13 +74,13 @@ export function ConfirmationDialog({
         onMouseDown={(event) => event.stopPropagation()}
       >
         <h2 id={titleId}>{title}</h2>
-        <p id={descriptionId}>{description}</p>
+        <div className="confirmation-content"><p id={descriptionId}>{description}</p></div>
         <div className="confirmation-actions">
-          <button ref={cancelRef} type="button" disabled={busy} onClick={onCancel}>{cancelLabel}</button>
+          <button ref={cancelRef} type="button" disabled={busy} onClick={close}>{cancelLabel}</button>
           <button
             type="button"
             className={destructive ? "is-destructive" : "is-primary"}
-            disabled={busy}
+            disabled={busy || confirmDisabled}
             onClick={onConfirm}
           >
             {busy ? "处理中" : confirmLabel}

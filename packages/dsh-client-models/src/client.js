@@ -12,7 +12,7 @@ window.__ModuleLoader__.load({
     }
     const keyRef = id => `${id.toUpperCase().replace(/[^A-Z0-9_]/g, '_')}_API_KEY`
     const imageProvider = provider => ['openai_image', 'novelai_image'].includes(provider)
-    const ModelPage = React.lazy(() => import('dsh-app://app/eleckoi/assets/eleckoi-page-model.js')
+    const ModelPage = React.lazy(() => import((globalThis.__ELECKOI_CLIENT_ASSETS__?.baseUrl ?? 'dsh-app://app/eleckoi/assets/') + 'eleckoi-page-model.js')
       .then(module => ({ default: module.ModelPage })))
     class ModelCatalog {
       constructor(remote) {
@@ -159,9 +159,10 @@ window.__ModuleLoader__.load({
             : extra.provider === 'deepseek' ? 'custom' : extra.provider || 'custom'
           const credentialRef = extra.credentialRef || profile.apiKeyEnv || (ns === 'llm-deepseek' ? 'DEEPSEEK_API_KEY' : keyRef(config.id))
           return { ...config, ...extra, provider, credentialRef, api_key: '',
+            ...(imageProvider(provider) ? { image_settings: { ...extra.image_settings, ...extra.imageSettings } } : {}),
             name: extra.name || profile.displayName || config.name || '',
             model: extra.model || config.model || options.keys().next().value || '',
-            base_url: imageProvider(provider) ? extra.base_url || '' : profile.baseURL || (ns === 'llm-deepseek' ? 'https://api.deepseek.com/anthropic' : ''),
+            base_url: imageProvider(provider) ? profile.baseURL ?? extra.baseUrl ?? extra.base_url ?? '' : profile.baseURL || (ns === 'llm-deepseek' ? 'https://api.deepseek.com/anthropic' : ''),
             api_format: ns === 'llm-deepseek' ? 'deepseek_messages' : formats[profile.api] || extra.api_format || 'responses',
             custom_headers: profile.headers || extra.custom_headers || {},
             settingsNs: ns, settingsPath: path,
@@ -220,9 +221,16 @@ window.__ModuleLoader__.load({
             ...(model.reasoningEffort == null ? {} : { reasoningEffort: model.reasoningEffort }),
             ...(model.isUserAdded ? { isUserAdded: true } : {})
           }]))
-          const extra = { name: config.name || '', provider: config.provider, model: config.model || '', credentialRef: ref, parameters }
+          const extra = { ...this.namespaces.get(SETTINGS_NAMESPACE)?.value?.entries?.[config.id],
+            name: config.name || '', provider: config.provider, model: config.model || '', credentialRef: ref, parameters }
           if (imageProvider(config.provider)) {
-            Object.assign(extra, { base_url: config.base_url, api_format: config.api_format, image_settings: config.image_settings || {}, model_options: config.model_options || [], custom_headers: config.custom_headers || {} })
+            Object.assign(extra, { base_url: config.base_url, baseUrl: config.base_url,
+              api_format: config.api_format, apiFormat: config.api_format,
+              image_settings: config.image_settings || {}, imageSettings: config.image_settings || {},
+              model_options: config.model_options || [], custom_headers: config.custom_headers || {}, customHeaders: config.custom_headers || {} })
+            if (this.namespaces.get('llm-pi-ai')?.value?.providers?.[config.id]) {
+              await this.mutate('llm-pi-ai', [{ op: 'set', path: ['providers', config.id, 'baseURL'], value: config.base_url }])
+            }
           } else {
             const models = (config.model_options || []).map(model => ({ id: model.id, name: model.name || model.id,
               ...(model.contextWindowTokens == null ? {} : { contextWindow: model.contextWindowTokens }),
@@ -345,7 +353,7 @@ window.__ModuleLoader__.load({
       ctx.provide('eleckoiModels', catalog)
       ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: 'model', registrant: '@eleckoi/dsh-client-models' },
         () => React.createElement(ModelPage)))
-      const NavigationIcon = React.lazy(() => import('dsh-app://app/eleckoi/assets/eleckoi-page-model.js')
+      const NavigationIcon = React.lazy(() => import((globalThis.__ELECKOI_CLIENT_ASSETS__?.baseUrl ?? 'dsh-app://app/eleckoi/assets/') + 'eleckoi-page-model.js')
         .then(module => ({ default: module.NavigationIcon })))
       ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
         name: 'sidebar.panellist', id: 'model', order: 30, label: '模型配置', registrant: '@eleckoi/dsh-client-models'

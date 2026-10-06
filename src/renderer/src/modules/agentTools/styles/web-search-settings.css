@@ -1,6 +1,8 @@
 .web-search-config {
+  container: search-tools / inline-size;
+  min-width: 0;
   display: grid;
-  gap: 22px;
+  gap: 16px;
 }
 
 .web-search-config-fieldset {
@@ -25,7 +27,7 @@
 
 .web-search-mode > button {
   display: grid;
-  min-height: 60px;
+  min-height: 52px;
   align-content: center;
   gap: 3px;
   padding: 9px 13px;
@@ -44,6 +46,7 @@
 
 .web-search-mode strong { font-size: 13px; font-weight: 650; }
 .web-search-mode span { color: var(--muted); font-size: 11px; }
+.web-search-mode :is(strong,span) { min-width: 0; overflow-wrap: anywhere; }
 
 .web-search-key-field {
   display: grid;
@@ -52,7 +55,7 @@
   overflow: hidden;
   background: var(--surface-raised);
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .web-search-key-field:focus-within { border-color: var(--blue); }
@@ -77,7 +80,7 @@
   color: var(--text);
   background: var(--surface-raised);
   border: 1px solid var(--line-strong);
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   font-size: 12px;
   font-weight: 600;
 }
@@ -91,13 +94,13 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   padding: 3px;
   background: var(--control-bg);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .web-search-results > button {
   height: 34px;
   color: var(--muted);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 12px;
   font-weight: 600;
 }
@@ -125,4 +128,3 @@
 @media (prefers-reduced-motion: reduce) {
   .web-search-config .is-spinning { animation: none; }
 }
-

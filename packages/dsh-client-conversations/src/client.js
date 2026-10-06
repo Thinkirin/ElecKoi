@@ -2,7 +2,7 @@ window.__ModuleLoader__.load({
   id: '@eleckoi/dsh-client-conversations',
   factory(require) {
     const React = require('react')
-    const MessagesPage = React.lazy(() => import('dsh-app://app/eleckoi/assets/eleckoi-page-messages.js')
+    const MessagesPage = React.lazy(() => import((globalThis.__ELECKOI_CLIENT_ASSETS__?.baseUrl ?? 'dsh-app://app/eleckoi/assets/') + 'eleckoi-page-messages.js')
       .then(module => ({ default: module.MessagesPage })))
 
     const contentText = content => Array.isArray(content)
@@ -358,7 +358,14 @@ window.__ModuleLoader__.load({
     function officialMessages(snapshot, details, runtimeSessionId, processByTurn = new Map(), pendingSubmissions = [], sessionRunning, inputLinks = []) {
       if (!snapshot) return (details?.messages || []).filter(message => message.id === 'opening')
       const entries = orderedChatEntries(snapshot)
+      for (const node of snapshot.nodes?.values?.() || []) {
+        const seq = Number(node.id), binding = details?.compatibilityPresentation?.bindings?.[`${runtimeSessionId}:${seq}`]
+        if (node.kind === 'system-prompt' && binding?.role === 'system' && !entries.some(entry => entry.node === node)) {
+          entries.push({ key: node.key || `plugin-system-${seq}`, node })
+        }
+      }
       const nodes = entries.map(entry => entry.node)
+      const failedTurns = new Set(nodes.filter(node => node.kind === 'turn-error').map(nodeTurn))
       const closedTurns = new Set(nodes.filter(node => node.kind === 'turn-tail' && node.data?.closing)
         .map(nodeTurn).filter(Number.isSafeInteger))
       const latestOpenAssistantByTurn = new Map()
@@ -371,12 +378,20 @@ window.__ModuleLoader__.load({
         // The official Session can publish the running assistant-step before
         // its first text/process event. Keep that real DSH node visible while
         // the Session is running; do not manufacture a product-only row.
-        if (hasActivity || (entry.node.data?.status === 'running' && sessionRunning === true)) {
+        if (hasActivity || (entry.node.data?.status === 'running' && sessionRunning === true && !failedTurns.has(turn))) {
           latestOpenAssistantByTurn.set(turn, index)
         }
       })
       const projected = entries.flatMap((entry, nodeIndex) => {
         const node = entry.node
+        if (node.kind === 'system-prompt') {
+          const seq = Number(node.id), binding = details?.compatibilityPresentation?.bindings?.[`${runtimeSessionId}:${seq}`]
+          // Only a real plugin-inserted system message has a persisted binding.
+          // Internal Agent system prompts remain part of its process projection.
+          if (!binding || binding.role !== 'system') return []
+          return [{ role: 'system', seq, time: node.location?.step?.start?.time,
+            content: node.data?.text || '', sessionEventSeq: seq }]
+        }
         if (node.kind === 'user' || node.kind === 'steering') {
           const input = node.data
           const dshTurn = projectedUserTurn(nodes, nodeIndex)
@@ -399,11 +414,18 @@ window.__ModuleLoader__.load({
             time: node.data?.time, content: live.started ? live.content : '',
             displayContent: live.started ? live.content : '',
             dshMessageId: node.data?.messageId || '', nodeKey: entry.key, dshTurn: turn,
-            // An unknown session state is not proof that generation is still
-            // running. During Session rebind DSH can publish the historical
-            // assistant-step before the new Session state arrives; treating
-            // that gap as streaming hides the normal message actions.
-            pending: sessionRunning === true,
+            pending: sessionRunning === true && !failedTurns.has(turn),
+          }]
+        }
+        // Terminal failures are official Chat nodes in their own right. They
+        // are diagnostics, not assistant text or messages that can be edited.
+        if (node.kind === 'turn-error') {
+          const failure = node.data
+          return [{
+            kind: 'turn-error', role: 'system', seq: failure.seq, time: failure.time,
+            content: failure.message, displayContent: failure.message,
+            dshTurn: failure.turn, nodeKey: entry.key,
+            error: { message: failure.message, ...(failure.code ? { code: failure.code } : {}) },
           }]
         }
         if (node.kind !== 'turn-tail' || !node.data?.closing) return []
@@ -458,7 +480,8 @@ window.__ModuleLoader__.load({
       }
       const visible = projected.map((item, index) => {
         const source = matched.get(index)
-        const id = source?.id || item.dshMessageId || item.nodeKey || (item.requestId
+        const migration = details?.compatibilityPresentation?.bindings?.[`${runtimeSessionId}:${item.seq}`]
+        const id = migration?.id || source?.id || item.dshMessageId || item.nodeKey || (item.requestId
           ? `dsh-pending-${item.requestId}`
           : `dsh-${runtimeSessionId}-${item.seq}-${item.role}`)
         const runtimeVariableState = item.role === 'assistant' && Number.isSafeInteger(item.dshTurn)
@@ -491,7 +514,9 @@ window.__ModuleLoader__.load({
           // product-row metadata is only a fallback for pre-checkpoint history.
           variableStateJson: runtimeVariableState || source?.variableStateJson || '{}',
           createdAt: source?.createdAt || new Date(item.time || Date.now()).toISOString(),
-          status: item.pending ? 'streaming' : item.interrupted ? 'cancelled' : 'complete',
+          ...(item.kind ? { kind: item.kind } : {}),
+          ...(item.error ? { error: item.error, dshTurn: item.dshTurn } : {}),
+          status: item.error ? 'error' : item.pending ? 'streaming' : item.interrupted ? 'cancelled' : 'complete',
           process: mergedProcess(source?.process, processByTurn.get(item.dshTurn)),
           ...(item.turnUsage || source?.turnUsage ? { turnUsage: item.turnUsage || source.turnUsage } : {}),
           ...(item.images?.length ? { inputImageAttachments: item.images } : {}),
@@ -504,8 +529,25 @@ window.__ModuleLoader__.load({
       }).filter(item => item.keep).map(item => item.message)
       const anchor = visible.findIndex(message => Number.isSafeInteger(matched.get(projected.findIndex(item => item.seq === message.sequence))?.messageIndex))
       const firstFloor = !details?.hasMore || anchor < 0 ? opening.length : Math.max(opening.length,
-        matched.get(projected.findIndex(item => item.seq === visible[anchor].sequence)).messageIndex - anchor)
-      return [...opening, ...visible.map((message, index) => ({ ...message, messageIndex: firstFloor + index }))]
+        matched.get(projected.findIndex(item => item.seq === visible[anchor].sequence)).messageIndex
+          - visible.slice(0, anchor).filter(message => message.kind !== 'turn-error').length)
+      const presentation = details?.compatibilityPresentation, timeline = presentation?.timeline || {}, deleted = new Set(timeline.deleted || [])
+      const order = new Map((timeline.order || []).map((id, index) => [id, index]))
+      let messageFloor = firstFloor
+      let finalFloor = 0
+        return [...opening, ...visible.map(message => ({ ...message,
+          messageIndex: message.kind === 'turn-error' ? undefined : messageFloor++ }))]
+        .filter(message => !deleted.has(message.id)).map(message => {
+          const metadata = presentation?.metadata?.[message.id] || {}, extensions = presentation?.extensions?.[message.id] || {}
+          const binding = presentation?.bindings?.[`${runtimeSessionId}:${message.sessionEventSeq}`], swipes = presentation?.swipes?.[message.id] || {}
+          return { ...message, ...extensions, ...swipes, ...(presentation?.variables?.[message.id] ? { variables: presentation.variables[message.id] } : {}),
+            ...(binding?.role ? { role: binding.role } : {}), metadata, ...(typeof metadata.name === 'string' ? { name: metadata.name, speakerName: metadata.name } : {}),
+            ...(typeof metadata.speakerId === 'string' ? { speakerId: metadata.speakerId } : {}),
+            ...(typeof metadata.avatar === 'string' ? { speakerAvatar: metadata.avatar } : {}),
+            ...(metadata.extra?.reasoning !== undefined ? { reasoning: metadata.extra.reasoning } : {}) }
+        }).sort((a, b) => (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(b.id) ?? Number.MAX_SAFE_INTEGER))
+        .map(message => message.kind === 'turn-error' ? { ...message, messageIndex: undefined }
+          : { ...message, messageIndex: order.size || deleted.size ? finalFloor++ : message.messageIndex })
     }
 
     class ConversationCatalog {
@@ -838,7 +880,7 @@ window.__ModuleLoader__.load({
       }
 
       displayProjectionInput(messages) {
-        return messages.filter(message => typeof message.content === 'string')
+        return messages.filter(message => (message.role === 'user' || message.role === 'assistant') && typeof message.content === 'string')
           .map(message => ({
             id: message.id,
             role: message.role,
@@ -1014,6 +1056,15 @@ window.__ModuleLoader__.load({
           return
         }
         if (change.kind !== 'messages' || change.conversationId !== this.detailsSnapshot.id) return
+        if (change.sessionRewritten === true && !this.sessionMutations.has(change.conversationId)) {
+          void this.reloadCompatibilityProjection(change.conversationId).catch(error => {
+            if (!this.disposed && this.detailsSnapshot.id === change.conversationId) this.publishDetails({
+              ...this.detailsSnapshot, status: 'error', error: error.message || String(error)
+            })
+            console.error('重载修改后的 DSH 会话失败：', error)
+          })
+          return
+        }
         if (change.reason === 'deleted' || change.reason === 'regenerated' || change.reason === 'edited') {
           if (this.sessionMutations.has(change.conversationId)
             || this.detailInvalidationFences.has(change.conversationId)) return
@@ -1116,6 +1167,31 @@ window.__ModuleLoader__.load({
         return this.detailsSnapshot.details
       }
 
+      async reloadCompatibilityProjection(conversationId) {
+        if (this.disposed || this.detailsSnapshot.id !== conversationId) return
+        const runtimeSessionId = this.sessionReference?.sessionId || this.runtimeSessionId(conversationId) || this.detailsSnapshot.runtimeSessionId
+        this.releaseOfficialSession()
+        this.invalidateDetails(conversationId)
+        if (runtimeSessionId && this.sessions) await this.sessions.reloadHistory(runtimeSessionId)
+        await this.bindOfficialSession(conversationId, runtimeSessionId)
+        return this.refreshDetails()
+      }
+
+      async mutateCompatibilityTimeline(conversationId, operation) {
+        if (!conversationId || typeof operation !== 'function') throw new Error('修改消息需要绑定的会话和实际操作。')
+        if (this.detailsSnapshot.id !== conversationId) {
+          const result = await operation()
+          const runtimeSessionId = this.runtimeSessionId(conversationId)
+          if (runtimeSessionId && this.sessions) await this.sessions.reloadHistory(runtimeSessionId)
+          return result
+        }
+        const result = await this.mutateSession(conversationId, operation)
+        await this.sessions.refresh()
+        await this.bindOfficialSession(conversationId)
+        await this.refreshDetails()
+        return result
+      }
+
       async deleteMessagesFrom(conversationId, eventSeq, role) {
         if (!this.sessions || !this.uiConversation) throw new Error('DSH 会话客户端尚未就绪。')
         this.detailInvalidationFences.add(conversationId)
@@ -1167,6 +1243,7 @@ window.__ModuleLoader__.load({
       activate(id) {
         if (this.disposed) return
         if (id === this.detailsSnapshot.id) return
+        this.displayProjectionResults = new Map()
         this.releaseOfficialSession()
         this.publishStats('', null)
         this.detailGeneration += 1
@@ -1186,7 +1263,8 @@ window.__ModuleLoader__.load({
       releaseOfficialSession() {
         this.displayProjectionGeneration += 1
         this.displayProjectionKey = ''
-        this.displayProjectionResults = new Map()
+        // Same-chat Session rewrites keep unchanged authored display documents.
+        // applyDisplayProjection still rejects entries whose source/input changed.
         this.displayProjectionPromise = null
         this.sessionBindingGeneration += 1
         this.stopSessionTarget()
@@ -1303,7 +1381,7 @@ window.__ModuleLoader__.load({
           canChangeOpening: this.openingChangeAllowed(this.detailsSnapshot.id, runtimeSessionId),
           sessionRunning,
           pendingSubmissions,
-          nodes: nodes.filter(node => node.kind === 'user' || node.kind === 'steering'
+          nodes: nodes.filter(node => node.kind === 'user' || node.kind === 'steering' || node.kind === 'turn-error'
             || (node.kind === 'turn-tail' && node.data?.closing)
             || node.kind === 'assistant-step' || node.kind === 'tool-call')
         }
@@ -1482,9 +1560,13 @@ window.__ModuleLoader__.load({
             }
           }
         }
-        const liveTurn = [...(chat?.timeline?.turns?.values() || [])].findLast(turn => turn.status === 'open')?.turn
+        const nodes = orderedChatNodes(chat)
+        const turns = [...(chat?.timeline?.turns?.values() || [])]
+        const liveTurn = turns.findLast(turn => turn.status === 'open')?.turn
+          ?? turns.at(-1)?.turn
+          ?? nodeTurn(nodes.findLast(node => Number.isSafeInteger(nodeTurn(node))))
           ?? this.streamState.dshTurn
-        const runningAssistant = orderedChatNodes(chat)
+        const runningAssistant = nodes
           .findLast(node => node.kind === 'assistant-step'
             && (!Number.isSafeInteger(liveTurn) || nodeTurn(node) === liveTurn)
             && (node.data?.status === 'running' || assistantText(node.data?.blocks).trim() !== ''))
@@ -1497,7 +1579,8 @@ window.__ModuleLoader__.load({
         const promptError = sessionState.promptError?.op === 'send'
           ? sessionState.promptError.error?.message || '生成失败。'
           : ''
-        const executionError = promptError || sessionState.lastAgentError || sessionState.openError?.message
+        const terminalFailure = nodes.findLast(node => node.kind === 'turn-error' && nodeTurn(node) === openTurn)
+        const executionError = promptError || sessionState.lastAgentError || terminalFailure?.data?.message || sessionState.openError?.message
           || (sessionState.removed ? 'DSH 会话已关闭。' : '')
         const cancellationSettling = this.cancelledStreamConversations.has(id)
         // DSH publishes the turn-tail as soon as `turn/end` is observed. Its
@@ -1734,6 +1817,8 @@ window.__ModuleLoader__.load({
         if (prepared.operationId) {
           this.unwrap(await this.remote.eleckoiConversations.waitForGeneration(conversationId, prepared.operationId), '等待保存及插件收尾失败。')
         }
+        const group = this.unwrap(await this.remote.eleckoiConversations.completeGroupRound(conversationId, completed.cancelled || request.cancelled), '群聊回合执行失败。')
+        completed.cancelled ||= group.cancelled
         const details = this.detailsSnapshot.id === conversationId
           ? await this.refreshDetails()
           : this.unwrap(await this.remote.eleckoiConversations.details(conversationId, undefined, undefined), '读取会话详情失败。')
@@ -1808,6 +1893,9 @@ window.__ModuleLoader__.load({
         }
         await this.sessions.refresh()
         await this.bindOfficialSession(input.conversationId)
+        // Rewind invalidates the projection. Request presentation hooks need the
+        // fresh retained history before the Agent can begin its next request.
+        if (this.detailsSnapshot.id === input.conversationId) await this.refreshDetails()
         request.statsBaselineSteps = this.latestStatsSnapshot.stats?.sessionStats?.steps ?? 0
         const session = this.sessionReference?.binding.session
         if (!session || prepared.prepared !== true) throw new Error('重新生成请求未完成 DSH Session 回退。')
@@ -2070,7 +2158,7 @@ window.__ModuleLoader__.load({
       ctx.provide('eleckoiConversations', catalog)
       ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: 'messages', registrant: '@eleckoi/dsh-client-conversations' },
         () => React.createElement(MessagesPage)))
-      const NavigationIcon = React.lazy(() => import('dsh-app://app/eleckoi/assets/eleckoi-page-messages.js')
+      const NavigationIcon = React.lazy(() => import((globalThis.__ELECKOI_CLIENT_ASSETS__?.baseUrl ?? 'dsh-app://app/eleckoi/assets/') + 'eleckoi-page-messages.js')
         .then(module => ({ default: module.NavigationIcon })))
       ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
         name: 'sidebar.panellist', id: 'messages', order: -40, label: '消息', registrant: '@eleckoi/dsh-client-conversations'

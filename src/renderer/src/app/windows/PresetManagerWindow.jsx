@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { applyAppearanceTheme } from "../../modules/appearance/index.js";
 import {
   downloadPresetFile,
   fileBase64,
@@ -7,7 +6,7 @@ import {
   PresetManager,
 } from "../../modules/presets/index.js";
 import { showCurrentWindow } from "../services/windowControls.js";
-import { TitleBar } from "./shell/components/TitleBar.jsx";
+import { ProductWindowTitleBar } from "./ProductWindowTitleBar.jsx";
 
 const ALL_PRESETS = "全部预设";
 
@@ -43,7 +42,6 @@ export function PresetManagerWindow({ presetCatalog, renderPresetManager }) {
   }, [acceptCatalog, presetCatalog]);
 
   useEffect(() => {
-    applyAppearanceTheme(null);
     document.title = "预设管理器 - ElecKoi";
     showCurrentWindow().catch(() => {});
     const update = () => {
@@ -130,9 +128,9 @@ export function PresetManagerWindow({ presetCatalog, renderPresetManager }) {
   /> : null;
 
   return (
-    <main className="qq-shell management-window-shell">
-      <TitleBar splitSurface />
-      <section className="management-window-content">
+    <main className="qq-shell management-window-shell preset-management-window-shell">
+      <ProductWindowTitleBar title="预设管理器" splitSurface />
+      <section className="management-window-content preset-management-window-content">
         {!catalog && !loadError ? <p className="management-window-state">正在读取…</p> : loadError ? (
           <div className="management-window-state is-error" role="alert">
             <span>{loadError}</span>

@@ -5,7 +5,7 @@ export { MessageNavIcon as NavigationIcon } from "../../../src/renderer/src/ui/i
 
 export function MessagesPage() {
   const view = useMainPageView();
-  const { chat, appearance, conversations, presets, renderRoleplay, renderConversationList, renderLayout, selectConversation, openChatBackground, openPresetTools, openCharacterSection } = view;
+  const { chat, appearance, conversations, presets, renderRoleplay, renderConversationList, renderLayout, selectConversation, openCharacterChat, closeChat, openChatBackground, openPresetTools, openCharacterSection } = view;
   const listOwner = {
     keyword: chat.keyword,
     setKeyword: chat.setKeyword,
@@ -15,7 +15,7 @@ export function MessagesPage() {
     characters: chat.characters,
     artworkMode: appearance.sidebarCharacterArtwork,
     onLoadChat: selectConversation,
-    onOpenCharacterChat: chat.openCharacterChat,
+    onOpenCharacterChat: openCharacterChat,
     onGoCharacterSettings: openCharacterSection,
     onTogglePinChat: chat.togglePinChat,
     onOpenChatWindow: chat.openChatWindow,
@@ -28,6 +28,7 @@ export function MessagesPage() {
       renderRoleplay={renderRoleplay}
       hasActiveChat={Boolean(chat.sessionId || chat.chatCharacter?.character_id)}
       conversationId={chat.sessionId}
+      characterId={chat.chatCharacter?.character_id || ''}
       isSwitchingChat={chat.isSwitchingChat}
       conversationTransitionRevision={chat.conversationTransitionRevision}
       runtimeSessionId={chat.runtimeSessionId}
@@ -36,6 +37,7 @@ export function MessagesPage() {
       hasCharacters={Boolean(chat.characters?.items?.length)}
       currentTitle={chat.currentTitle}
       persona={chat.chatPersona}
+      characterRecords={chat.characters?.items || []}
       messages={chat.messages}
       input={chat.input}
       setInput={chat.setInput}
@@ -58,7 +60,10 @@ export function MessagesPage() {
       onSend={chat.sendMessage}
       onStop={chat.stopSend}
       onCreateChat={chat.createChat}
+      onOpenChat={chat.loadChat}
+      onCloseChat={closeChat}
       onOpenHistory={chat.openHistory}
+      onCloseHistory={chat.closeHistory}
       onOpenChatBackground={openChatBackground}
       onOpenPresetTools={openPresetTools}
       onRegenerate={chat.regenerateReply}

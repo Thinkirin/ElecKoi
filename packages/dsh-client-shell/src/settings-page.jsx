@@ -7,6 +7,7 @@ export function SettingsPage() {
   const { chat, appearance, appUpdates, settingsSections, renderSettingsSection, renderUserProfileEditor, settingsPage, setSettingsPage, changeActiveSection, renderLayout } = view;
   return <SettingsPanel
     activePage={settingsPage}
+    onBack={view.onMobileListOpen}
     onPageChange={setSettingsPage}
     persona={chat.persona}
     onUpdateUserProfile={chat.updateUserProfile}

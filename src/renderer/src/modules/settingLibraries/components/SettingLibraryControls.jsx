@@ -1,7 +1,9 @@
 import { useEffect, useId, useRef } from "react";
 import { CheckCircle, CircleNotch, FloppyDisk, WarningCircle } from "@phosphor-icons/react";
+import { useAnimatedClose } from "../../../ui/hooks/useAnimatedClose.js";
 
-export function ConfirmationDialog({ target, cancelLabel = "取消", confirmLabel = "确定", tone = "primary", onCancel, onConfirm }) {
+export function ConfirmationDialog({ target, cancelLabel = "取消", confirmLabel = "确定", confirmDisabled = false, tone = "primary", onCancel: onDismiss, onConfirm }) {
+  const { closing, close: onCancel } = useAnimatedClose(onDismiss, 200, Boolean(target));
   const titleId = useId();
   const messageId = useId();
   const dialogRef = useRef(null);
@@ -38,13 +40,13 @@ export function ConfirmationDialog({ target, cancelLabel = "取消", confirmLabe
   }
 
   return (
-    <div className="setting-library-dialog-overlay" role="presentation" onMouseDown={onCancel}>
+    <div className={`setting-library-dialog-overlay${closing ? ' is-closing' : ''}`} role="presentation" onMouseDown={onCancel}>
       <section ref={dialogRef} className="setting-library-dialog" role="alertdialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={messageId} onKeyDown={handleKeyDown} onMouseDown={(event) => event.stopPropagation()}>
         <h2 id={titleId}>{target.title}</h2>
         <p id={messageId}>{target.message}</p>
         <div>
           <button ref={cancelRef} type="button" onClick={onCancel}>{cancelLabel}</button>
-          <button type="button" className={tone === "destructive" ? "is-destructive" : "is-primary"} onClick={onConfirm}>{confirmLabel}</button>
+          <button type="button" disabled={confirmDisabled} className={tone === "destructive" ? "is-destructive" : "is-primary"} onClick={onConfirm}>{confirmLabel}</button>
         </div>
       </section>
     </div>

@@ -7,14 +7,16 @@ import { Avatar } from "../ui/Avatar.jsx";
 import { AvatarPreviewDialog } from "./AvatarPreviewDialog.jsx";
 import { AgentPencilIcon, CopyIcon, HistoryIcon, MessageChevronRightIcon, MessagePencilIcon, MoreDotsIcon, RefreshMessageIcon, SpeakerIcon } from "../icons/elecKoiMessageIcons.jsx";
 import { AgentProcessIcon } from "../../modules/chat/components/AgentProcessIcon.jsx";
-import { ChatImageGallery } from "../../modules/chat/components/ChatImageGallery.jsx";
+import { ChatImageGallery } from "./ChatImageGallery.jsx";
 import { ChatFileCards } from "../../modules/chat/components/ChatFileCards.jsx";
 import { TurnUsage } from "../../modules/chat/components/TurnUsage.jsx";
 import { liveProcessPresentation, shouldShowInlineAgentProcess } from "../../modules/chat/model/agentProcessPresentation.js";
 import { RichMessageFrame } from "../../modules/authorFrontend/index.js";
+import { splitRichMessageMedia } from "@shared/foundation/messageMedia";
 import { detectRichMessagePresentation } from "@shared/foundation/richMessage";
 import { normalizeMarkdownForRendering } from "./normalizeMarkdownForRendering.js";
 import { prepareMarkdownTextTones, registerMarkdownTextToneHighlights } from "./markdownTextTones.js";
+import { AdaptiveMessageEditor } from '../../modules/authorFrontend/components/AdaptiveChatSheet.jsx';
 
 const OPENING_SWIPE_DURATION = 125;
 const timestampFormatter = new Intl.DateTimeFormat("zh-CN", {
@@ -62,13 +64,8 @@ async function animateOpeningSlide(article, fromX, toX, freezeAtEnd = false) {
   };
 }
 
-function MessagePresentation({ message, content, streaming, renderMessageContent }) {
-  const presentation = useMemo(
-    () => message.role === "assistant" && !streaming
-      ? detectRichMessagePresentation(content || "", false)
-      : null,
-    [content, message.role, streaming],
-  );
+function MessagePresentation({ message, content, streaming, renderMessageContent, renderRichMessages = true, loadImage, agentMessage = false }) {
+  const segments = useMemo(() => message.role === "assistant" ? splitRichMessageMedia(content, message.images, !streaming && renderRichMessages ? detectRichMessagePresentation(content || "", false) : null) : [{ kind: "text", source: content }], [content, message.role, message.images, streaming, renderRichMessages]);
   const renderMarkdown = (source, key) => {
     const markdown = normalizeMarkdownForRendering(source || "");
     const content = <OfficialMarkdown key={key} content={markdown} streaming={streaming} />;
@@ -82,23 +79,17 @@ function MessagePresentation({ message, content, streaming, renderMessageContent
       streaming,
     }, content);
   };
-  if (message.role !== "assistant") return renderMarkdown(content, "message");
-  if (!presentation) return renderMarkdown(content, "message");
   let rootIndex = 0;
-  return <div className="rich-message-presentation">{presentation.parts.map((part) => {
-    if (part.kind !== "rich") return renderMarkdown(part.source, part.id);
-    const currentRootIndex = rootIndex;
-    rootIndex += 1;
-    return <RichMessageFrame
-      key={part.id}
-      message={message}
-      document={part.document}
-      rootIndex={currentRootIndex}
-    />;
+  return <div className="rich-message-presentation">{segments.map((segment, segmentIndex) => {
+    if (segment.kind === "image") return <ChatImageGallery key={`media-${segmentIndex}`} images={[segment.image]} generated messageId={message.id}
+      conversationId={message.conversationId} agentMessage={agentMessage} loadImage={loadImage} />;
+    if (segment.kind !== "rich") return renderMarkdown(segment.source, `text-${segmentIndex}`);
+    const currentRootIndex = rootIndex++;
+    return <RichMessageFrame key={`rich-${segmentIndex}`} message={message} document={segment.document} rootIndex={currentRootIndex} />;
   })}</div>;
 }
 
-function MessageBubbleComponent({ message = {}, avatar, pinSrc, name, layoutMode = "roleplay", avatarShape = "portrait", spacingAfter, floorNumber, showRoleplayTimestamp = true, showRoleplayFloor = true, isLatestAssistant = true, onOpenProcess, onPinAvatar, onSelectOpening, onEdit, onRegenerate, onOpenFile, pluginActions, pluginAfter, renderMessageContent, loadImage }) {
+function MessageBubbleComponent({ message = {}, avatar, pinSrc, name, layoutMode = "roleplay", avatarShape = "portrait", spacingAfter, floorNumber, showRoleplayTimestamp = true, showRoleplayFloor = true, isLatestAssistant = true, onOpenProcess, onPinAvatar, onSelectOpening, onEdit, onRegenerate, onOpenFile, pluginActions, pluginAfter, renderMessageContent, renderRichMessages = true, loadImage }) {
   const { role, content, pending = false } = message;
   const displayContent = message.displayContent ?? content;
   const isUser = role === "user";
@@ -265,17 +256,21 @@ function MessageBubbleComponent({ message = {}, avatar, pinSrc, name, layoutMode
         {!isUser && message.process?.length ? <button type="button" onClick={openProcess} aria-label="查看过程" title="查看过程"><HistoryIcon /></button> : null}
         {!isUser ? <TurnUsage usage={message.turnUsage} compact /> : null}
         <button type="button" onClick={() => navigator.clipboard?.writeText(displayContent || '')} aria-label="复制" title="复制"><CopyIcon /></button>
-        {!isUser && message.id !== 'opening' ? <button type="button" onClick={() => onRegenerate?.(message)} aria-label="重新生成" title="重新生成"><RefreshMessageIcon /></button> : null}
         <button type="button" onClick={speak} aria-label="朗读" title="朗读"><SpeakerIcon /></button>
       </div> : null}
-      <button type="button" onClick={() => setExpanded((value) => !value)} aria-label="更多" title="更多"><MoreDotsIcon /></button>
+      {!isUser && message.id !== 'opening' ? <button type="button" onClick={() => onRegenerate?.(message)} aria-label="重新生成" title="重新生成" disabled={!onRegenerate}><RefreshMessageIcon /></button> : null}
+      <button type="button" onClick={() => setExpanded((value) => !value)} aria-label="更多" title="更多" aria-expanded={expanded}><MoreDotsIcon /></button>
     </div>
     <button type="button" onClick={() => setEditing(true)} aria-label="编辑" title="编辑" disabled={!editingEnabled}><MessagePencilIcon /></button>
   </div> : null;
   return (
     <article
       ref={articleRef}
-      className={`message ${isUser ? "mine" : "theirs"} message-${layoutMode} avatar-shape-${avatarShape}${showOpeningPager ? " has-opening-pager" : ""}${layoutMode === "agent" && !isUser && isLatestAssistant ? " is-latest-assistant" : ""}`}
+      className={`message ${isUser ? "mine" : "theirs"} message-${layoutMode} avatar-shape-${avatarShape}${showOpeningPager ? " has-opening-pager" : ""}${layoutMode === "agent" && !isUser && isLatestAssistant ? " is-latest-assistant" : ""} mes`}
+      data-message-id={message.id}
+      data-native-id={message.id}
+      mesid={Number.isInteger(message.messageIndex) ? message.messageIndex : floorNumber}
+      is_user={isUser ? 'true' : 'false'}
       style={Number.isFinite(spacingAfter) ? { marginBottom: `${spacingAfter}px` } : undefined}
     >
       {avatar
@@ -293,7 +288,7 @@ function MessageBubbleComponent({ message = {}, avatar, pinSrc, name, layoutMode
         {isUser ? <ChatImageGallery images={message.inputImageAttachments || []} conversationId={message.conversationId} agentMessage={layoutMode === "agent"} loadImage={loadImage} /> : null}
         {isUser ? <ChatFileCards files={message.inputFileAttachments || []}
           onOpen={(file) => onOpenFile?.(message.conversationId, file.attachmentId, file.name)} /> : null}
-        {editing ? <div className="message-inline-editor"><textarea
+        {editing && layoutMode !== 'roleplay' ? <div className="message-inline-editor"><textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
@@ -312,14 +307,19 @@ function MessageBubbleComponent({ message = {}, avatar, pinSrc, name, layoutMode
           <AgentProcessIcon name={liveProcess.icon} size={liveProcess.icon === 'reasoning' ? 27 : 17} animated={liveProcess.icon === 'reasoning'} />
           <span className="agent-process-inline-label">{liveProcess.title}</span>
           <MessageChevronRightIcon size={14} />
-        </button> : displayContent ? <div ref={markdownRef} className="bubble markdown-message">
+        </button> : displayContent || (!isUser && message.images?.length) ? <div ref={markdownRef} className="bubble markdown-message mes_text">
           <MessagePresentation
             message={message}
             content={markdownTonePresentation.markdown}
             streaming={pending}
             renderMessageContent={renderMessageContent}
+            renderRichMessages={renderRichMessages}
+            loadImage={loadImage}
+            agentMessage={layoutMode === "agent"}
           />
         </div> : null}
+        {isUser && message.images?.length ? <ChatImageGallery images={message.images} generated messageId={message.id}
+          conversationId={message.conversationId} agentMessage={layoutMode === 'agent'} loadImage={loadImage} /> : null}
         {pluginAfter}
         {layoutMode === "agent" && isUser && !pending && !editing ? <div className="agent-user-actions" aria-label="用户消息操作">
           <button type="button" onClick={() => navigator.clipboard?.writeText(displayContent || "")} aria-label="复制" title="复制" disabled={!displayContent}><CopyIcon /></button>
@@ -339,6 +339,8 @@ function MessageBubbleComponent({ message = {}, avatar, pinSrc, name, layoutMode
       </div>
       {layoutMode === "roleplay" ? messageTools : null}
       {layoutMode !== "agent" ? openingPager : null}
+      {editing && layoutMode === 'roleplay' ? <AdaptiveMessageEditor message={message} onSave={onEdit}
+        onRegenerate={isUser ? onRegenerate : undefined} onClose={() => setEditing(false)} /> : null}
       {avatarPreviewOpen && avatar ? <AvatarPreviewDialog src={avatar} name={name} onClose={() => setAvatarPreviewOpen(false)} onPin={onPinAvatar ? () => { onPinAvatar({ src: pinSrc || avatar, name }); setAvatarPreviewOpen(false); } : undefined} /> : null}
       {jumpOpen && typeof document !== "undefined" ? createPortal(
         <div className="opening-jump-backdrop" onPointerDown={() => closePageJump()}>

@@ -54,6 +54,7 @@ export function ChatWindow({ conversations, characters, characterConfiguration, 
           currentTitle={chat.currentTitle}
           characterId={chat.chatCharacter?.character_id || ""}
           persona={chat.chatPersona}
+          characterRecords={chat.characters?.items || []}
           messages={chat.messages}
           input={chat.input}
           setInput={chat.setInput}
@@ -76,7 +77,10 @@ export function ChatWindow({ conversations, characters, characterConfiguration, 
           onSend={chat.sendMessage}
           onStop={chat.stopSend}
           onCreateChat={chat.createChat}
+          onOpenChat={chat.loadChat}
+          onCloseChat={chat.clearActiveChat}
           onOpenHistory={chat.openHistory}
+          onCloseHistory={chat.closeHistory}
           onOpenChatBackground={() => {
             setChatBackgroundOpen(true);
           }}

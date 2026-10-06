@@ -1,8 +1,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
   CaretRight,
   Code,
+  DotsThree,
   Copy,
   FileText,
   GitBranch,
@@ -11,7 +11,6 @@ import {
   PencilSimple,
   Plus,
   Trash,
-  X,
 } from "@phosphor-icons/react";
 import { Avatar } from "../../../ui/ui/Avatar.jsx";
 import { conversationPreviewText } from "../../../ui/messages/conversationPreviewText.js";
@@ -22,6 +21,7 @@ import { PINNED_ENTRY_IDS, createEntryDraft, createGroupDraft, createId, uniqueN
 import { descendants, findSelected, nodeKey } from "../model/settingLibraryTree.js";
 import { DynamicSettingsNameDialog } from "./DynamicSettingsDialogs.jsx";
 import { ConfirmationDialog, SaveControl } from "./SettingLibraryControls.jsx";
+import { EditorHeader } from '../../../ui/ui/EditorHeader.jsx';
 import { SettingEntryGlyph, SettingLibraryEntryEditor } from "./SettingLibraryEntryEditor.jsx";
 import { BranchSettingsSplitView } from "./BranchSettingsSplitView.jsx";
 import { DEFAULT_INSPECTOR_WIDTH } from "../model/settingLibraryInspectorSizing.js";
@@ -494,14 +494,11 @@ export const DynamicSettingsPanel = forwardRef(function DynamicSettingsPanel({ c
   const editableEntry = selected.kind === "entry" && isEditableEntry(selected.value);
 
   return (
-      <section className="dynamic-settings-detail" aria-label={`分支设定：${selectedItem.title}`} onMouseDown={() => { setAddMenuOpen(false); setContextMenu(null); }}>
-      <header className="dynamic-settings-detail-toolbar" onMouseDown={(event) => event.stopPropagation()}>
-        <button type="button" className="dynamic-settings-back" aria-label="返回对话列表" onClick={closeConversation}><ArrowLeft size={18} /></button>
-        <span className="dynamic-settings-branch-label"><GitBranch size={18} aria-hidden="true" />分支 {branchNumbersRef.current.get(selectedItem.sessionId)}</span>
-        <CaretRight className="dynamic-settings-breadcrumb-divider" size={13} aria-hidden="true" />
-        <div className="dynamic-settings-toolbar-copy">
-          <strong title={selectedItem.title}>{selectedItem.title || "未命名聊天"}</strong>
-        </div>
+    <section className="dynamic-settings-detail" aria-label={`分支设定：${selectedItem.title}`} onMouseDown={() => { setAddMenuOpen(false); setContextMenu(null); }}>
+      <EditorHeader className="dynamic-settings-detail-toolbar" onBack={closeConversation} backLabel="返回对话列表"
+        title={<span className="dynamic-settings-toolbar-title"><span className="dynamic-settings-branch-label"><GitBranch size={16} aria-hidden="true" />分支 {branchNumbersRef.current.get(selectedItem.sessionId)}</span><span className="dynamic-settings-toolbar-copy">{selectedItem.title || "未命名聊天"}</span></span>}
+        saveAction={<SaveControl dirty={dirty} error={error} notice={notice} saving={saving} onSave={save} />}
+        moreAction={<details className="compact-editor-more"><summary aria-label="动态设定操作"><DotsThree size={22} /></summary><div>
         <button type="button" className="dynamic-settings-secondary-action" title="保存为设定版本" aria-label="保存为设定版本" disabled={saving} onClick={() => setNameDialog({
           type: "version",
           title: "保存为设定版本",
@@ -514,7 +511,7 @@ export const DynamicSettingsPanel = forwardRef(function DynamicSettingsPanel({ c
           title: "清空这段对话的分支设定？",
           message: "将删除这段对话里由 AI 和你产生的全部设定改动，并回归母设定。母设定不会被修改。",
         })}><Trash size={15} />清空</button>
-      </header>
+        </div></details>} />
 
       <BranchSettingsSplitView preferredWidth={inspectorWidth} onWidthChange={setInspectorWidth}>
         <section className="dynamic-settings-tree-pane">
@@ -524,7 +521,7 @@ export const DynamicSettingsPanel = forwardRef(function DynamicSettingsPanel({ c
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索设定" aria-label="搜索分支设定" />
             </label>
             <div className="setting-library-add-wrap">
-              <button type="button" className="setting-library-create-button" aria-label="新建" aria-expanded={addMenuOpen} onClick={() => setAddMenuOpen((open) => !open)}><Plus size={16} />新建</button>
+              <button type="button" className="setting-library-create-button" title="新建" aria-label="新建" aria-expanded={addMenuOpen} onClick={() => setAddMenuOpen((open) => !open)}><Plus size={16} /><span>新建</span></button>
               {addMenuOpen ? (
                 <div className="setting-library-popover" role="menu">
                   <button type="button" role="menuitem" onClick={() => {
@@ -603,11 +600,9 @@ export const DynamicSettingsPanel = forwardRef(function DynamicSettingsPanel({ c
 
         {selected.value ? <aside className="dynamic-settings-inspector" aria-label="分支设定详情">
             <>
-              <header>
-                <span aria-hidden="true">{selected.kind === "group" ? <DshFolderClosedIcon /> : <EntryIcon entry={selected.value} />}</span>
-                <strong>{selected.kind === "group" ? selected.value.name : selected.value.title || "未命名设定"}</strong>
-                <button type="button" aria-label="关闭详情" onClick={() => setSelectedKey("")}><X size={17} /></button>
-              </header>
+              <EditorHeader className="catalog-editor-header" onBack={() => setSelectedKey('')} backLabel="返回分支设定列表"
+                title={selected.kind === "group" ? selected.value.name || "文件夹" : selected.value.title || "未命名设定"}
+                saveAction={<SaveControl dirty={dirty} error={error} notice={notice} saving={saving} onSave={save} />} />
               <div className="dynamic-settings-inspector-body">
                 {selected.kind === "group" ? (
                   <label className="dynamic-settings-field">

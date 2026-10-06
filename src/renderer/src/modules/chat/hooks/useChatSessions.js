@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { openProductWindow } from '../../../app/services/platform.js';
 import {
   createChat as createChatSession,
   deleteChat,
@@ -525,7 +526,7 @@ export function useChatSessions({ conversations, persona, characters, modelConfi
     const label = `chat-${String(chatId).replace(/[^a-zA-Z0-9-/:_]/g, "_")}`;
     const url = new URL(window.location.href);
     url.search = `?view=chat&chat=${encodeURIComponent(chatId)}`;
-    window.open(url.toString(), label, "width=960,height=720");
+    openProductWindow(url, label, "width=960,height=720");
     clearActiveChat();
   }
 
@@ -724,6 +725,7 @@ export function useChatSessions({ conversations, persona, characters, modelConfi
 
   return {
     sessions: displaySessions,
+    chatMetadata: detailsSnapshot.id === sessionId ? detailsSnapshot.details?.compatibilityPresentation?.metadata?.chat || {} : {},
     sessionId,
     isSwitchingChat,
     conversationTransitionRevision,

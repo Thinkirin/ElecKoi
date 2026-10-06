@@ -20,6 +20,7 @@ import {
   savePositionDraft,
 } from '../model/customPositions.js';
 import '../styles/custom-positions.css';
+import { useAnimatedClose } from '../../../ui/hooks/useAnimatedClose.js';
 
 const FIXED_POSITION_ICONS = {
   instructions: PushPin,
@@ -34,11 +35,12 @@ export function FixedPositionIcon({ id, size = 17 }) {
   return <Icon size={size} weight={id === 'instructions' ? 'fill' : 'regular'} />;
 }
 
-function PositionNameDialog({ draft, existing, onChange, onCancel, onSave }) {
+function PositionNameDialog({ draft, existing, onChange, onCancel: onDismiss, onSave }) {
+  const { closing, close: onCancel } = useAnimatedClose(onDismiss);
   const inputRef = useRef(null);
   const [error, setError] = useState('');
   useEffect(() => { inputRef.current?.focus(); inputRef.current?.select(); }, []);
-  return <div className="setting-position-dialog-backdrop" role="presentation" onKeyDown={(event) => {
+  return <div className={`setting-position-dialog-backdrop${closing ? ' is-closing' : ''}`} role="presentation" onKeyDown={(event) => {
     if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onCancel(); }
   }} onMouseDown={(event) => {
     if (event.target === event.currentTarget) onCancel();
@@ -55,8 +57,9 @@ function PositionNameDialog({ draft, existing, onChange, onCancel, onSave }) {
   </div>;
 }
 
-function DeletePositionDialog({ position, affected, onCancel, onConfirm }) {
-  return <div className="setting-position-dialog-backdrop" role="presentation" onKeyDown={(event) => {
+function DeletePositionDialog({ position, affected, onCancel: onDismiss, onConfirm }) {
+  const { closing, close: onCancel } = useAnimatedClose(onDismiss);
+  return <div className={`setting-position-dialog-backdrop${closing ? ' is-closing' : ''}`} role="presentation" onKeyDown={(event) => {
     if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onCancel(); }
   }} onMouseDown={(event) => {
     if (event.target === event.currentTarget) onCancel();

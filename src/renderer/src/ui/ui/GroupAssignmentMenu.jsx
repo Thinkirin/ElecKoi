@@ -1,16 +1,47 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { CheckIcon } from "../icons/index.jsx";
 import { DshFolderClosedIcon } from "../icons/dshTreeIcons.jsx";
 import { MinusIcon } from "../icons/openSourceIcons.jsx";
 
 export function GroupAssignmentMenu({ x, y, label, currentGroupId = "", groups, onMove }) {
   const menuRef = useRef(null);
-  const estimatedHeight = Math.min(420, 20 + (groups.length + 1) * 34);
-  const left = Math.max(8, Math.min(x, window.innerWidth - 220));
-  const top = Math.max(8, Math.min(y, window.innerHeight - estimatedHeight - 8));
+  const [position, setPosition] = useState({ left:x, top:y });
+
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    if (!menu) return undefined;
+    const viewport = window.visualViewport;
+    const place = () => {
+      const width = viewport?.width ?? window.innerWidth;
+      const height = viewport?.height ?? window.innerHeight;
+      const offsetLeft = viewport?.offsetLeft ?? 0;
+      const offsetTop = viewport?.offsetTop ?? 0;
+      menu.style.maxHeight = `${Math.max(0, Math.min(420, height - 16))}px`;
+      menu.style.maxWidth = `${Math.max(0, width - 16)}px`;
+      const rect = menu.getBoundingClientRect();
+      const left = Math.max(offsetLeft + 8, Math.min(x, offsetLeft + width - rect.width - 8));
+      const top = Math.max(offsetTop + 8, Math.min(y, offsetTop + height - rect.height - 8));
+      setPosition(current => current.left === left && current.top === top ? current : { left, top });
+    };
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(menu);
+    window.addEventListener('resize', place);
+    viewport?.addEventListener('resize', place);
+    viewport?.addEventListener('scroll', place);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', place);
+      viewport?.removeEventListener('resize', place);
+      viewport?.removeEventListener('scroll', place);
+    };
+  }, [x, y]);
 
   useEffect(() => {
+    const previousFocus = document.activeElement;
     menuRef.current?.querySelector("button:not(:disabled)")?.focus();
+    return () => { if (previousFocus?.isConnected) previousFocus.focus(); };
   }, []);
 
   function moveFocus(event) {
@@ -28,13 +59,13 @@ export function GroupAssignmentMenu({ x, y, label, currentGroupId = "", groups, 
     }
   }
 
-  return (
+  return createPortal(
     <div
       ref={menuRef}
       className="group-assignment-menu"
       role="menu"
       aria-label={label}
-      style={{ left: `${left}px`, top: `${top}px` }}
+      style={position}
       onPointerDown={(event) => event.stopPropagation()}
       onContextMenu={(event) => event.preventDefault()}
       onKeyDown={moveFocus}
@@ -54,6 +85,6 @@ export function GroupAssignmentMenu({ x, y, label, currentGroupId = "", groups, 
           );
         })}
       </div> : null}
-    </div>
+    </div>, document.body
   );
 }

@@ -1,9 +1,11 @@
-import { createSystemMessage, freezeMessage, isAgentLoopRequest } from '@deepseek-ai/dsh-llm'
+import { createSystemMessage, createUserMessage, freezeMessage, isAgentLoopRequest } from '@deepseek-ai/dsh-llm'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { readSessionSnapshot } from './session-snapshot.mjs'
 import { requiredSettingCache } from './required-setting-cache.mjs'
 import { recordRequestContext } from './request-context-record.mjs'
+import { projectFrozenWorldbookMessages } from '@eleckoi/dsh-worldbook-compat'
+import { tavernPresetPlan, projectTavernPresetMessages, isCompatibilityCharacterField } from './tavern-preset-projection.mjs'
 
 export const name = 'eleckoi-conversation-context'
 export const projectionPlugin = 'eleckoi-request-projection'
@@ -19,7 +21,11 @@ const LEGACY_PROJECTION_PREFIX = 'ELECKOI_REQUEST_PROJECTION_V1\n'
 export function installConversationContext(agentCtx, snapshotRoot, sourceSessionId) {
   const read = () => {
     const snapshot = readSessionSnapshot(snapshotRoot, sourceSessionId)
-    const conversationContext = JSON.parse(readFileSync(snapshot.contextFile, 'utf8'))
+    const persistedContext = JSON.parse(readFileSync(snapshot.contextFile, 'utf8'))
+    const conversationContext = {
+      ...persistedContext,
+      conversationId: snapshot.conversationId ?? persistedContext.conversationId
+    }
     return { ...snapshot, conversationContext }
   }
   const disposeStepProjection = agentCtx.on('agent/pre-step', async ({ agent, signal }, next) => {
@@ -42,27 +48,27 @@ export function installConversationContext(agentCtx, snapshotRoot, sourceSession
     ensureProjectionEnvelope(session, projection)
     const productMessages = projectProductHistory(session.deriveMessages(), snapshot.conversationContext)
     const messages = projectRequestMessages(
-      projectCurrentUserPrompt(productMessages, snapshot.conversationContext), projection.plan
+      appendSessionInstructions(projectCurrentUserPrompt(productMessages, snapshot.conversationContext), snapshot), projection.plan
     )
-    const instructions = sessionInstructions(snapshot)
-    if (instructions) {
-      const systemIndex = messages.findLastIndex((message) => message?.role === 'system')
-      if (systemIndex >= 0) {
-        const system = messages[systemIndex]
-        messages[systemIndex] = freezeMessage({
-          ...system,
-          content: [...system.content, { type: 'text', text: `\n\n${instructions}` }]
-        })
-      } else {
-        const id = `eleckoi-system-${createHash('sha256').update(instructions).digest('hex')}`
-        messages.unshift(freezeMessage({ ...createSystemMessage(instructions, name), id }))
-      }
-    }
     recordRequestContext(agentCtx.sessionProjections, session, requestContextItems(messages, projection.plan))
-    return agentCtx.llm.stream({
+    const request = {
       ...options,
       messages
-    })
+    }
+    const mainGeneration = typeof agentCtx.get === 'function' ? agentCtx.get('eleckoiMainAgentGeneration', false) : agentCtx.eleckoiMainAgentGeneration
+    if (mainGeneration) return mainGeneration.streamRequest(request, snapshot.conversationContext)
+    // Provider transport must see the assembled product prompt, never the
+    // durable projection envelope or unfrozen Session input.
+    const settings = snapshot.conversationContext.compatibilityPreset?.compatibility === true
+      ? snapshot.conversationContext.compatibilityPreset.settings : undefined
+    if (settings && options.purpose !== 'compaction') {
+      const generation = typeof agentCtx.get === 'function' ? agentCtx.get('eleckoiCompatibilityGeneration', false) : agentCtx.eleckoiCompatibilityGeneration
+      if (!generation) throw new Error('The shared preset generation service is not mounted')
+      if (generation.requiresAdvancedSettings(settings)) return generation.streamWithSettings(request, settings, {
+        conversationId: snapshot.conversationContext.conversationId ?? snapshot.conversationId
+      })
+    }
+    return agentCtx.llm.stream(request)
   })
   return () => {
     disposeRequestProjection()
@@ -71,7 +77,8 @@ export function installConversationContext(agentCtx, snapshotRoot, sourceSession
 }
 
 function sessionInstructions(snapshot) {
-  const additions = settingInjections(snapshot.conversationContext)
+  const additions = (snapshot.conversationContext?.worldbookRound || snapshot.conversationContext?.compatibilityPreset?.compatibility
+    ? [] : settingInjections(snapshot.conversationContext))
     .filter((entry) => entry.anchor === 'instructions')
     .map((entry) => entry.content)
   return [snapshot.model?.systemPrompt, ...additions]
@@ -79,10 +86,50 @@ function sessionInstructions(snapshot) {
     .join('\n\n')
 }
 
+function appendSessionInstructions(input, snapshot) {
+  const instructions = sessionInstructions(snapshot)
+  if (!instructions) return input
+  const messages = [...input]
+  const systemIndex = messages.findLastIndex((message) => message?.role === 'system')
+  if (systemIndex >= 0) {
+    const system = messages[systemIndex]
+    messages[systemIndex] = freezeMessage({ ...system, content: [...system.content, { type: 'text', text: `\n\n${instructions}` }] })
+  } else {
+    const id = `eleckoi-system-${createHash('sha256').update(instructions).digest('hex')}`
+    messages.unshift(freezeMessage({ ...createSystemMessage(instructions, name), id }))
+  }
+  return messages
+}
+
 /** Freeze the complete active position graph into one durable projection definition. */
 export function requestProjectionPlan(context) {
-  return settingInjections(context)
-    .filter((entry) => entry.anchor !== 'instructions')
+  const managed = context?.worldbookRound
+  const orderedPreset = context?.compatibilityPreset?.compatibility === true
+  const tavern = tavernPresetPlan(context)
+  const databank = (context?.dataBankRound ?? []).map((row) => ({
+    id: `databank:${row.documentId}:${row.index}`, role: 'system', content: `[${row.name}]\n${row.text}`,
+    anchor: 'beforeHistory', projectionKind: 'worldbook', projectionRank: 50,
+    traceTitle: `资料库 · ${row.name}`, traceSource: String(row.url ?? row.documentId)
+  }))
+  const groupDepth = (context?.groupDepthPrompts ?? []).map((entry, index) => ({
+    id: `group-depth:${index}`, content: String(entry.text ?? ''), role: ['system', 'user', 'assistant'][entry.role] ?? entry.role ?? 'system',
+    anchor: 'beforeLatestUserInput', worldbookPosition: 'at_depth', projectionKind: 'worldbook', projectionRank: 40,
+    depth: Number(entry.depth), order: index, traceTitle: '群聊成员深度提示', traceSource: 'group'
+  }))
+  const compatibilityInjections = (context?.compatibilityInjections ?? []).filter(entry => entry.position !== 'none' && entry.content).map((entry, index) => ({
+    ...entry, id: `plugin-injection:${entry.id ?? index}`, role: entry.role || 'system',
+    anchor: ({ beforeHistory: 'insert_point_2', afterHistory: 'insert_point_5', beforeLatestUserInput: 'insert_point_3',
+      afterLatestUserInput: 'insert_point_4', beforeToolContext: 'insert_point_3', afterToolContext: 'insert_point_5' })[entry.anchor] || entry.anchor || 'instructions',
+    ...(entry.depth !== undefined ? { projectionKind: 'worldbook', worldbookPosition: 'at_depth', projectionRank: 40 } : {}),
+    traceTitle: entry.traceTitle || '插件提示', traceSource: entry.traceSource || entry.pluginId || 'plugin'
+  }))
+  if (context?.mainGenerationOptions?.quiet_prompt && ['regenerate', 'swipe'].includes(context.mainGenerationOptions.type)) {
+    compatibilityInjections.push({ id: 'main-generation:quiet-prompt', role: 'system', content: context.mainGenerationOptions.quiet_prompt,
+      anchor: 'insert_point_5', traceTitle: '生成附加指令', traceSource: 'generate-options' })
+  }
+  const native = settingInjections(context)
+    .filter((entry) => (managed || orderedPreset || entry.anchor !== 'instructions')
+      && (!orderedPreset || !isCompatibilityCharacterField(entry.id)))
     .map((entry) => ({
       id: entry.id,
       anchor: entry.anchor,
@@ -92,8 +139,46 @@ export function requestProjectionPlan(context) {
       positionOrder: entry.positionOrder,
       order: entry.order,
       traceTitle: entry.traceTitle,
-      traceSource: entry.traceSource
+      traceSource: entry.traceSource,
+      ...(managed || orderedPreset ? { section: entry.id.startsWith('agent-preset:') ? 'preset'
+        : entry.anchor === 'instructions' || entry.id === 'tavern-character-description'
+          || /^compat-character:[^:]+:(?:description|personality|scenario)$/.test(entry.id)
+          ? 'character-definition' : 'native' } : {})
     }))
+  if (!managed) return [...native, ...tavern, ...groupDepth, ...databank, ...compatibilityInjections]
+  const enabledPlaceholder = id => tavern.some(entry => entry.presetPromptId === id)
+  const worldbooks = [...managed.fragments, ...managed.examples].filter(entry => {
+    if (!orderedPreset) return true
+    if (entry.anchor === 'examples') return false
+    if (entry.worldbookPosition === 'before_character_definition') return enabledPlaceholder('worldInfoBefore')
+    if (entry.worldbookPosition === 'after_character_definition') return enabledPlaceholder('worldInfoAfter')
+    if (['before_example_messages', 'after_example_messages'].includes(entry.worldbookPosition)) return enabledPlaceholder('dialogueExamples')
+    return true
+  }).map((entry) => ({
+    ...entry, id: `worldbook:${entry.id}`, projectionKind: 'worldbook',
+    projectionRank: ({ before_character_definition: 0, after_character_definition: 10,
+      before_example_messages: 20, after_example_messages: 30, at_depth: 40 })[entry.worldbookPosition] ?? 40,
+    traceTitle: '世界书条目', traceSource: String(entry.id ?? ''),
+    ...(entry.anchor === 'examples' ? { section: 'examples' } : {})
+  }))
+  const note = managed.authorNote
+  if (note?.position !== 'none' && typeof note?.content === 'string' && note.content.trim()) {
+    worldbooks.push({
+      ...note, id: `worldbook:${note.id || '2_floating_prompt'}`, projectionKind: 'worldbook',
+      role: note.role ?? 'system', anchor: note.anchor ?? 'beforeHistory',
+      ...(note.depth !== undefined ? { worldbookPosition: 'at_depth' } : {}),
+      traceTitle: '作者注释', traceSource: 'authors-note'
+    })
+  }
+  return [...native, ...tavern, ...worldbooks, ...groupDepth, ...databank, ...compatibilityInjections]
+}
+
+/** Dry-run uses the same position graph and frozen history, without touching the durable Session. */
+export function previewConversationRequest(context, model) {
+  const history = (context.history ?? []).map(productHistoryMessage).filter(Boolean)
+  const input = createUserMessage({ source: { kind: 'eleckoi-generation' }, content: [{ type: 'text', text: context.currentPromptText ?? '' },
+    ...(context.mainGenerationOptions?.promptImages ?? [])] })
+  return projectRequestMessages(appendSessionInstructions([...history, input], { conversationContext: context, model }), requestProjectionPlan(context))
 }
 
 /** Persist the product history that is authoritative for this provider request. */
@@ -103,7 +188,9 @@ export function requestProjectionSnapshot(context) {
     historyMode: context?.historyMode === 'prefix' ? 'prefix' : 'replace',
     history: (Array.isArray(context?.history) ? context.history : [])
       .flatMap((item) => isProductHistoryEntry(item)
-        ? [{ role: item.role, content: item.content }]
+        ? [{ role: item.role, content: item.content,
+            ...(typeof item.id === 'string' ? { id: item.id } : {}),
+            ...(Number.isSafeInteger(item.sessionEventSeq) ? { sessionEventSeq: item.sessionEventSeq } : {}) }]
         : [])
   }
 }
@@ -117,31 +204,75 @@ export function requestProjectionSnapshot(context) {
 export function projectRequestMessages(messages, plan = projectionPlanFromMessages(messages)) {
   const visible = messages.filter((message) => !isProjectionEnvelope(message))
   if (!plan) return visible
-  const system = visible.filter((message) => message?.role === 'system')
-  const dialogue = visible.filter((message) => message?.role !== 'system')
+  const globalSystem = message => message?.role === 'system' && message.source?.kind !== 'plugin:eleckoi-product-history'
+  const system = visible.filter(globalSystem)
+  const dialogue = visible.filter(message => !globalSystem(message))
   const latestUserIndex = dialogue.findLastIndex(isDirectUserMessage)
   if (latestUserIndex < 0) {
-    return [
+    return projectWorldbookPlan([
       ...system,
+      ...messagesForAnchor(plan, 'instructions'),
       ...messagesForAnchor(plan, 'insert_point_1'),
       ...messagesForAnchor(plan, 'insert_point_2'),
+      ...messagesForAnchor(plan, 'examples'),
       ...dialogue,
       ...messagesForAnchor(plan, 'insert_point_3'),
       ...messagesForAnchor(plan, 'insert_point_4'),
       ...messagesForAnchor(plan, 'insert_point_5')
-    ]
+    ], plan)
   }
-  return [
+  return projectWorldbookPlan([
     ...system,
+    ...messagesForAnchor(plan, 'instructions'),
     ...messagesForAnchor(plan, 'insert_point_1'),
     ...messagesForAnchor(plan, 'insert_point_2'),
+    ...messagesForAnchor(plan, 'examples'),
     ...dialogue.slice(0, latestUserIndex),
     ...messagesForAnchor(plan, 'insert_point_3'),
     dialogue[latestUserIndex],
     ...messagesForAnchor(plan, 'insert_point_4'),
     ...dialogue.slice(latestUserIndex + 1),
     ...messagesForAnchor(plan, 'insert_point_5')
-  ]
+  ], plan)
+}
+
+function projectWorldbookPlan(messages, plan) {
+  const preset = projectTavernPresetMessages(messages, plan, projectionMessage, projectionPlugin)
+  messages = preset.messages
+  const fragments = plan.filter(entry => (entry.projectionKind === 'worldbook' && entry.anchor !== 'examples')
+    || entry.projectionKind === 'tavern-preset-depth')
+  if (!fragments.length) return messages
+  const byId = new Map(plan.map(entry => [`${projectionPlugin}:${entry.id}`, entry]))
+  const indexes = predicate => messages.flatMap((message, index) => predicate(message, byId.get(message.id)) ? [index] : [])
+  const character = indexes((_message, entry) => entry?.section === 'character-definition')
+  const examples = indexes((_message, entry) => entry?.section === 'examples')
+  const history = indexes(isRequestHistoryMessage)
+  const latestUser = messages.findLastIndex(isDirectUserMessage)
+  const afterSystem = messages.findIndex(message => message.role !== 'system')
+  const beforeHistory = history[0] ?? (latestUser >= 0 ? latestUser : messages.length)
+  const beforeCharacter = character[0] ?? (afterSystem < 0 ? messages.length : afterSystem)
+  return projectFrozenWorldbookMessages(messages, fragments, {
+    anchorIndexes: {
+      beforeCharacterDefinition: beforeCharacter,
+      afterCharacterDefinition: character.length ? character.at(-1) + 1 : beforeCharacter,
+      beforeExamples: examples[0] ?? beforeHistory,
+      afterExamples: examples.length ? examples.at(-1) + 1 : beforeHistory,
+      beforeHistory,
+      beforeLatestUserInput: latestUser >= 0 ? latestUser : beforeHistory,
+      afterLatestUserInput: latestUser >= 0 ? latestUser + 1 : messages.length,
+      ...preset.anchorIndexes
+    },
+    isHistoryMessage: isRequestHistoryMessage,
+    createMessage: projectionMessage
+  })
+}
+
+function isRequestHistoryMessage(message) {
+  return isDirectUserMessage(message) || message?.source?.kind === 'plugin:eleckoi-product-history'
+    || message?.role === 'assistant' && message?.source?.kind === 'model'
+      && !String(message.id ?? '').startsWith(`${projectionPlugin}:`)
+      && message.content?.some(block => block.type === 'text')
+      && !message.content.some(block => block.type === 'tool-call' || block.type === 'tool-result')
 }
 
 export function projectionPlanFromMessages(messages) {
@@ -201,6 +332,7 @@ export function requestContextItems(messages, plan = []) {
 }
 
 function requestContextKind(message, source) {
+  if (source.kind === 'plugin:eleckoi-product-history') return 'history'
   if (message?.role === 'system') return 'system'
   if (source.kind === 'tool' || message?.content?.some((block) => block?.type === 'tool-result')) return 'tool'
   if (source.kind === 'plugin:eleckoi-product-history') return 'history'
@@ -327,17 +459,17 @@ function isProjectionEntry(value) {
   return value && typeof value === 'object'
     && typeof value.id === 'string'
     && typeof value.anchor === 'string'
-    && (value.role === 'user' || value.role === 'assistant')
+    && (value.role === 'user' || value.role === 'assistant' || value.role === 'system')
     && typeof value.content === 'string'
 }
 
 function isDirectUserMessage(message) {
-  return message?.role === 'user' && message?.source?.kind === 'user'
+  return message?.role === 'user' && ['user', 'eleckoi-group', 'eleckoi-generation'].includes(message?.source?.kind)
 }
 
 function messagesForAnchor(plan, anchor) {
   return plan
-    .filter((entry) => entry.anchor === anchor)
+    .filter((entry) => entry.anchor === anchor && (entry.projectionKind !== 'worldbook' || anchor === 'examples'))
     .map(projectionMessage)
 }
 
@@ -417,7 +549,7 @@ function previousTurnDialogue(messages) {
 
 function isProductHistoryEntry(value) {
   return value && typeof value === 'object'
-    && (value.role === 'user' || value.role === 'assistant')
+    && (value.role === 'user' || value.role === 'assistant' || value.role === 'system')
     && typeof value.content === 'string'
     && value.content.trim().length > 0
 }
@@ -440,17 +572,18 @@ export function projectCurrentUserPrompt(messages, context) {
     }
   }
   if (!inserted) content.unshift({ type: 'text', text: prompt })
+  content.push(...(context?.mainGenerationOptions?.promptImages ?? []))
   return messages.map((item, position) => position === index
     ? freezeMessage({ ...message, content })
     : item)
 }
 
 function productHistoryMessage(item, index) {
-  if (!item || (item.role !== 'user' && item.role !== 'assistant')) return null
+  if (!item || !['user', 'assistant', 'system'].includes(item.role)) return null
   const value = String(item.content ?? '')
   if (!value.trim()) return null
   return {
-    id: `eleckoi-product-history-${index}`,
+    id: typeof item.id === 'string' ? `eleckoi-product-history:${item.id}` : `eleckoi-product-history-${index}`,
     role: item.role,
     content: [{ type: 'text', text: value }],
     source: { kind: 'plugin:eleckoi-product-history' }
@@ -469,7 +602,7 @@ function compactedProjection(productHistory, nativeHistory) {
 }
 
 function findCurrentUserIndex(messages) {
-  return messages.findLastIndex((message) => message?.role === 'user' && message?.source?.kind === 'user')
+  return messages.findLastIndex(isDirectUserMessage)
 }
 
 function isDialogueMessage(message) {

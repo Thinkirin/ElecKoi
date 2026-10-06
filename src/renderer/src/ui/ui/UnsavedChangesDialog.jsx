@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useAnimatedClose } from "../hooks/useAnimatedClose.js";
 
 export function UnsavedChangesDialog({
   open,
@@ -20,10 +21,9 @@ export function UnsavedChangesDialog({
   const dialogRef = useRef(null);
   const cancelRef = useRef(null);
   const savingRef = useRef(saving);
-  const onCancelRef = useRef(onCancel);
+  const { closing, close } = useAnimatedClose(onCancel, 200, open, { busy: saving });
 
   savingRef.current = saving;
-  onCancelRef.current = onCancel;
 
   useEffect(() => {
     if (!open || typeof document === "undefined") return undefined;
@@ -33,7 +33,7 @@ export function UnsavedChangesDialog({
     function handleKeyDown(event) {
       if (event.key === "Escape") {
         event.preventDefault();
-        if (!savingRef.current) onCancelRef.current?.();
+        if (!savingRef.current) close();
         return;
       }
       if (event.key !== "Tab") return;
@@ -64,7 +64,7 @@ export function UnsavedChangesDialog({
   if (!open) return null;
 
   const dialog = (
-    <div className="unsaved-changes-overlay" role="presentation" onMouseDown={() => !saving && onCancel?.()}>
+    <div className={`unsaved-changes-overlay${closing ? " is-closing" : ""}`} role="presentation" onMouseDown={() => !saving && close()}>
       <section
         ref={dialogRef}
         className="unsaved-changes-dialog"
@@ -76,14 +76,16 @@ export function UnsavedChangesDialog({
         onMouseDown={(event) => event.stopPropagation()}
       >
         <h2 id={titleId}>{title}</h2>
-        <p id={descriptionId}>{description}</p>
-        {error ? <p id={errorId} className="unsaved-changes-error" role="alert">{error}</p> : null}
+        <div className="unsaved-changes-content">
+          <p id={descriptionId}>{description}</p>
+          {error ? <p id={errorId} className="unsaved-changes-error" role="alert">{error}</p> : null}
+        </div>
         <div className="unsaved-changes-actions">
-          <button type="button" className="is-primary" disabled={saving} onClick={onSave}>
+          {onSave ? <button type="button" className="is-primary" disabled={saving} onClick={onSave}>
             {saving ? "保存中" : saveLabel}
-          </button>
+          </button> : null}
           <button type="button" disabled={saving} onClick={onDiscard}>{discardLabel}</button>
-          <button ref={cancelRef} type="button" disabled={saving} onClick={onCancel}>{cancelLabel}</button>
+          <button ref={cancelRef} type="button" disabled={saving} onClick={close}>{cancelLabel}</button>
         </div>
       </section>
     </div>

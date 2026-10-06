@@ -1,0 +1,45 @@
+/* Rounded tonal controls keep their compact layout and separate touch area. */
+.eleckoi-btn {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  gap: 6px; height: var(--control-height); min-height: var(--control-height);
+  padding: 0 12px; border: 0; border-radius: var(--radius-full);
+  background: var(--control-bg); color: var(--text);
+  font-size: 13px; font-weight: 600; line-height: 1; white-space: nowrap;
+  cursor: pointer; user-select: none; touch-action: manipulation;
+  transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out), transform var(--duration-instant) var(--ease-out);
+}
+.eleckoi-btn--sm { height: 32px; min-height: 32px; padding-inline: 10px; font-size: 12px; }
+.eleckoi-btn--md { height: 36px; min-height: 36px; }
+.eleckoi-btn--lg { height: 44px; min-height: 44px; padding-inline: 16px; font-size: 14px; }
+.eleckoi-btn--primary { background: var(--blue); color: var(--on-accent); }
+.eleckoi-btn--secondary { background: var(--control-bg); color: var(--text); }
+.eleckoi-btn--ghost { background: transparent; color: var(--muted); }
+.eleckoi-btn--danger { background: var(--danger); color: var(--on-accent); }
+.eleckoi-btn--icon-only { width: 36px; padding: 0; }
+.eleckoi-btn--icon-only.eleckoi-btn--sm { width: 32px; }
+.eleckoi-btn--icon-only.eleckoi-btn--lg { width: 44px; }
+.eleckoi-btn:active:not(:disabled) { background: var(--control-bg-hover); transform: scale(.96); }
+.eleckoi-btn--primary:active:not(:disabled) { background: var(--blue-hover); }
+.eleckoi-btn--danger:active:not(:disabled) { background: color-mix(in srgb, var(--danger) 88%, var(--text)); }
+.eleckoi-btn:disabled { background: var(--field-disabled); color: var(--soft-text); opacity: .65; cursor: default; }
+.eleckoi-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  .eleckoi-btn:hover:not(:disabled) { background: var(--control-bg-hover); }
+  .eleckoi-btn--primary:hover:not(:disabled) { background: var(--blue-hover); }
+  .eleckoi-btn--danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 90%, var(--text)); }
+}
+@media (pointer: coarse) {
+  .eleckoi-btn::after { content: ''; position: absolute; inset: -4px 0; }
+  .eleckoi-btn--sm::after { inset: -6px; }
+  .eleckoi-btn--icon-only::after { inset: -4px; }
+  .eleckoi-btn--lg::after { inset: 0; }
+}
+/* Keep the label's layout width while showing a real pending indicator. */
+.eleckoi-btn--loading { color: transparent; cursor: progress; }
+.eleckoi-btn--loading::before {
+  content: ''; position: absolute; width: 14px; height: 14px;
+  border: 2px solid var(--line-strong); border-top-color: var(--text);
+  border-radius: 50%; animation: btn-spin 800ms linear infinite;
+}
+.eleckoi-btn--primary.eleckoi-btn--loading::before { border-color: color-mix(in srgb, var(--on-accent) 30%, transparent); border-top-color: var(--on-accent); }
+@keyframes btn-spin { to { transform: rotate(360deg); } }

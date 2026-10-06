@@ -1,0 +1,77 @@
+/* Adapt the official InputBar through its public data seats, never hashed classes.
+   Its final child is the control row: tools followed by model/activity/send. */
+.chat-composer-region [data-composer-card] {
+  gap: 4px;
+  padding-top: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  background: var(--surface-content);
+  box-shadow: 0 2px 8px var(--shadow-color);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 24px;
+}
+.chat-composer-region [data-composer-card]:focus-within { border-color: color-mix(in srgb, var(--blue) 60%, var(--line-strong)); }
+.chat-composer-region [data-composer-input] { min-height: 40px; padding: 8px 12px 4px; color: var(--text); }
+.chat-composer-region [data-composer-placeholder] { inset: 8px 12px auto; color: var(--muted); }
+.chat-composer-region [data-input-scroll] { margin-right: 2px; }
+.chat-composer-region [data-composer-card] > :last-child { gap: 4px; padding: 2px 6px 6px; }
+.chat-composer-region [data-composer-card] > :last-child > div { gap: 4px; }
+.chat-composer-region [data-composer-card] > :last-child > :last-child > button { background: var(--blue); color: var(--on-accent); border-radius: 10px; transform: none; }
+.chat-composer-region [data-composer-card] > :last-child > :last-child > button:disabled { background: var(--surface-muted); color: var(--soft-text); opacity: 1; }
+.chat-composer-region [data-composer-card] > :last-child > :last-child > button:hover:not(:disabled) { background: var(--blue-hover); }
+/* The input footer responds to the conversation column, including a narrow PC window. */
+@container chat-panel (min-width:761px) {
+  .chat-conversation-body { --dsh-composer-text-max-height:min(240px,30dvh); }
+  .chat-composer-region [data-composer-card] > :last-child { min-height:40px; flex-wrap:wrap; row-gap:4px; }
+  .chat-composer-region [data-composer-card] > :last-child > div { min-width:0; }
+  .chat-composer-region .chat-model-trigger { min-width:0; max-width:240px; height:32px; }
+  .chat-composer-region [data-slot="eleckoi.roleplay.conversation.input.permission"] button { max-width:160px; min-height:32px; }
+  .chat-composer-region [data-slot="eleckoi.roleplay.conversation.input.permission"] button > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+}
+
+@container chat-panel (max-width:760px) {
+  .chat-conversation-body { --dsh-composer-text-max-height: min(180px, 28dvh); --dsh-composer-side-clearance: 8px; }
+  .chat-composer-region [data-composer-card] { gap: 0; }
+  .chat-composer-region [data-composer-input] { font-size: 16px; line-height: 24px; }
+  .chat-composer-region [data-composer-card] > :last-child {
+    display: flex; flex-wrap: nowrap; justify-content: flex-start;
+    min-height: 50px; padding: 2px 6px 4px;
+    border-top: 1px solid var(--line);
+  }
+  .chat-composer-region [data-composer-card] > :last-child > :first-child { flex: 0 0 auto; gap: 0; }
+  .chat-composer-region [data-composer-card] > :last-child > :last-child { flex: 1 1 0; min-width: 0; margin-left: 0; gap: 4px; }
+  .chat-composer-region [data-composer-card] > :last-child > :last-child > :first-child { flex: 1 1 0; min-width: 0; gap: 4px; }
+  .chat-composer-region [data-composer-card] > :last-child > :last-child > :last-child { flex: 0 0 44px; }
+  .chat-composer-region [data-composer-card] > :last-child > :first-child > button,
+  .chat-composer-region [data-composer-card] > :last-child > :last-child > button,
+  .chat-composer-region .roleplay-menu-trigger,
+  .chat-composer-region [data-slot="eleckoi.roleplay.conversation.input.permission"] button {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 44px; min-width: 44px; height: 44px; min-height: 44px;
+    padding: 0; border-radius: 10px; flex: none;
+  }
+  .chat-composer-region [data-composer-card] > :last-child > :first-child > button,
+  .chat-composer-region .roleplay-menu-trigger { background: transparent; color: var(--muted); }
+  .chat-composer-region [data-composer-card] > :last-child > :first-child > button > svg,
+  .chat-composer-region .roleplay-menu-trigger > svg { width: 20px; height: 20px; }
+  .chat-composer-region [data-slot="eleckoi.roleplay.conversation.input.permission"] button { gap: 0; background: transparent; color: var(--muted); }
+  /* The official accessible name retains the current access mode. */
+  .chat-composer-region [data-slot="eleckoi.roleplay.conversation.input.permission"] button > span:first-child { display: none; }
+  .chat-composer-region [data-slot="eleckoi.roleplay.conversation.input.permission"] button::before {
+    content: ''; width: 20px; height: 20px; flex: none; background: currentColor;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 7V5.5A1.5 1.5 0 0 1 4.5 4H9l2 3h8.5A1.5 1.5 0 0 1 21 8.5v10a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5V7Z' fill='none' stroke='black' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+  .chat-composer-region [data-slot="eleckoi.roleplay.conversation.input.permission"] button > span:last-child > svg { width: 10px; height: 10px; }
+  .chat-composer-region .chat-model-picker { display: flex; flex: 1 1 0; min-width: 0; }
+  .chat-composer-region .chat-model-trigger {
+    display: flex; flex: 1 1 0; align-items: center; justify-content: flex-start;
+    min-width: 0; max-width: none; width: 100%; height: 44px; min-height: 44px;
+    gap: 5px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--surface-subtle); color: var(--text); font-size: 12px;
+  }
+  .chat-composer-region .chat-model-trigger-label { display: block; flex: 1 1 0; min-width: 0; max-width: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chat-composer-region .chat-model-trigger-icon { display: block; flex: 0 0 18px; width: 18px; height: 18px; }
+  .chat-composer-region .chat-model-trigger > svg { flex: 0 0 12px; width: 12px; height: 12px; }
+  .chat-composer-region [data-composer-stats] { gap: 4px; font-size: 11px; }
+}

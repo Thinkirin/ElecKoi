@@ -14,18 +14,19 @@
   border-right: 0;
   background: var(--list);
   contain: layout paint;
+  container: conversation-list / inline-size;
 }
 
 .search-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  height: 54px;
-  padding: 9px 10px;
+  height: 64px;
+  padding: 10px 12px;
 }
 
 .conversation-list .search-row {
-  grid-template-columns: minmax(0, 1fr) 30px;
+  grid-template-columns: minmax(0, 1fr) 44px;
   gap: 10px;
 }
 
@@ -36,8 +37,8 @@
   gap: 6px;
   overflow-y: auto;
   padding: 8px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.98);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.16);
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -60,14 +61,14 @@
   width: 100%;
   min-height: 34px;
   padding: 0 7px;
-  border-radius: 7px;
-  color: #161616;
+  border-radius: var(--radius-sm);
+  color: var(--text);
   font-size: 13px;
   text-align: left;
 }
 
 .conversation-character-picker-group-row:hover {
-  background: #eeeeee;
+  background: var(--control-bg-hover);
 }
 
 .conversation-character-picker-group-row > span {
@@ -78,7 +79,7 @@
 }
 
 .conversation-character-picker-group-row em {
-  color: #888;
+  color: var(--muted);
   font-style: normal;
   font-size: 12px;
 }
@@ -89,7 +90,7 @@
   width: 16px;
   height: 16px;
   flex: none;
-  color: #333;
+  color: var(--text);
   transition: transform 0.14s ease;
 }
 
@@ -116,12 +117,12 @@
   min-height: 54px;
   padding: 5px 7px;
   border-radius: 5px;
-  color: #111;
+  color: var(--text);
   text-align: left;
 }
 
 .conversation-character-picker-characters button:hover {
-  background: #eeeeee;
+  background: var(--control-bg-hover);
 }
 
 .conversation-character-picker-characters button span {
@@ -135,12 +136,12 @@
   justify-items: center;
   gap: 8px;
   padding: 22px 12px;
-  color: #888;
+  color: var(--muted);
   text-align: center;
 }
 
 .conversation-character-picker-empty strong {
-  color: #222;
+  color: var(--text);
   font-size: 15px;
 }
 
@@ -151,16 +152,16 @@
 .conversation-character-picker-empty button {
   height: 32px;
   padding: 0 16px;
-  border-radius: 8px;
-  background: #12a8ff;
-  color: #fff;
+  border-radius: var(--radius-md);
+  background: var(--blue);
+  color: var(--on-accent);
   font-size: 14px;
 }
 
 .conversation-scroll {
   min-height: 0;
   overflow-y: auto;
-  padding: 0;
+  padding: 0 8px 8px;
   scrollbar-gutter: auto;
   scrollbar-width: thin;
 }
@@ -183,7 +184,7 @@
   min-height: 58px;
   margin: 0 var(--conversation-item-inset) var(--conversation-item-y-gap);
   padding: 7px 8px 7px 8px;
-  border-radius: 3px;
+  border-radius: 8px;
   font-family: "Microsoft YaHei UI", "Microsoft YaHei", "Segoe UI", sans-serif;
   text-align: left;
 }
@@ -238,18 +239,18 @@
 .conversation-main b {
   display: block;
   overflow: hidden;
-  color: #151515;
+  color: var(--text);
   font-size: 15px;
-  font-weight: 400;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .conversation-main span {
   display: block;
-  margin-top: 5px;
+  margin-top: 3px;
   overflow: hidden;
-  color: #9c9c9c;
+  color: var(--muted);
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -260,7 +261,7 @@
   justify-items: end;
   align-content: center;
   gap: 10px;
-  color: #aaa;
+  color: var(--muted);
   font-size: 12px;
 }
 
@@ -270,8 +271,8 @@
   min-width: 218px;
   padding: 8px 0;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.98);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
 }
 
@@ -301,3 +302,30 @@
   margin: 6px 14px;
   background: rgba(0, 0, 0, 0.07);
 }
+
+.conversation-scroll { padding:4px 8px 12px; }
+.conversation-item { min-height:64px; padding:8px; border-radius:12px; grid-template-columns:40px minmax(0,1fr) 38px; gap:10px; border:1px solid transparent; font-family:inherit; transition:background 140ms ease-out; }
+.conversation-item .sidebar-character-artwork { width:40px; height:40px; }
+.conversation-item.is-cover-artwork .sidebar-character-artwork { height:48px; }
+.conversation-item.active { background:color-mix(in srgb,var(--blue) 8%,var(--surface-content)); }
+.conversation-item.active::after { content:''; position:absolute; left:0; top:20px; bottom:20px; width:3px; border-radius:999px; background:var(--blue); }
+.conversation-item.pinned::before { inset:0; border-radius:inherit; background:color-mix(in srgb,var(--tide-amber) 4%,var(--surface-content)); }
+.conversation-item.pinned.active::before { background:color-mix(in srgb,var(--blue) 8%,var(--surface-content)); }
+.conversation-pin { width:13px; height:13px; color:var(--tide-amber); }
+.conversation-empty { display:grid; justify-items:center; gap:12px; padding:28px 12px; color:var(--muted); }
+.conversation-empty strong { font-size:15px; font-weight:500; }
+.conversation-empty button { min-height:44px; padding:0 14px; border:1px solid var(--line-strong); border-radius:8px; color:var(--blue); background:var(--surface-raised); }
+.conversation-character-picker,.conversation-context-menu { z-index:var(--z-menu,1500); border:1px solid var(--line-strong); animation:common-dialog-in 180ms var(--ease-out,cubic-bezier(.2,.8,.2,1)) both; }
+@media (min-width:761px) {
+  .conversation-list .search-row { height:52px; grid-template-columns:minmax(0,1fr) 34px; gap:8px; padding:8px 12px; }
+  .conversation-list .search-row > button { width:34px; min-width:34px; height:34px; min-height:34px; }
+  .conversation-main b { font-size:14px; }
+  .conversation-item { min-height:54px; }
+  .conversation-item.is-cover-artwork { min-height:64px; }
+}
+@container conversation-list (max-width:280px) {
+  .conversation-item { column-gap:8px; grid-template-columns:36px minmax(0,1fr) 34px; padding-inline:6px; }
+  .conversation-meta { font-size:11px; }
+}
+@media (max-width:760px) { .conversation-scroll { padding:0; } }
+.conversation-character-picker-group-row,.conversation-context-menu button { min-height:44px; }

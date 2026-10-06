@@ -10,6 +10,12 @@ import {
   SlidersHorizontal,
   TextT,
   UserCircle,
+  ArrowSquareIn,
+  Check,
+  Clock,
+  Hash,
+  CaretRight,
+  Code,
 } from "@phosphor-icons/react";
 import { DEFAULT_CHAT_DISPLAY_PREFERENCES, DEFAULT_CHAT_TEXT_COLORS } from "@shared/contracts/settings/schemas";
 import { BotIcon, PaletteIcon, PencilIcon, ProfileIcon } from "../../../ui/icons/index.jsx";
@@ -18,6 +24,9 @@ import { Avatar } from "../../../ui/ui/Avatar.jsx";
 import { TunerSliderRow } from "../../../ui/ui/TunerSliderRow.jsx";
 import { MessageBubble } from "../../../ui/messages/MessageBubble.jsx";
 import { AboutSettings } from "./AboutSettings.jsx";
+import { MigrationSettings } from "./MigrationSettings.jsx";
+import { AppearanceSettings } from "./AppearanceSettings.jsx";
+import { EditorHeader } from "../../../ui/ui/EditorHeader.jsx";
 import {
   chatDisplayCssVariables,
   chatTextColorCssVariables,
@@ -30,18 +39,8 @@ const pages = [
   { id: "profile", label: "用户资料", icon: ProfileIcon },
   { id: "theme", label: "主题风格", icon: PaletteIcon },
   { id: "chat", label: "聊天显示", icon: BotIcon },
+  { id: "migration", label: "旧版数据迁移", icon: ArrowSquareIn },
   { id: "about", label: "关于 ElecKoi", icon: Info },
-];
-
-const appearanceModes = [
-  { id: "light", label: "浅色", description: "始终使用明亮界面" },
-  { id: "dark", label: "深色", description: "始终使用深色界面" },
-  { id: "system", label: "跟随系统", description: "随 Windows 外观自动切换" },
-];
-
-const sidebarArtworkModes = [
-  { id: "cover", label: "封面立绘" },
-  { id: "avatar", label: "头像" },
 ];
 
 const chatLayouts = [
@@ -212,24 +211,10 @@ function ChatDisplaySettings({
           </section>
         </div>
 
-        <section className="chat-settings-group chat-compact-setting-card">
+        <section className="chat-settings-group chat-compact-setting-card settings-toggle-row">
           <div className="setting-row-copy setting-row-title"><ChartBar /><strong>生成统计</strong></div>
-          <div className="appearance-mode-control compact-setting-control" role="radiogroup" aria-label="生成统计">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={preferences.generation_stats_enabled}
-              className={preferences.generation_stats_enabled ? "active" : ""}
-              onClick={() => onChatDisplayChange({ ...preferences, generation_stats_enabled: true })}
-            >显示</button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={!preferences.generation_stats_enabled}
-              className={!preferences.generation_stats_enabled ? "active" : ""}
-              onClick={() => onChatDisplayChange({ ...preferences, generation_stats_enabled: false })}
-            >隐藏</button>
-          </div>
+          <button type="button" role="switch" aria-label="生成统计" aria-checked={preferences.generation_stats_enabled}
+            className="settings-native-switch" onClick={() => onChatDisplayChange({ ...preferences, generation_stats_enabled: !preferences.generation_stats_enabled })}><i /></button>
         </section>
 
         {layout === "roleplay" ? <section className="chat-settings-group chat-display-section">
@@ -241,14 +226,14 @@ function ChatDisplaySettings({
               aria-checked={preferences.roleplay_timestamps_enabled}
               className={`chat-setting-toggle${preferences.roleplay_timestamps_enabled ? " active" : ""}`}
               onClick={() => onChatDisplayChange({ ...preferences, roleplay_timestamps_enabled: !preferences.roleplay_timestamps_enabled })}
-            ><span>聊天时间戳</span><i /></button>
+            ><span><Clock size={17} />聊天时间戳</span><i /></button>
             <button
               type="button"
               role="switch"
               aria-checked={preferences.roleplay_message_floors_enabled}
               className={`chat-setting-toggle${preferences.roleplay_message_floors_enabled ? " active" : ""}`}
               onClick={() => onChatDisplayChange({ ...preferences, roleplay_message_floors_enabled: !preferences.roleplay_message_floors_enabled })}
-            ><span>显示消息楼层</span><i /></button>
+            ><span><Hash size={17} />显示消息楼层</span><i /></button>
           </div>
         </section> : null}
 
@@ -428,7 +413,7 @@ function UserProfileSettings({ persona, onUpdateUserProfile, renderUserProfileEd
             <Avatar src={avatars.circle} name={name || displayName} />
             <span><PencilIcon /></span>
           </button>
-          <button className="settings-secondary-button" type="button" onClick={() => setEditingAvatars(true)}>管理头像</button>
+          <div className="profile-settings-identity"><strong>{name || displayName}</strong><button className="settings-profile-avatar-link" type="button" onClick={() => setEditingAvatars(true)}>管理头像<CaretRight size={14} /></button></div>
         </div>
         <div className="profile-settings-fields">
           <label className="profile-settings-name">
@@ -437,7 +422,7 @@ function UserProfileSettings({ persona, onUpdateUserProfile, renderUserProfileEd
           </label>
           <div className="profile-settings-actions">
             {message ? <span className={message === "已保存" ? "success" : "error"}>{message}</span> : null}
-            <button className="settings-primary-button" type="submit" disabled={saving}>{saving ? "正在保存" : "保存"}</button>
+            <button className="settings-primary-button" type="submit" disabled={saving}><Check size={16} />{saving ? "正在保存" : "保存"}</button>
           </div>
         </div>
       </div>
@@ -461,6 +446,7 @@ function UserProfileSettings({ persona, onUpdateUserProfile, renderUserProfileEd
 export function SettingsPanel({
   activePage,
   onPageChange,
+  onBack,
   persona,
   onUpdateUserProfile,
   renderUserProfileEditor,
@@ -487,22 +473,29 @@ export function SettingsPanel({
 
   const sidePanel = (
     <aside className="app-settings-sidebar">
-      <header><h2>设置</h2></header>
       <nav aria-label="设置分类">
         {navigationPages.map((item) => {
           const Icon = item.icon;
           return (
-            <button key={item.id} type="button" className={page === item.id ? "active" : ""} onClick={() => onPageChange(item.id)}>
+            <button key={item.id} type="button" className={page === item.id ? "active" : ""} aria-current={page === item.id ? 'page' : undefined} data-settings-page={item.id} onClick={() => onPageChange(item.id)}>
               <Icon />
               <span>{item.label}</span>
+              <CaretRight className="settings-nav-chevron" aria-hidden="true" />
             </button>
           );
         })}
+        <button type="button" data-settings-action="application-frontend"
+          onClick={() => window.dispatchEvent(new Event("eleckoi:frontend-workbench"))}>
+          <Code /><span>应用前端</span><CaretRight className="settings-nav-chevron" aria-hidden="true" />
+        </button>
       </nav>
     </aside>
   );
 
   const mainPanel = (
+    <section className="app-settings-page">
+    <EditorHeader className="settings-detail-header" title={navigationPages.find(item => item.id === page)?.label || '设置'}
+      onBack={onBack} backLabel="返回设置分类" />
     <section className="app-settings-content">
       {page === "profile" ? (
         <UserProfileSettings persona={persona} onUpdateUserProfile={onUpdateUserProfile} renderUserProfileEditor={renderUserProfileEditor} />
@@ -514,63 +507,17 @@ export function SettingsPanel({
         />
       ) : page === "about" ? (
         <AboutSettings updates={appUpdates} />
+      ) : page === "migration" ? (
+        <MigrationSettings />
       ) : requestedPluginSection ? (
-        <div className="dsh-settings-section">
+        <div className="dsh-settings-section" data-settings-section={requestedPluginSection.id}>
           {renderSettingsSection?.(requestedPluginSection, onClosePluginSection)}
         </div>
       ) : page === "theme" ? (
-        <>
-          <header className="app-settings-heading">
-            <h1>主题风格</h1>
-          </header>
-          <div className="app-settings-card appearance-mode-card">
-            <div className="setting-row-copy">
-              <strong>外观模式</strong>
-            </div>
-            <div className="appearance-mode-control" role="radiogroup" aria-label="外观模式">
-              {appearanceModes.map((mode) => (
-                <button
-                  key={mode.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={appearanceMode === mode.id}
-                  className={appearanceMode === mode.id ? "active" : ""}
-                  title={mode.description}
-                  onClick={() => onAppearanceModeChange(mode.id)}
-                >
-                  {mode.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="app-settings-card sidebar-artwork-card">
-            <div className="setting-row-copy">
-              <strong>侧栏角色图</strong>
-            </div>
-            <div className="appearance-mode-control sidebar-artwork-control" role="radiogroup" aria-label="侧栏角色图">
-              {sidebarArtworkModes.map((mode) => (
-                <button
-                  key={mode.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={sidebarCharacterArtwork === mode.id}
-                  className={sidebarCharacterArtwork === mode.id ? "active" : ""}
-                  onClick={() => onSidebarCharacterArtworkChange(mode.id)}
-                >
-                  {mode.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="app-settings-card theme-setting-card">
-            <div className="theme-setting-icon"><PaletteIcon /></div>
-            <div className="setting-row-copy">
-              <strong>超级调色盘</strong>
-            </div>
-            <button className="settings-secondary-button" type="button" disabled title="超级调色盘正在开发中">开发中</button>
-          </div>
-        </>
+        <AppearanceSettings mode={appearanceMode} onModeChange={onAppearanceModeChange}
+          artwork={sidebarCharacterArtwork} onArtworkChange={onSidebarCharacterArtworkChange} />
       ) : null}
+    </section>
     </section>
   );
 

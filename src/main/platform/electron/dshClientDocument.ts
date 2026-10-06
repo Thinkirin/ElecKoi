@@ -33,6 +33,7 @@ const withheldHeaders = [
 export const DSH_CLIENT_ORIGIN = 'dsh-app://app'
 
 export interface ElecKoiClientAssets {
+  baseUrl: string
   script: string
   style?: string
 }
@@ -43,6 +44,7 @@ export async function resolveElecKoiClientAssets(rendererDirectory: string): Pro
   const style = html.match(/<link\b[^>]*\bhref="(?:\.\.\/)+assets\/([^"]+\.css)"/i)?.[1]
   if (script === undefined || style === undefined) throw new Error('ElecKoi Renderer 构建资源不完整。')
   return {
+    baseUrl: `${DSH_CLIENT_ORIGIN}/eleckoi/assets/`,
     script: `${DSH_CLIENT_ORIGIN}/eleckoi/assets/${script}`,
     style: `${DSH_CLIENT_ORIGIN}/eleckoi/assets/${style}`
   }

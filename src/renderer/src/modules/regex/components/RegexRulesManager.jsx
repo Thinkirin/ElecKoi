@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useAnimatedClose } from "../../../ui/hooks/useAnimatedClose.js";
 import { CopyIcon, ExportIcon, ImportIcon, PlusIcon, TrashIcon, XIcon } from "../../../ui/icons/index.jsx";
 import {
   REGEX_SCOPES,
@@ -10,7 +11,8 @@ import {
   rulesForScope,
 } from "../model/regexRulesEditing.js";
 
-export function RegexRulesManager({ collection, onChange, onClose, onImport, onExport }) {
+export function RegexRulesManager({ collection, onChange, onClose: onDismiss, onImport, onExport }) {
+  const { closing, close: onClose } = useAnimatedClose(onDismiss);
   const [tab, setTab] = useState("rules");
   const [selectedIds, setSelectedIds] = useState([]);
   const [importScope, setImportScope] = useState("Global");
@@ -46,7 +48,7 @@ export function RegexRulesManager({ collection, onChange, onClose, onImport, onE
   }
 
   return (
-    <div className="regex-manager-overlay" role="presentation" onMouseDown={onClose}>
+    <div className={`regex-manager-overlay${closing ? ' is-closing' : ''}`} role="presentation" onMouseDown={onClose}>
       <section className="regex-manager" role="dialog" aria-modal="true" aria-labelledby="regex-manager-title" onMouseDown={(event) => event.stopPropagation()}>
         <header>
           <h2 id="regex-manager-title">正则管理</h2>

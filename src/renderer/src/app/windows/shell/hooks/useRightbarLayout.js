@@ -1,10 +1,7 @@
 import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { solveRightbarGeometry } from './shellLayout.js';
 
-const CENTER_MIN = 400;
-const RIGHTBAR_MIN = 300;
-const RIGHTBAR_MAX_RATIO = 0.7;
 const RIGHTBAR_DEFAULT_RATIO = 0.45;
-const SIDEBAR_AUTO_COLLAPSE = 1024;
 const EMPTY = Object.freeze({
   shown: false,
   track: false,
@@ -14,22 +11,9 @@ const EMPTY = Object.freeze({
   viewportWidth: typeof window === "undefined" ? 960 : window.innerWidth,
 });
 
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, Math.round(value)));
-}
-
 function readLength(style, name) {
   const value = Number.parseFloat(style.getPropertyValue(name));
   return Number.isFinite(value) ? value : 0;
-}
-
-function solveRightbar(viewportWidth, leftWidth, preference) {
-  const available = viewportWidth - leftWidth - CENTER_MIN;
-  if (available < RIGHTBAR_MIN) return 0;
-  return Math.min(
-    available,
-    clamp(preference, RIGHTBAR_MIN, viewportWidth * RIGHTBAR_MAX_RATIO),
-  );
 }
 
 function RightbarResizeHandle({ onStart, onDrag, onEnd }) {
@@ -85,7 +69,7 @@ function RightbarResizeHandle({ onStart, onDrag, onEnd }) {
   });
 }
 
-export function useRightbarLayout({ model, shellRef, sidePanelCollapsed, collapseSidePanel }) {
+export function useRightbarLayout({ model, shellRef, sidePanelCollapsed, sidePanelWidth, compact }) {
   const state = useSyncExternalStore(
     model?.subscribe || (() => () => {}),
     model?.getSnapshot || (() => EMPTY),
@@ -143,22 +127,11 @@ export function useRightbarLayout({ model, shellRef, sidePanelCollapsed, collaps
     };
   }, [model, shellRef]);
 
-  useLayoutEffect(() => {
-    if (state.shown && geometry.viewportWidth < SIDEBAR_AUTO_COLLAPSE && !sidePanelCollapsed) {
-      collapseSidePanel();
-    }
-  }, [collapseSidePanel, geometry.viewportWidth, sidePanelCollapsed, state.shown]);
-
-  const effectiveSidePanelWidth = sidePanelCollapsed || geometry.viewportWidth < SIDEBAR_AUTO_COLLAPSE
-    ? 0
-    : geometry.sidePanelWidth;
+  const effectiveSidePanelWidth = sidePanelCollapsed || compact ? 0 : sidePanelWidth;
+  const leftWidth = compact ? 0 : geometry.railWidth + effectiveSidePanelWidth;
   const preference = state.width ?? geometry.viewportWidth * RIGHTBAR_DEFAULT_RATIO;
-  const width = solveRightbar(
-    geometry.viewportWidth,
-    geometry.railWidth + effectiveSidePanelWidth,
-    preference,
-  );
-  const trackWidth = state.track ? width : 0;
+  const { width, overlay } = solveRightbarGeometry(geometry.viewportWidth, leftWidth, preference, compact);
+  const trackWidth = state.track && !overlay ? width : 0;
   widthRef.current = width;
 
   useLayoutEffect(() => {
@@ -198,15 +171,17 @@ export function useRightbarLayout({ model, shellRef, sidePanelCollapsed, collaps
     width,
     viewportWidth: geometry.viewportWidth,
     canShow: width > 0,
+    shown: Boolean(state.shown),
+    overlay,
     fullscreen: Boolean(state.fullscreen),
     instant: Boolean(state.instant),
     animating: animating > 0,
     dragging,
-    showResizeHandle: Boolean(model && state.shown && !state.fullscreen && width > 0),
+    showResizeHandle: Boolean(model && state.shown && !overlay && !state.fullscreen && width > 0),
     shellStyle: {
       "--rightbar-track-width": `${trackWidth}px`,
       "--rightbar-normal-width": `${width}px`,
-      "--dsh-windows-sidebar-width": `${geometry.railWidth + effectiveSidePanelWidth}px`,
+      "--dsh-windows-sidebar-width": `${leftWidth}px`,
     },
     resizeHandle: createElement(RightbarResizeHandle, {
       onStart: startResize,

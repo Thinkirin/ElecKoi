@@ -1,4 +1,6 @@
 .setting-library-layout {
+  container: library-catalog / inline-size;
+  --catalog-toolbar-height: 46px;
   position: relative;
   width: 100%;
   min-width: 0;
@@ -10,7 +12,7 @@
 }
 
 .setting-library-layout.is-inspector-open .setting-library-tree {
-  margin-inline-end: calc(min(var(--setting-library-inspector-width), calc(100% - 56px)) + 6px);
+  margin-inline-end: 0;
 }
 
 .setting-library-layout.is-resizing,
@@ -21,7 +23,7 @@
 
 .setting-library-browser {
   display: grid;
-  grid-template-rows: 58px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   width: 100%;
   min-width: 0;
   min-height: 0;
@@ -30,10 +32,11 @@
 
 .setting-library-toolbar {
   display: grid;
-  grid-template-columns: 480px auto auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
-  gap: 12px;
-  padding: 10px 22px 9px;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 16px;
   background: color-mix(in srgb, var(--chat) 94%, var(--list));
   border-bottom: 1px solid color-mix(in srgb, var(--text) 6%, transparent);
 }
@@ -45,10 +48,10 @@
   gap: 6px;
   justify-self: start;
   padding: 0 11px;
-  color: var(--text);
-  background: var(--field-bg);
-  border: 1px solid color-mix(in srgb, var(--text) 13%, transparent);
-  border-radius: 8px;
+  color: var(--tide-teal, var(--blue));
+  background: color-mix(in srgb, var(--tide-teal, var(--blue)) 8%, var(--chat));
+  border: 1px solid color-mix(in srgb, var(--tide-teal, var(--blue)) 18%, transparent);
+  border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
 }
@@ -68,7 +71,7 @@
   color: var(--soft-text);
   background: color-mix(in srgb, var(--field-bg) 82%, transparent);
   border: 1px solid color-mix(in srgb, var(--text) 13%, transparent);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 .setting-library-search:focus-within {
@@ -96,9 +99,10 @@
   align-items: center;
   gap: 6px;
   padding: 0 13px;
-  color: #fff;
-  background: var(--blue);
-  border-radius: 8px;
+  color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 10%, var(--chat));
+  border: 1px solid color-mix(in srgb, var(--blue) 18%, transparent);
+  border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
 }
@@ -124,7 +128,7 @@
   padding: 0 12px;
   color: #fff;
   background: var(--blue);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 13px;
   font-weight: 600;
 }
@@ -164,7 +168,10 @@
 }
 
 .setting-library-save-feedback.is-saved {
-  color: color-mix(in srgb, #248a4b 82%, var(--text));
+  padding: 3px 7px;
+  color: var(--tide-teal, var(--blue));
+  background: color-mix(in srgb, var(--tide-teal, var(--blue)) 9%, transparent);
+  border-radius: 999px;
 }
 
 .setting-library-save-feedback.is-error {
@@ -179,14 +186,14 @@
   padding: 5px;
   background: color-mix(in srgb, var(--chat) 94%, transparent);
   border: 1px solid color-mix(in srgb, var(--text) 15%, transparent);
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   box-shadow: 0 12px 34px color-mix(in srgb, var(--shadow-color) 27%, transparent);
   backdrop-filter: blur(18px);
 }
 
 .setting-library-popover {
   position: absolute;
-  top: 39px;
+  top: calc(100% + 4px);
   right: 0;
 }
 
@@ -202,7 +209,7 @@
   gap: 8px;
   padding: 0 9px;
   color: var(--text);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
   text-align: left;
 }
@@ -221,7 +228,7 @@
   min-width: 0;
   min-height: 0;
   margin-inline-end: 6px;
-  padding: 0 18px;
+  padding: 0 12px;
   overflow: auto;
   --dsh-scrollbar-width: 8px;
   scrollbar-color: var(--dsw-alias-scrollbar-bg-l2, color-mix(in srgb, var(--muted) 42%, transparent)) transparent;
@@ -281,7 +288,7 @@
 }
 
 .setting-library-tree-row + .setting-library-tree-row {
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .setting-library-tree-row-content {
@@ -297,7 +304,7 @@
   color: var(--text);
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 7px;
+  border-radius: 10px;
   font-size: 13.5px;
   line-height: 34px;
 }
@@ -307,7 +314,8 @@
 }
 
 .setting-library-tree-row.is-selected .setting-library-tree-row-content {
-  background: var(--active);
+  background: color-mix(in srgb, var(--tide-teal, var(--blue)) 9%, var(--chat));
+  border-color: color-mix(in srgb, var(--tide-teal, var(--blue)) 20%, transparent);
 }
 
 .setting-library-tree-row.is-drop-target .setting-library-tree-row-content {
@@ -346,7 +354,19 @@
 }
 
 .setting-library-tree-row.has-toggle .setting-library-tree-entry-icon {
-  color: var(--blue);
+  color: var(--tide-teal, var(--blue));
+}
+
+.setting-library-tree-row.has-toggle .setting-library-tree-entry-icon.is-controller {
+  color: var(--tide-lilac, var(--blue));
+}
+
+.setting-library-tree-row.has-toggle .setting-library-tree-entry-icon.is-reference {
+  color: var(--tide-amber, var(--blue));
+}
+
+.setting-library-tree-folder {
+  color: var(--tide-amber, var(--tree-folder-fg));
 }
 
 .setting-library-tree-row.is-disabled .setting-library-tree-entry-icon,
@@ -420,13 +440,16 @@
   width: 28px;
   flex: 0 0 28px;
   margin-left: auto;
-  color: var(--soft-text);
-  font-size: 12px;
+  color: var(--tide-amber, var(--muted));
+  background: color-mix(in srgb, var(--tide-amber, var(--blue)) 9%, transparent);
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 20px;
   text-align: center;
 }
 
 .setting-library-tree-drop-cursor {
-  --tree-drop-max-width: 340px;
+  --tree-drop-max-width: 100%;
 }
 
 .setting-library-tree-switch {
@@ -453,7 +476,7 @@
 }
 
 .setting-library-tree-switch[aria-checked="true"] {
-  background: var(--blue);
+  background: var(--tide-teal, var(--blue));
 }
 
 .setting-library-tree-switch[aria-checked="true"] span {
@@ -482,9 +505,10 @@
 }
 
 .setting-library-inspector {
+  container: library-entry / inline-size;
   position: absolute;
   z-index: 50;
-  inset: 58px 0 0 auto;
+  inset: var(--catalog-toolbar-height) 0 0 auto;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   width: min(var(--setting-library-inspector-width, 760px), calc(100% - 56px));
@@ -543,6 +567,7 @@
 .setting-library-inspector-header > div > svg {
   flex: 0 0 auto;
   margin-top: 1px;
+  color: var(--tide-teal, var(--blue));
 }
 
 .setting-library-inspector-header strong {
@@ -561,7 +586,7 @@
   height: 28px;
   place-items: center;
   color: var(--muted);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 .setting-library-inspector-header button:hover,
@@ -664,7 +689,10 @@
   top: -6px;
   display: flex;
   align-items: flex-start;
-  padding: 6px 28px 14px;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 6px 16px 10px;
+  scrollbar-width: none;
   background: var(--chat);
 }
 
@@ -760,10 +788,11 @@
 .setting-library-agent-insert-note {
   min-width: 0;
   margin: 0;
-  padding: 12px;
-  background: color-mix(in srgb, var(--list) 58%, transparent);
-  border: 1px solid color-mix(in srgb, var(--text) 9%, transparent);
-  border-radius: 9px;
+  padding: 10px 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
 }
 
 .setting-library-field-card,
@@ -798,8 +827,8 @@
   width: 100%;
   color: var(--text);
   background: var(--field-bg);
-  border: 1px solid color-mix(in srgb, var(--text) 15%, transparent);
-  border-radius: 7px;
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  border-radius: 10px;
   outline: 0;
   font: inherit;
   font-weight: 500;
@@ -836,8 +865,8 @@
   padding: 4px 6px;
   color: var(--text);
   background: var(--field-bg);
-  border: 1px solid color-mix(in srgb, var(--text) 15%, transparent);
-  border-radius: 7px;
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  border-radius: 10px;
   cursor: text;
 }
 
@@ -866,11 +895,11 @@
   align-items: center;
   gap: 3px;
   padding: 0 3px 0 8px;
-  color: var(--text);
-  background: var(--active);
-  border: 1px solid color-mix(in srgb, var(--text) 9%, transparent);
-  border-radius: 6px;
-  font-size: 12px;
+  color: var(--tide-lilac, var(--blue));
+  background: color-mix(in srgb, var(--tide-lilac, var(--blue)) 9%, var(--chat));
+  border: 1px solid color-mix(in srgb, var(--tide-lilac, var(--blue)) 15%, transparent);
+  border-radius: 999px;
+  font-size: 11px;
   font-weight: 500;
 }
 
@@ -910,7 +939,7 @@
   color: var(--muted);
   background: var(--field-bg);
   border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
 }
 
 .setting-library-icon-grid button:hover {
@@ -929,8 +958,9 @@
   grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
   gap: 3px;
   padding: 3px;
-  background: color-mix(in srgb, var(--text) 6%, transparent);
-  border-radius: 7px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 6%, transparent);
+  border-radius: 12px;
 }
 
 .setting-library-segmented button {
@@ -938,7 +968,7 @@
   height: 29px;
   padding: 0 7px;
   color: var(--muted);
-  border-radius: 5px;
+  border-radius: 9px;
   font-size: 12px;
 }
 
@@ -947,9 +977,9 @@
 }
 
 .setting-library-segmented button[aria-checked="true"] {
-  color: var(--text);
-  background: var(--chat);
-  box-shadow: 0 1px 3px color-mix(in srgb, var(--shadow-color) 13%, transparent);
+  color: var(--tide-teal, var(--blue));
+  background: color-mix(in srgb, var(--tide-teal, var(--blue)) 9%, var(--chat));
+  box-shadow: none;
   font-weight: 600;
 }
 
@@ -1090,7 +1120,7 @@
   overflow: hidden;
   background: var(--field-bg);
   border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
 }
 
 .setting-library-number-control button,
@@ -1150,7 +1180,7 @@
 
 .setting-library-reference-heading > svg {
   flex: 0 0 auto;
-  color: var(--blue);
+  color: var(--tide-lilac, var(--blue));
 }
 
 .setting-library-reference-list button {
@@ -1295,7 +1325,7 @@
   padding: 0 10px;
   background: var(--field-bg);
   border: 1px solid color-mix(in srgb, var(--text) 9%, transparent);
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
 }
 
 .setting-library-placement-row.is-card.is-selected .setting-library-placement-choice {
@@ -1422,6 +1452,8 @@
   color: var(--muted);
   font-size: 12px;
   line-height: 1.6;
+  background: color-mix(in srgb, var(--tide-amber, var(--blue)) 5%, var(--chat));
+  border-color: color-mix(in srgb, var(--tide-amber, var(--blue)) 16%, transparent);
 }
 
 .setting-library-entry-editor,
@@ -1467,13 +1499,15 @@
 
 .setting-library-content-mode {
   padding: 2px;
-  border-radius: 8px;
-  background: var(--active);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tide-lilac, var(--blue)) 5%, var(--chat));
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
 }
 
 .setting-library-content-mode button[aria-checked="true"] {
-  color: var(--text);
-  background: var(--chat);
+  color: var(--tide-lilac, var(--blue));
+  background: color-mix(in srgb, var(--tide-lilac, var(--blue)) 9%, var(--chat));
+  border-radius: 999px;
 }
 
 .setting-library-content-heading button {
@@ -1484,7 +1518,7 @@
   gap: 5px;
   padding: 0 7px;
   color: var(--muted);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 500;
 }
@@ -1505,8 +1539,8 @@
   padding: 0 10px;
   color: var(--text);
   background: var(--field-bg);
-  border: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
-  border-radius: 7px;
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  border-radius: 10px;
   outline: 0;
   font: inherit;
   font-weight: 500;
@@ -1520,13 +1554,13 @@
 .setting-library-content-field textarea {
   min-width: 0;
   min-height: 250px;
-  height: clamp(250px, 45vh, 460px);
+  height: clamp(160px, 40dvh, 460px);
   padding: 11px 12px;
   resize: none;
   color: var(--text);
   background: var(--field-bg);
-  border: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
-  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  border-radius: 12px;
   outline: 0;
   font: 400 13px/1.65 ui-monospace, "SFMono-Regular", Consolas, monospace;
 }
@@ -1538,7 +1572,7 @@
 
 .setting-library-entry-section.is-content-section .setting-library-content-field textarea {
   height: 100%;
-  min-height: 420px;
+  min-height: min(260px, 35dvh);
 }
 
 .setting-library-entry-section.is-content-section.has-references .setting-library-content-field textarea {
@@ -1546,11 +1580,12 @@
 }
 
 .immersive-markdown-editor {
+  container: library-markdown / inline-size;
   position: fixed;
   z-index: 500;
   inset: 0;
   display: grid;
-  grid-template-rows: 52px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   color: var(--text);
@@ -1558,6 +1593,7 @@
 }
 
 .immersive-markdown-header {
+  min-height: 48px;
   display: flex;
   min-width: 0;
   align-items: center;
@@ -1590,7 +1626,7 @@
 .immersive-markdown-tabs {
   padding: 3px;
   background: color-mix(in srgb, var(--list) 72%, transparent);
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
 }
 
 .immersive-markdown-tabs button,
@@ -1637,7 +1673,7 @@
   color: var(--text);
   background: var(--field-bg);
   border: 1px solid color-mix(in srgb, var(--text) 13%, transparent);
-  border-radius: 9px;
+  border-radius: var(--radius-md);
 }
 
 .immersive-markdown-body > textarea {
@@ -1688,7 +1724,7 @@ html.immersive-editor-open .qq-character-editor-window-shell .window-controls {
   padding: 12px 14px;
   overflow: auto;
   background: color-mix(in srgb, var(--list) 72%, transparent);
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
 }
 
 .immersive-markdown-preview blockquote {
@@ -1750,7 +1786,7 @@ html.immersive-editor-open .qq-character-editor-window-shell .window-controls {
   justify-self: start;
   padding: 0 8px;
   color: #cf3737;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
 }
 
@@ -1773,7 +1809,7 @@ html.immersive-editor-open .qq-character-editor-window-shell .window-controls {
   gap: 5px;
   padding: 0 9px;
   color: var(--blue);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 600;
 }
@@ -1806,7 +1842,7 @@ html.immersive-editor-open .qq-character-editor-window-shell .window-controls {
   overflow: hidden;
   background: color-mix(in srgb, var(--list) 45%, transparent);
   border: 1px solid transparent;
-  border-radius: 9px;
+  border-radius: var(--radius-md);
 }
 
 .setting-library-opening-item.is-expanded {
@@ -1856,10 +1892,10 @@ html.immersive-editor-open .qq-character-editor-window-shell .window-controls {
 
 .setting-library-opening-toggle span {
   flex: 0 0 auto;
-  padding: 2px 5px;
-  color: var(--blue);
-  background: color-mix(in srgb, var(--blue) 9%, transparent);
-  border-radius: 5px;
+  padding: 3px 7px;
+  color: var(--tide-teal, var(--blue));
+  background: color-mix(in srgb, var(--tide-teal, var(--blue)) 9%, transparent);
+  border-radius: 999px;
   font-size: 10px;
   font-weight: 600;
   line-height: 1.2;
@@ -1896,8 +1932,8 @@ html.immersive-editor-open .qq-character-editor-window-shell .window-controls {
   padding: 0 14px;
   color: var(--text);
   background: var(--chat);
-  border: 1px solid color-mix(in srgb, var(--text) 15%, transparent);
-  border-radius: 7px;
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  border-radius: 10px;
   font-size: 13px;
   font-weight: 600;
 }
@@ -1913,11 +1949,13 @@ html.immersive-editor-open .qq-character-editor-window-shell .window-controls {
 }
 
 .setting-library-dialog {
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
   width: min(360px, calc(100vw - 40px));
-  padding: 22px;
+  padding: 18px;
   background: var(--chat);
-  border: 1px solid color-mix(in srgb, var(--text) 15%, transparent);
-  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--text) 9%, transparent);
+  border-radius: 18px;
   box-shadow: 0 18px 55px rgba(0, 0, 0, .2);
 }
 
@@ -1963,21 +2001,22 @@ html.immersive-editor-open .qq-character-editor-window-shell .window-controls {
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 42px;
+  padding: 24px;
   background: color-mix(in srgb, #000 38%, transparent);
 }
 
 .setting-library-manager {
   display: grid;
-  grid-template-rows: 54px minmax(0, 1fr);
-  width: min(720px, calc(100vw - 84px));
-  height: min(680px, calc(100vh - 84px));
-  min-height: 420px;
+  container: library-manager / inline-size;
+  grid-template-rows: 48px minmax(0, 1fr);
+  width: min(760px, calc(100vw - 48px));
+  height: min(680px, calc(100dvh - 48px));
+  min-height: 0;
   overflow: hidden;
   color: var(--text);
   background: var(--chat);
-  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
-  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--text) 9%, transparent);
+  border-radius: 20px;
   box-shadow: 0 24px 70px color-mix(in srgb, #000 32%, transparent);
 }
 
@@ -2004,7 +2043,7 @@ html.immersive-editor-open .qq-character-editor-window-shell .window-controls {
   height: 28px;
   place-items: center;
   color: var(--muted);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 .setting-library-manager-header button:hover {
@@ -2017,17 +2056,17 @@ html.immersive-editor-open .qq-character-editor-window-shell .window-controls {
   min-width: 0;
   min-height: 0;
   align-content: start;
-  gap: 12px;
-  padding: 16px 22px 22px;
+  gap: 10px;
+  padding: 12px 18px 18px;
   overflow: auto;
 }
 
 .setting-library-manager-card {
   min-width: 0;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--list) 58%, transparent);
-  border: 1px solid color-mix(in srgb, var(--text) 9%, transparent);
-  border-radius: 9px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
 }
 
 .setting-library-manager-card h3 {
@@ -2046,7 +2085,7 @@ html.immersive-editor-open .qq-character-editor-window-shell .window-controls {
   color: var(--text);
   background: var(--field-bg);
   border: 1px solid color-mix(in srgb, var(--text) 15%, transparent);
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   font: inherit;
   font-size: 13px;
 }
@@ -2079,7 +2118,7 @@ html.immersive-editor-open .qq-character-editor-window-shell .window-controls {
   color: var(--text);
   background: var(--field-bg);
   border: 1px solid color-mix(in srgb, var(--text) 15%, transparent);
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   outline: 0;
   font: inherit;
   font-weight: 500;
@@ -2329,7 +2368,7 @@ html.immersive-editor-open .qq-character-editor-window-shell .window-controls {
   height: 28px;
   padding: 0 7px;
   color: var(--blue);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
 }
 
@@ -2378,7 +2417,7 @@ html.immersive-editor-open .qq-character-editor-window-shell .window-controls {
 }
 
 .setting-library-picker-row > svg {
-  color: var(--soft-text);
+  color: var(--tide-teal, var(--blue));
 }
 
 .setting-library-tri-checkbox {
@@ -2404,7 +2443,7 @@ html.immersive-editor-open .qq-character-editor-window-shell .window-controls {
   padding: 0 12px;
   color: #fff;
   background: var(--blue);
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
 }
@@ -2426,7 +2465,7 @@ html.immersive-editor-open .qq-character-editor-window-shell .window-controls {
   gap: 3px;
   padding: 8px;
   background: color-mix(in srgb, var(--list) 65%, transparent);
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   text-align: center;
 }
 
@@ -2442,24 +2481,7 @@ html.immersive-editor-open .qq-character-editor-window-shell .window-controls {
   font-weight: 650;
 }
 
-@media (max-width: 760px) {
-  .setting-library-toolbar {
-    grid-template-columns: minmax(220px, 360px) auto auto minmax(0, 1fr);
-    padding-inline: 14px;
-  }
 
-  .setting-library-tree {
-    padding-inline: 10px;
-  }
-
-  .setting-library-layout.is-inspector-open .setting-library-tree {
-    margin-inline-end: calc(min(var(--setting-library-inspector-width), calc(100% - 28px)) + 6px);
-  }
-
-  .setting-library-inspector {
-    width: min(var(--setting-library-inspector-width, 760px), calc(100% - 28px));
-  }
-}
 
 @media (prefers-reduced-motion: reduce) {
   .setting-library-tree-entry-icon,
@@ -2486,6 +2508,97 @@ html.immersive-editor-open .qq-character-editor-window-shell .window-controls {
 
 @keyframes setting-library-tree-row-in {
   from { opacity: 0; }
+}
+
+.setting-library-manager-row > svg:first-child {
+  color: var(--tide-teal, var(--blue));
+}
+
+.setting-library-manager-row.is-accent > svg:first-child {
+  color: var(--blue);
+}
+
+.setting-library-manager-row.is-danger > svg:first-child {
+  color: #cf3737;
+}
+
+.setting-library-manager-choice-list > button > svg:first-child {
+  color: var(--tide-lilac, var(--blue));
+}
+
+.setting-library-picker-row.is-folder > svg {
+  color: var(--tide-amber, var(--blue));
+}
+
+/* Catalog panes share density while retaining their own state and scroll owners. */
+
+@container library-catalog (min-width: 960px) {
+  .setting-library-inspector { width: min(680px, clamp(420px, var(--setting-library-inspector-width, 480px), calc(100% - 280px))); }
+  .setting-library-layout.is-inspector-open .setting-library-tree { margin-inline-end: calc(min(680px, clamp(420px, var(--setting-library-inspector-width, 480px), calc(100% - 280px))) + 8px); }
+}
+@container library-catalog (max-width: 959px) {
+  .setting-library-layout.is-inspector-open > .setting-library-browser { display: none; }
+  .setting-library-layout.is-inspector-open > .setting-library-inspector { position: relative; inset: auto; width: 100%; height: 100%; min-width: 0; overflow: hidden; border-left: 0; }
+}
+@container library-catalog (max-width: 639px) {
+  .setting-library-toolbar { grid-template-columns: minmax(0, 1fr) 36px 36px auto; gap: 6px; padding: 8px 12px; }
+  .setting-library-toolbar .setting-library-search { height: 44px; }
+  .setting-library-toolbar :is(.setting-library-create-button,.setting-library-manage-button) { width: 36px; min-width: 36px; min-height: 36px; justify-content: center; gap: 0; padding: 0; }
+  .setting-library-toolbar :is(.setting-library-create-button,.setting-library-manage-button) > span { display: none; }
+  .setting-library-toolbar .setting-library-save-control { justify-self: end; gap: 0; }
+  .setting-library-toolbar .setting-library-save-feedback { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .setting-library-tree { padding: 6px 10px 20px; }
+}
+
+@media (pointer: coarse) {
+  .setting-library-layout { --catalog-toolbar-height: 60px; }
+  .setting-library-toolbar :is(button,.setting-library-search) { min-height: 44px; }
+}
+
+@container library-catalog (max-width: 959px) {
+  .setting-library-inspector-resizer { display: none; }
+}
+@container library-entry (max-width: 479px) {
+  .setting-library-inspector-body { margin-inline-end: 0; padding: 8px 12px 20px; scrollbar-gutter: auto; }
+  .setting-library-entry-tabs { padding-inline: 14px; }
+  .setting-library-field-heading, .setting-library-placement-heading { flex-wrap: wrap; gap: 6px; }
+  .setting-library-icon-options { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+@container library-manager (max-width: 479px) {
+  .setting-library-manager-body { padding: 12px; }
+  .setting-library-manager-row { padding-inline: 8px; }
+  .setting-library-manager-row small { max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+@media (max-width: 639px) {
+  .setting-library-manager-overlay { padding: 12px; }
+  .setting-library-manager { width: calc(100vw - 24px); height: min(680px, calc(100dvh - 24px)); }
+}
+@media (pointer: coarse) {
+  .setting-library-manager { grid-template-rows: 52px minmax(0, 1fr); }
+  .setting-library-entry-tabs button { min-height: 52px; }
+  .setting-library-manager-row { min-height: 44px; }
+}
+
+.setting-library-inspector :is(input,select,textarea) { min-width: 0; }
+@container library-entry (max-width: 479px) {
+  .setting-library-options { gap: 10px; }
+  .setting-library-directory-preview { max-width: 100%; }
+}
+@media (pointer: coarse) {
+  .setting-library-toolbar :is(.setting-library-create-button,.setting-library-manage-button) { width: auto; min-width: 44px; }
+  .setting-library-manager-header > button { width: 44px; height: 44px; }
+  .setting-library-manager-version-select, .setting-library-inspector :is(input:not([type="checkbox"]),select) { min-height: 44px; }
+}
+
+@container library-markdown (max-width: 639px) {
+  .immersive-markdown-body { padding: 12px; }
+  .immersive-markdown-preview { padding: 12px 16px; }
+  .immersive-markdown-actions { flex: none; }
+  .immersive-markdown-header strong { min-width: 0; }
+}
+@media (pointer: coarse) {
+  .immersive-markdown-header { min-height: 52px; }
+  .immersive-markdown-tabs button, .immersive-markdown-exit { min-height: 44px; }
 }
 
 .setting-library-inspector-pane {
@@ -2529,4 +2642,14 @@ html.immersive-editor-open .qq-character-editor-window-shell .window-controls {
 @media (prefers-reduced-motion: reduce) {
   .inspector-presence, .inspector-presence.is-closing { animation: none; }
   .setting-library-tree { transition: none; }
+}
+
+/* The presence wrapper follows the same catalog breakpoint as its editor. */
+@container library-catalog (min-width: 960px) {
+  .setting-library-inspector-pane { inset-block-start: var(--catalog-toolbar-height, 46px); width: min(var(--setting-library-inspector-width, 760px), calc(100% - 280px)); }
+  .setting-library-layout.is-inspector-open .setting-library-tree { margin-inline-end: calc(min(var(--setting-library-inspector-width, 760px), calc(100% - 280px)) + 8px); }
+}
+@container library-catalog (max-width: 959px) {
+  .setting-library-layout.is-inspector-open > .setting-library-inspector-pane { position: relative; inset: auto; width: 100%; height: 100%; overflow: hidden; }
+  .setting-library-inspector-pane > .setting-library-inspector { border-left: 0; }
 }

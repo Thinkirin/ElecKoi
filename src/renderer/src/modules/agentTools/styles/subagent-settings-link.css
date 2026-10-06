@@ -1,15 +1,16 @@
 .subagent-settings-link {
   width: 100%;
-  min-height: 56px;
-  margin-top: 18px;
+  min-height: 48px;
+  margin-top: 14px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--control-bg);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: transparent;
   color: var(--text);
   text-align: left;
   cursor: pointer;
@@ -26,6 +27,8 @@
 }
 
 .subagent-settings-link strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: 13px;
   font-weight: 650;
 }

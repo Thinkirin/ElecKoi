@@ -21,6 +21,7 @@ function normalizedGroups(values: unknown[]): string[] {
 
 export interface CharacterConversationCleanup {
   deleteForCharacter(characterId: string): void
+  detachForCharacter?(characterId: string): void
   refreshCharacterIdentity(characterId: string, identity: {
     name: string
     avatar: string
@@ -154,15 +155,20 @@ export class CharacterRepository {
     return this.get()
   }
 
-  replaceAll(collection: CharacterCollection, db?: ElecKoiDatabase): CharacterCollection {
+  replaceAll(collection: CharacterCollection, db?: ElecKoiDatabase, preserveConversations = false): CharacterCollection {
     const ids = new Set(collection.items.map((item) => item.id))
     if (ids.size !== collection.items.length || collection.items.some((item) => !item.id.trim())) throw new Error('角色编号不能为空或重复。')
     const persist = (database: ElecKoiDatabase) => {
       const existing = database.select().from(characters).all()
       for (const row of existing) {
         if (ids.has(row.id)) continue
-        this.conversationCleanup.deleteForCharacter(row.id)
-        this.pendingRemovedOwners.add(`character/${row.id}`)
+        if (preserveConversations) {
+          if (!this.conversationCleanup.detachForCharacter) throw new Error('Character service cannot preserve conversations')
+          this.conversationCleanup.detachForCharacter(row.id)
+        } else {
+          this.conversationCleanup.deleteForCharacter(row.id)
+          this.pendingRemovedOwners.add(`character/${row.id}`)
+        }
         // Public common FKs delete card-owned configuration. Workspace relationships
         // that represent independent use are detached by the conversation cleanup.
         database.delete(characters).where(eq(characters.id, row.id)).run()
@@ -223,10 +229,10 @@ export class CharacterRepository {
     }
   }
 
-  delete(characterIds: string[]): CharacterCollection {
+  delete(characterIds: string[], options: { deleteChats?: boolean } = {}): CharacterCollection {
     const current = this.get()
     const removed = new Set(characterIds)
-    return this.replaceAll({ ...current, items: current.items.filter((item) => !removed.has(item.id)) })
+    return this.replaceAll({ ...current, items: current.items.filter((item) => !removed.has(item.id)) }, undefined, options.deleteChats === false)
   }
 
   commitMediaChanges(): void {

@@ -5,6 +5,7 @@ import { HistoryExportIcon, HistoryImportIcon, TrashIcon, XIcon } from "../../..
 import { Avatar } from "../../../ui/ui/Avatar.jsx";
 import { DshSearchField } from "../../../ui/ui/DshSearchField.jsx";
 import { applyChatHistoryPolicy, exportChatHistory, importChatHistory } from "../api/chatApi.js";
+import { useAnimatedClose } from "../../../ui/hooks/useAnimatedClose.js";
 
 const EMPTY_SNAPSHOT = Object.freeze({ status: "loading", ui: Object.freeze({}) });
 const EMPTY_SUBSCRIBE = () => () => {};
@@ -25,6 +26,7 @@ function timeTitle(value) {
 }
 
 export function HistoryModal({ open, sessions, sessionId, chatCharacter, conversationModel, onClose, onLoadChat, onDeleteChat, onHistoryPolicyChange }) {
+  const { closing, close } = useAnimatedClose(onClose, 200, open);
   const preferences = useDshDisplayPreferences();
   const preferenceSnapshot = useSyncExternalStore(
     preferences?.subscribe || EMPTY_SUBSCRIBE,
@@ -44,6 +46,18 @@ export function HistoryModal({ open, sessions, sessionId, chatCharacter, convers
     if (!open || preferenceSnapshot.status !== "ready") return;
     setSaveMode(preferenceSnapshot.ui?.history_save_mode === "recent10" ? "recent10" : "all");
   }, [open, preferenceSnapshot.status, preferenceSnapshot.ui]);
+
+  useEffect(() => {
+    if (!open) return;
+    const escape = event => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      if (confirmAction) setConfirmAction(null);
+      else close();
+    };
+    window.addEventListener('keydown', escape);
+    return () => window.removeEventListener('keydown', escape);
+  }, [close, confirmAction, open]);
 
   const filteredGroups = useMemo(() => {
     const key = keyword.trim().toLowerCase();
@@ -128,7 +142,7 @@ export function HistoryModal({ open, sessions, sessionId, chatCharacter, convers
       const { conversationId } = await importChatHistory(currentCharacterId, await file.text(), { model: conversationModel });
       await onHistoryPolicyChange?.();
       await onLoadChat?.(conversationId);
-      onClose?.();
+      close();
     } catch (error) {
       setTransferError(error?.message || "导入聊天记录失败。");
     } finally {
@@ -152,11 +166,11 @@ export function HistoryModal({ open, sessions, sessionId, chatCharacter, convers
   if (!open) return null;
 
   return createPortal((
-    <div className="history-overlay" onMouseDown={onClose}>
-      <section className="history-window" onMouseDown={(event) => event.stopPropagation()}>
+    <div className={`history-overlay${closing ? " closing" : ""}`} onMouseDown={close}>
+      <section className="history-window" role="dialog" aria-modal="true" aria-label="对话历史" onMouseDown={(event) => event.stopPropagation()}>
         <header className="history-titlebar">
           <strong>{characterName}</strong>
-          <button type="button" onClick={onClose} title="关闭">
+          <button type="button" onClick={close} title="关闭">
             <XIcon />
           </button>
         </header>
@@ -225,7 +239,7 @@ export function HistoryModal({ open, sessions, sessionId, chatCharacter, convers
                       type="button"
                       onClick={() => {
                         onLoadChat(item.id);
-                        onClose();
+                        close();
                       }}
                     >
                       <Avatar src={itemCharacterAvatar} name={itemCharacterName} />

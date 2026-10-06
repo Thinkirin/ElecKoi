@@ -1,17 +1,17 @@
+import { useAnimatedClose } from "../hooks/useAnimatedClose.js";
 import React, { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CopyIcon, XIcon } from "../icons/index.jsx";
 
 export function AppErrorDialog({ notice, onDismiss }) {
+  const { closing, close } = useAnimatedClose(onDismiss, 200, Boolean(notice?.message));
   const titleId = useId();
   const detailId = useId();
   const statusId = useId();
   const dialogRef = useRef(null);
   const copyRef = useRef(null);
-  const onDismissRef = useRef(onDismiss);
   const [copyState, setCopyState] = useState("idle");
 
-  onDismissRef.current = onDismiss;
 
   useEffect(() => {
     if (!notice?.message || typeof document === "undefined") return undefined;
@@ -21,7 +21,7 @@ export function AppErrorDialog({ notice, onDismiss }) {
     function handleKeyDown(event) {
       if (event.key === "Escape") {
         event.preventDefault();
-        onDismissRef.current?.();
+        close();
         return;
       }
       if (event.key !== "Tab") return;
@@ -72,7 +72,7 @@ export function AppErrorDialog({ notice, onDismiss }) {
       : "";
 
   const dialog = (
-    <div className="app-error-overlay" role="presentation" onMouseDown={() => onDismiss?.()}>
+    <div className={`app-error-overlay${closing ? ' is-closing' : ''}`} role="presentation" onMouseDown={close}>
       <section
         ref={dialogRef}
         className="app-error-dialog"
@@ -84,7 +84,7 @@ export function AppErrorDialog({ notice, onDismiss }) {
       >
         <header className="app-error-header">
           <h2 id={titleId}>运行错误</h2>
-          <button type="button" className="app-error-close" aria-label="关闭错误详情" onClick={onDismiss}>
+          <button type="button" className="app-error-close" aria-label="关闭错误详情" onClick={close}>
             <XIcon size={18} />
           </button>
         </header>
@@ -94,7 +94,7 @@ export function AppErrorDialog({ notice, onDismiss }) {
             {statusText}
           </span>
           <div className="app-error-actions">
-            <button type="button" onClick={onDismiss}>关闭</button>
+            <button type="button" onClick={close}>关闭</button>
             <button ref={copyRef} type="button" className="is-primary" onClick={copyError}>
               <CopyIcon size={15} />
               <span>{copyLabel}</span>

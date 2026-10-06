@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useReducer, useRef, useState } from "react";
 import { useNodesState } from "@xyflow/react";
+import { registerOverlayBack } from "../../../ui/hooks/overlayBack.js";
 import "@xyflow/react/dist/style.css";
 import {
   CanvasAddMenu,
@@ -42,6 +43,7 @@ export {
 
 export function CreatorStudioCanvas({
   project,
+  projectCatalog,
   assistantOpen,
   onAssistantOpenChange,
   onAssetLibraryOpenChange,
@@ -61,6 +63,9 @@ export function CreatorStudioCanvas({
   const [internalViewport, setInternalViewport] = useState(DEFAULT_CANVAS_VIEWPORT);
   const [nodeCounter, setNodeCounter] = useState(1);
   const [isPanning, setIsPanning] = useState(false);
+  const [panMode, setPanMode] = useState(false);
+  const [layoutMode, setLayoutMode] = useState("wide");
+  const canvasRef = useRef(null);
   const [connection, setConnection] = useState(EMPTY_CONNECTION);
   const [pendingConnectionVisual, setPendingConnectionVisual] = useState(null);
   const gridPatternId = useId().replace(/:/g, "");
@@ -88,6 +93,7 @@ export function CreatorStudioCanvas({
     setViewport({ ...DEFAULT_CANVAS_VIEWPORT });
     setNodeCounter(1);
     setIsPanning(false);
+    setPanMode(false);
     setConnection(EMPTY_CONNECTION);
     setPendingConnectionVisual(null);
     nodeDragStartRef.current = null;
@@ -99,8 +105,49 @@ export function CreatorStudioCanvas({
   }, [onDirtyChange, project.id, setViewport]);
 
   useEffect(() => {
-    onAssetLibraryOpenChange?.(assetLibraryOpen);
-  }, [assetLibraryOpen, onAssetLibraryOpenChange]);
+    const root = canvasRef.current;
+    if (!root) return undefined;
+    const updateLayout = () => {
+      const width = root.getBoundingClientRect().width;
+      setLayoutMode(width < 960 ? "compact" : width < 1280 ? "middle" : "wide");
+    };
+    updateLayout();
+    const observer = new ResizeObserver(updateLayout);
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    onAssetLibraryOpenChange?.(assetLibraryOpen && layoutMode !== "compact");
+  }, [assetLibraryOpen, layoutMode, onAssetLibraryOpenChange]);
+
+  useEffect(() => {
+    if (assistantOpen && layoutMode !== "wide") setAssetLibraryOpen(false);
+    if (assistantOpen) {
+      setAddMenu(current => ({ ...current, open: false }));
+      setContextMenu(current => ({ ...current, open: false }));
+    }
+  }, [assistantOpen, layoutMode]);
+
+  const openAssets = useCallback(() => {
+    if (layoutMode !== "wide") onAssistantOpenChange(false);
+    setAddMenu(current => ({ ...current, open: false }));
+    setContextMenu(current => ({ ...current, open: false }));
+    setAssetLibraryOpen(true);
+  }, [layoutMode, onAssistantOpenChange]);
+
+  useEffect(() => {
+    if (!addMenu.open && !contextMenu.open && !connection.active) return undefined;
+    return registerOverlayBack(() => {
+      setContextMenu(current => ({ ...current, open: false }));
+      setAddMenu(current => ({ ...current, open: false }));
+      pendingConnectionRef.current = null;
+      setPendingConnectionVisual(null);
+      connectionRef.current = EMPTY_CONNECTION;
+      setConnection(EMPTY_CONNECTION);
+      return true;
+    });
+  }, [addMenu.open, contextMenu.open, connection.active]);
 
   const markDirty = useCallback(() => onDirtyChange(true), [onDirtyChange]);
 
@@ -232,13 +279,6 @@ export function CreatorStudioCanvas({
       } else if (command && event.key === "0") {
         event.preventDefault();
         resetViewport();
-      } else if (event.key === "Escape") {
-        setContextMenu((current) => ({ ...current, open: false }));
-        setAddMenu((current) => ({ ...current, open: false }));
-        pendingConnectionRef.current = null;
-        setPendingConnectionVisual(null);
-        connectionRef.current = EMPTY_CONNECTION;
-        setConnection(EMPTY_CONNECTION);
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -403,8 +443,8 @@ export function CreatorStudioCanvas({
     const height = nodeElement ? 338 : 282;
     setContextMenu({
       open: true,
-      x: clamp(event.clientX - rect.left, 12, rect.width - 232),
-      y: clamp(event.clientY - rect.top, 12, rect.height - height - 12),
+      x: clamp(event.clientX - rect.left, 12, Math.max(12, rect.width - Math.min(220, rect.width - 24) - 12)),
+      y: clamp(event.clientY - rect.top, 12, Math.max(12, rect.height - Math.min(height, rect.height - 24) - 12)),
     });
     setAddMenu((current) => ({ ...current, open: false }));
   };
@@ -425,8 +465,8 @@ export function CreatorStudioCanvas({
     setAddMenu({
       open: true,
       source: "context",
-      x: clamp(contextMenu.x, 12, (rect?.width || 1000) - 312),
-      y: clamp(contextMenu.y, 12, (rect?.height || 700) - 410),
+      x: clamp(contextMenu.x, 12, Math.max(12, (rect?.width || 1000) - 324)),
+      y: clamp(contextMenu.y, 12, Math.max(12, (rect?.height || 700) - 410)),
     });
     setContextMenu((current) => ({ ...current, open: false }));
   };
@@ -452,14 +492,16 @@ export function CreatorStudioCanvas({
       type: "creatorCanvasNode",
       position: { x: node.x, y: node.y },
       selected: selectedNodeId === node.id,
-      draggable: true,
+      draggable: !panMode,
       style: { width: node.width || size.width, height: node.height || size.height },
       data: {
         node,
+        editorPortalTarget: layoutMode === "compact" ? viewportRef.current : null,
+        panMode,
         prompt: nodePrompts[node.id] || "",
         connection,
         onPromptChange: (value) => setNodePrompts((current) => ({ ...current, [node.id]: value })),
-        onOpenAssets: () => setAssetLibraryOpen(true),
+        onOpenAssets: openAssets,
         onOpenAssistant: (value) => value ? sendNodePrompt(value) : onAssistantOpenChange(true),
         onCreateRelated: (type) => {
           const currentViewport = viewportSnapshotRef.current;
@@ -477,10 +519,13 @@ export function CreatorStudioCanvas({
     };
   }), [
     connection,
+    layoutMode,
+    panMode,
     createNode,
     nodePrompts,
     nodes,
     onAssistantOpenChange,
+    openAssets,
     openPortMenu,
     removeSelectedNode,
     sendNodePrompt,
@@ -515,9 +560,9 @@ export function CreatorStudioCanvas({
     nodeDragStartRef.current = null;
   }, [commitNodeMove, moveNode]);
 
-  return <section className={`creator-studio-canvas${assetLibraryOpen ? " has-assets" : ""}${assistantOpen ? " has-assistant" : ""}`} aria-label={`${project.name}项目画布`}>
+  return <section ref={canvasRef} className={`creator-studio-canvas is-${layoutMode}${assetLibraryOpen ? " has-assets" : ""}${assistantOpen ? " has-assistant" : ""}`} aria-label={`${project.name}项目画布`}>
     <div
-      className={`creator-canvas-viewport${isPanning ? " is-panning" : ""}`}
+      className={`creator-canvas-viewport${isPanning ? " is-panning" : ""}${panMode ? " is-pan-mode" : ""}`}
       ref={viewportRef}
       style={{
         "--canvas-pan-x": `${viewport.x}px`,
@@ -537,6 +582,7 @@ export function CreatorStudioCanvas({
       <CanvasDotGrid id={`${gridPatternId}-base`} viewport={viewport} />
       <CanvasDotGrid id={`${gridPatternId}-glow`} viewport={viewport} glow />
       <CreatorCanvasFlowSurface
+        panMode={panMode}
         nodes={flowNodes}
         edges={edges}
         viewport={viewport}
@@ -564,9 +610,11 @@ export function CreatorStudioCanvas({
       />
 
       <CanvasViewportTools
+        panMode={panMode}
+        onPanModeChange={setPanMode}
         assetLibraryOpen={assetLibraryOpen}
         viewport={viewport}
-        onOpenAssets={() => setAssetLibraryOpen(true)}
+        onOpenAssets={openAssets}
         onReset={resetViewport}
         onZoom={changeZoom}
       />
@@ -576,7 +624,7 @@ export function CreatorStudioCanvas({
         canUndo={Boolean(past.length)}
         canRedo={Boolean(future.length)}
         hasSelectedNode={Boolean(selectedNode)}
-        onOpenAssets={() => { setAssetLibraryOpen(true); setContextMenu((current) => ({ ...current, open: false })); }}
+        onOpenAssets={() => { openAssets(); setContextMenu((current) => ({ ...current, open: false })); }}
         onOpenAddMenu={openContextAddMenu}
         onUndo={undo}
         onRedo={redo}
@@ -592,7 +640,7 @@ export function CreatorStudioCanvas({
       />
     </div>
 
-    {assetLibraryOpen ? <CanvasAssetLibrary nodes={nodes} onClose={() => setAssetLibraryOpen(false)} onSelectNode={setSelectedNodeId} /> : null}
-    {assistantOpen ? <CanvasAssistant value={assistantPrompt} onChange={setAssistantPrompt} onClose={() => onAssistantOpenChange(false)} /> : null}
+    {assetLibraryOpen ? <CanvasAssetLibrary nodes={nodes} onClose={() => setAssetLibraryOpen(false)} onSelectNode={(id) => { setSelectedNodeId(id); if (layoutMode === "compact") setAssetLibraryOpen(false); }} /> : null}
+      {assistantOpen ? <CanvasAssistant project={project} service={projectCatalog} value={assistantPrompt} onChange={setAssistantPrompt} onClose={() => onAssistantOpenChange(false)} /> : null}
   </section>;
 }

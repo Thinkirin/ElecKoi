@@ -3,7 +3,6 @@ import { chatDisplayPreferencesSchema, DEFAULT_CHAT_DISPLAY_PREFERENCES } from "
 import {
   DEFAULT_SIDEBAR_CHARACTER_ARTWORK,
   DEFAULT_NEW_CHARACTER_BACKGROUND,
-  applyAppearanceTheme,
   normalizeAppearanceMode,
   useDshAppearance,
   normalizeGlobalChatWallpaper,
@@ -13,6 +12,7 @@ import {
 import {
   useDshDisplayPreferences,
 } from "../../modules/settings/index.js";
+import { createAppFontController, SYSTEM_APP_FONT } from "../../modules/appearance/index.js";
 
 const EMPTY_DISPLAY_PREFERENCES = Object.freeze({
   status: "loading",
@@ -32,7 +32,7 @@ export function useWindowAppearance({ notify = () => {} } = {}) {
     displayPreferences?.subscribe || EMPTY_SUBSCRIBE,
     displayPreferences?.getSnapshot || GET_EMPTY_DISPLAY_PREFERENCES,
   );
-  const [appearanceMode, setAppearanceMode] = useState(() => appearance?.theme.getTheme().preference || "light");
+  const [appearanceMode, setAppearanceMode] = useState(() => appearance?.theme.getTheme().preference || "system");
   const [sidebarCharacterArtwork, setSidebarCharacterArtwork] = useState(DEFAULT_SIDEBAR_CHARACTER_ARTWORK);
   const [chatDisplay, setChatDisplay] = useState(DEFAULT_CHAT_DISPLAY_PREFERENCES);
   const [globalChatWallpaper, setGlobalChatWallpaper] = useState(() => normalizeGlobalChatWallpaper());
@@ -41,9 +41,22 @@ export function useWindowAppearance({ notify = () => {} } = {}) {
   const chatDisplaySaveTimerRef = useRef(null);
   const chatDisplayVersionRef = useRef(0);
   const chatDisplayDirtyRef = useRef(false);
+  const fontControllerRef = useRef(null);
+  const notifyRef = useRef(notify);
+  notifyRef.current = notify;
 
   useEffect(() => {
-    applyAppearanceTheme(null);
+    const controller = createAppFontController();
+    fontControllerRef.current = controller;
+    return () => { controller.dispose(); fontControllerRef.current = null; };
+  }, []);
+
+  useEffect(() => {
+    fontControllerRef.current?.apply(displaySnapshot.ui.app_font || SYSTEM_APP_FONT, displaySnapshot.ui.app_fonts || [])
+      .catch(error => notifyRef.current("error", `字体加载失败：${error.message || String(error)}`));
+  }, [displaySnapshot.ui.app_font, displaySnapshot.ui.app_fonts]);
+
+  useEffect(() => {
     const preferences = displaySnapshot.ui;
     if (Object.hasOwn(preferences, "global_chat_wallpaper")) {
       setGlobalChatWallpaper(normalizeGlobalChatWallpaper(preferences.global_chat_wallpaper));
@@ -75,10 +88,10 @@ export function useWindowAppearance({ notify = () => {} } = {}) {
     };
   }, [displaySnapshot.chatDisplay]);
 
-  function changeAppearanceMode(mode) {
+  async function changeAppearanceMode(mode) {
     try {
-      if (!appearance) throw new Error("DSH 主题服务尚未就绪。");
-      appearance.theme.setTheme(normalizeAppearanceMode(mode));
+      if (!displayPreferences) throw new Error("DSH 显示偏好服务尚未就绪。");
+      await displayPreferences.updateUi({ appearance_mode: normalizeAppearanceMode(mode) });
     } catch (error) {
       notify("error", error?.message || "外观模式切换失败。");
     }

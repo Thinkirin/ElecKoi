@@ -44,11 +44,11 @@ export function PresetRegexEditor({ preset, onChange, saveAction, onTest }) {
   }
 
   return (
-    <section className="preset-regex-editor" aria-label="预设正则">
+    <section className={`preset-regex-editor${selected ? ' has-inspector' : ''}`} aria-label="预设正则">
       <div className="preset-regex-browser">
         <div className="preset-subtoolbar">
           <label><MagnifyingGlass size={15} /><input value={query} placeholder="搜索正则" aria-label="搜索正则" onChange={(event) => setQuery(event.target.value)} /></label>
-          <button type="button" onClick={addRule}><Plus size={16} />新建</button>
+          <button type="button" className="preset-toolbar-add" aria-label="新建正则" title="新建正则" onClick={addRule}><Plus size={18} aria-hidden="true" /></button>
           {saveAction}
         </div>
         <div className="preset-regex-list" tabIndex={0} aria-label="预设正则列表" onContextMenu={(event) => context.open(event)}>
@@ -62,6 +62,7 @@ export function PresetRegexEditor({ preset, onChange, saveAction, onTest }) {
         </div>
       </div>
       {selected ? <RegexRuleInspector
+        saveAction={saveAction}
         scope="AgentPreset"
         scopeLocked
         rule={selected}

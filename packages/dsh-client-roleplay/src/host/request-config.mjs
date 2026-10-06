@@ -1,5 +1,6 @@
 import { readSessionSnapshot } from './session-snapshot.mjs'
 import { isProjectionEnvelope } from './conversation-context.mjs'
+import { readFileSync } from 'node:fs'
 
 const COMPACTION_GUARD = '你当前只执行内部历史压缩。只返回非空的纯文本摘要正文；不要调用工具，不要输出推理过程，也不要使用主对话的输出协议标签。'
 
@@ -10,7 +11,7 @@ const COMPACTION_GUARD = '你当前只执行内部历史压缩。只返回非空
  * agent/request waterfall. Persisted DSH request headers are history, not the
  * authority for a new turn.
  */
-export function installRequestConfig(agentCtx, snapshotRoot, sourceSessionId) {
+export function installRequestConfig(agentCtx, snapshotRoot, sourceSessionId, { compatibilitySettings = true } = {}) {
   const reroutedCompactions = new WeakSet()
   const disposeAssembly = agentCtx.on('system-prompt/assemble', async (_assembly, _context, next) => {
     const snapshot = readSessionSnapshot(snapshotRoot, sourceSessionId)
@@ -28,7 +29,10 @@ export function installRequestConfig(agentCtx, snapshotRoot, sourceSessionId) {
   const disposeRequest = agentCtx.on('agent/request', async (_payload, next) => {
     const inherited = await next()
     const snapshot = readSessionSnapshot(snapshotRoot, sourceSessionId)
-    const model = structuredClone(snapshot.model)
+    let model = structuredClone(snapshot.model)
+    const context = compatibilitySettings ? JSON.parse(readFileSync(snapshot.contextFile, 'utf8')) : {}
+    const settings = context.compatibilityPreset?.compatibility === true ? context.compatibilityPreset.settings : undefined
+    if (settings) model = projectCompatibilityPresetSettings(model, settings)
     if (!model?.provider || !model?.model) return inherited
     const {
       provider: _provider,
@@ -68,6 +72,19 @@ export function installRequestConfig(agentCtx, snapshotRoot, sourceSessionId) {
     disposeRequest()
     disposeAssembly()
   }
+}
+
+/** Freeze typed settings into official DSH request fields, keeping provider selection original. */
+export function projectCompatibilityPresetSettings(model, settings) {
+  const result = { ...model }
+  for (const [source, target] of [['temperature', 'temperature'], ['top_p', 'topP'], ['max_completion_tokens', 'maxTokens']]) {
+    if (settings[source] !== undefined) {
+      if (typeof settings[source] !== 'number' || !Number.isFinite(settings[source])) throw new TypeError(`Preset ${source} must be numeric`)
+      result[target] = settings[source]
+    }
+  }
+  if (typeof settings.reasoning_effort === 'string' && settings.reasoning_effort !== 'auto') result.reasoningEffort = settings.reasoning_effort
+  return result
 }
 
 export function projectCompactionRequest(options, customInstructions, defaultReasoningEffort) {

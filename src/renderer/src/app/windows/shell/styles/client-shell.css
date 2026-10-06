@@ -52,12 +52,20 @@
 
 .side-panel-brand {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   min-width: 0;
+  gap: 8px;
   height: 100%;
   color: var(--title-fg);
   white-space: nowrap;
   overflow: hidden;
+}
+
+.side-panel-brand .side-panel-section-title {
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 
 .side-panel-brand strong {
@@ -70,12 +78,12 @@
 .side-panel-collapse-button {
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   flex: none;
   padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--title-fg);
   cursor: pointer;
@@ -106,6 +114,12 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+}
+
+.side-panel-content > .app-settings-sidebar {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .side-panel-shell.collapsed {
@@ -139,6 +153,17 @@
   height: 40px;
   -webkit-app-region: drag;
 }
+
+.main-window-shell[data-rightbar-overlay] .dsh-rightbar-column {
+  position:absolute;
+  inset:var(--shell-chrome-height,40px) 0 0 auto;
+  width:var(--rightbar-normal-width);
+  height:auto;
+  margin:0;
+  pointer-events:none;
+}
+.main-window-shell[data-rightbar-overlay]:not([data-rightbar-shown]) .dsh-rightbar-column { display:none; }
+.main-window-shell[data-rightbar-overlay] .dsh-rightbar-column > * { pointer-events:auto; }
 
 .rightbar-resizer {
   position: absolute;
