@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { encodeImageDraft } from '../src/renderer/src/modules/chat/hooks/useChatInputImages.js';
+import { encodeImageDraft } from '../apps/web/src/modules/chat/hooks/useChatInputImages.js';
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64');
 

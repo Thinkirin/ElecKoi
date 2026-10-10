@@ -2,12 +2,12 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ModelConfigPanel } from '../src/renderer/src/modules/models/components/ModelConfigPanel.jsx';
-import { initialConfigForProvider } from '../src/renderer/src/modules/models/model/modelConfigDraft.js';
+import { ModelConfigPanel } from '../apps/web/src/modules/models/components/ModelConfigPanel.jsx';
+import { initialConfigForProvider } from '../apps/web/src/modules/models/model/modelConfigDraft.js';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 vi.stubGlobal('React', React);
-vi.mock('../src/renderer/src/modules/settings/index.js', () => ({
+vi.mock('../apps/web/src/modules/settings/index.js', () => ({
   LIST_COLLAPSE_AREAS: { models: 'models' },
   usePersistentCollapseState: (_area, initial) => [...React.useState(initial), true],
 }));

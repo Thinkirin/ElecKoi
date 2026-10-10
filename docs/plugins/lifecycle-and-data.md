@@ -42,7 +42,7 @@ ctx.effect(() => {
 
 - 直接打开 ElecKoi SQLite；
 - 直接读写 DSH JSONL 文件；
-- 导入 `src/main` Repository；
+- 导入 `apps/desktop/src/main` Repository；
 - 恢复或调用已经删除的 Desktop Gateway、业务 Preload bridge 或 `window.eleckoi`；
 - 通过 DOM 查询或修改另一个插件的内部状态；
 - 修改 `ctx.llm`、`ctx.tools` 等 service 的内部注册表。
@@ -59,9 +59,9 @@ ctx.effect(() => {
 
 ### 请求上下文与统计
 
-轨迹视图从 DSH 官方 `trajectory` 数据源读取事件和分页；ElecKoi 增加 `eleckoiRequestContexts` 整日志投影，以请求 `startSeq` 索引实际发送的消息顺序。类型入口为 `@eleckoi/dsh-client-roleplay/projections`，界面扩展位为 `eleckoi.roleplay.trajectory`。
+轨迹视图从 DSH 官方 `trajectory` 数据源读取事件和分页，界面扩展位为 `eleckoi.roleplay.trajectory`。输入菜单的“请求上下文预览”使用独立大弹窗，左侧列本次运行的轮次和请求，右侧显示按实际发包顺序排列的可读消息、设定位置和工具结果。
 
-Host 在模型请求投影完成后使用 `Session.append('eleckoi/request-context', { requestSeq, context }, { ignorable: true })` 记录输入。该事件没有 `surfaceOp`，不进入模型消息。`ignorable: true` 是官方日志读取器对外部信息性事件的信封要求：没有该标记，持久化日志会拒绝重新打开。锁定版本的 append 参数补丁与既有记录修复见 [ADR 0019](../adr/0019-informational-session-records.md)。Client 通过 `useProjection('eleckoiRequestContexts')` 读取；禁止新增私有 IPC 或轮询另一份轨迹数据。旧日志可从已记录的消息和提示词投影定义恢复可用内容；只有新增的实际请求记录包含当时最终完成的全部请求转换。
+Host 在真实聊天请求完成产品装配后，交给 LLM Runtime 前捕获不可变消息版本；未变化的消息和设定共用内存内容。目录通过生成的 `ctx.remote.eleckoiConversations.requestPreviews()` stream 传输轻量身份，点选通过 `requestPreview()` 临时生成当前正文。关闭弹窗停止界面读取，聊天时仍持续捕获；彻底退出客户端后清空，重新启动不从日志恢复历史预览。预览不增加 Session 事件、产品数据库记录、投影缓存或浏览器存储，见 [ADR 0029](../adr/0029-ephemeral-request-context-preview.md)。旧全文事件及其正式信封修复仅为保留已有数据继续存在，见 [ADR 0019](../adr/0019-informational-session-records.md)。
 
 总轮次、步骤和 Token 使用 DSH 官方 `sessionStats`、`tokenUsage` 整日志投影；上下文占用读取 `contextPressure` 和 `contextBreakdown`。删除与重新生成关闭旧句柄并重开同一个 Session，所有投影只根据保留日志重新计算。图片通过官方 `uiConversation.imageUrl` 和 Session 附件合同读取，缓存随 Session 绑定释放。
 

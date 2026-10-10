@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { apply as applyRoleplayPlanTool } from '../resources/dsh/roleplay-plan-tool.mjs'
+import { apply as applyRoleplayPlanTool } from '../apps/desktop/resources/dsh/roleplay-plan-tool.mjs'
 
 describe('DSH roleplay plan tool', () => {
   it('stays registered when the active preset has no plan steps', async () => {

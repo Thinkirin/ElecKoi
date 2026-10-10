@@ -13,8 +13,8 @@ import { resolveConversationSeed } from '../packages/dsh-product-data/src/domain
 import { LocalMediaStore } from '@eleckoi/dsh-product-data/media'
 import { encodeSettingLibrarySnapshot, decodeSettingLibrarySnapshot, encodeVariableConfigSnapshot, decodeVariableConfigSnapshot } from '../packages/dsh-product-data/src/domain/characterTransfer/portableSnapshots'
 // @ts-expect-error 工具插件为无声明文件的 JavaScript 入口。
-import { apply as applyVariableTools } from '../resources/dsh/variable-tools.mjs'
-import type { VariableConfigVersion } from '../src/shared/contracts/variables/schemas'
+import { apply as applyVariableTools } from '../apps/desktop/resources/dsh/variable-tools.mjs'
+import type { VariableConfigVersion } from '../packages/product-shared/src/contracts/variables/schemas'
 
 const fixtures: Array<{ database: SqliteDatabase; directory: string }> = []
 afterEach(() => {

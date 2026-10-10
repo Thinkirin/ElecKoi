@@ -1,8 +1,8 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, describe, expect, it, vi } from "vitest";
-import { AvatarCropModal } from "../src/renderer/src/ui/ui/AvatarCropModal.jsx";
-import { AvatarManagerEditor, avatarSetFromPersona } from "../src/renderer/src/ui/ui/AvatarSlotsEditor.jsx";
+import { AvatarCropModal } from "../apps/web/src/ui/ui/AvatarCropModal.jsx";
+import { AvatarManagerEditor, avatarSetFromPersona } from "../apps/web/src/ui/ui/AvatarSlotsEditor.jsx";
 
 vi.stubGlobal("React", React);
 afterAll(() => vi.unstubAllGlobals());

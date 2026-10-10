@@ -4,8 +4,8 @@ import { createRoot } from 'react-dom/client';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
-import { PresetProfileHeader } from '../src/renderer/src/modules/presets/components/PresetProfileHeader.jsx';
-import { PresetIntroductionEditor } from '../src/renderer/src/modules/presets/components/PresetIntroductionEditor.jsx';
+import { PresetProfileHeader } from '../apps/web/src/modules/presets/components/PresetProfileHeader.jsx';
+import { PresetIntroductionEditor } from '../apps/web/src/modules/presets/components/PresetIntroductionEditor.jsx';
 
 vi.stubGlobal('React', React);
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -66,7 +66,7 @@ describe('preset profile grouping', () => {
   });
 
   it('uses a bounded two-column header with wrapping actions and visible keyboard focus', () => {
-    const css = readFileSync(resolve('src/renderer/src/modules/presets/styles/preset-panel.css'), 'utf8');
+    const css = readFileSync(resolve('apps/web/src/modules/presets/styles/preset-panel.css'), 'utf8');
     const hero = css.match(/\.preset-profile-hero\s*\{([^}]+)\}/)?.[1];
     expect(hero).toContain('grid-template-columns: var(--preset-hero-avatar-size) minmax(0, 1fr);');
     expect(hero).toContain('border: 1px solid var(--line-strong);');
@@ -106,7 +106,7 @@ describe('preset introduction regions', () => {
   });
 
   it('centers the empty state within a bordered section instead of an unbounded canvas', () => {
-    const css = readFileSync(resolve('src/renderer/src/modules/presets/styles/preset-usage.css'), 'utf8');
+    const css = readFileSync(resolve('apps/web/src/modules/presets/styles/preset-usage.css'), 'utf8');
     expect(css).toMatch(/\.preset-content-section\s*\{[^}]*border: 1px solid var\(--line-strong\);/s);
     expect(css).toMatch(/\.preset-updates-empty\s*\{[^}]*place-items: center;[^}]*text-align: center;/s);
     expect(css).toMatch(/\.preset-usage-section > \.preset-content-composer\s*\{[^}]*border: 0;[^}]*box-shadow: none;/s);

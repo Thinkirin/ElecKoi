@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { apply } from '../resources/dsh/uploaded-file-tools.mjs';
+import { apply } from '../apps/desktop/resources/dsh/uploaded-file-tools.mjs';
 
 describe('uploaded file tool', () => {
   it('reads only a file referenced by the current user surface', async () => {

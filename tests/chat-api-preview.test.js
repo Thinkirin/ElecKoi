@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapConversations } from "../src/renderer/src/modules/chat/api/chatApi.js";
+import { mapConversations } from "../apps/web/src/modules/chat/api/chatApi.js";
 
 describe("conversation previews", () => {
   it("removes the final protocol marker without changing the preview text", () => {

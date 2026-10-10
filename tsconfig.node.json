@@ -4,11 +4,13 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "target": "ES2023",
-    "lib": ["ES2023"],
-    "types": ["node"],
+    "lib": [
+      "ES2023"
+    ],
+    "types": [
+      "node"
+    ],
     "strict": true,
-    "allowJs": true,
-    "checkJs": false,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "skipLibCheck": true,
@@ -17,43 +19,37 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "paths": {
-      "@eleckoi/dsh-product-data": ["./packages/dsh-product-data/src/index.ts"],
-      "@eleckoi/dsh-product-data/media": ["./packages/dsh-product-data/src/storage/media/index.ts"],
-      "@main/*": ["./src/main/*"],
-      "@product-data/*": ["./packages/dsh-product-data/src/*"],
-      "@shared/*": ["./src/shared/*"]
+      "@eleckoi/dsh-product-data": [
+        "./packages/dsh-product-data/src/index.ts"
+      ],
+      "@eleckoi/dsh-product-data/media": [
+        "./packages/dsh-product-data/src/storage/media/index.ts"
+      ],
+      "@main/*": [
+        "./apps/desktop/src/main/*"
+      ],
+      "@product-data/*": [
+        "./packages/dsh-product-data/src/*"
+      ],
+      "@shared/*": [
+        "./packages/product-shared/src/*"
+      ]
     }
   },
   "include": [
-    "electron.vite.config.ts",
+    "apps/desktop/electron.vite.config.ts",
     "scripts/vite-author-vendor-plugin.ts",
-    "src/main/**/*.ts",
-    "src/preload/**/*.ts",
-    "src/shared/**/*.ts",
-    "resources/dsh/variable-tools.mjs",
+    "apps/desktop/src/main/**/*.ts",
+    "apps/desktop/src/preload/**/*.ts",
+    "packages/product-shared/src/**/*.ts",
     "packages/dsh-product-data/src/**/*.ts",
-    "packages/dsh-product-api/src/compatibility-*.ts",
-    "packages/dsh-product-api/src/frontend-project-types.ts",
-    "packages/dsh-product-api/src/compatibility.ts",
-    "packages/dsh-product-api/src/types.ts",
-    "packages/dsh-product-api/src/creator-assistant.ts",
-    "packages/dsh-runtime/src/androidTranscriptImport.ts",
-    "packages/dsh-runtime/src/trajectory.ts",
-    "packages/dsh-runtime/src/finalReply.ts",
-    "packages/dsh-runtime/src/requestContext.ts",
-    "packages/dsh-runtime/src/sessionCompatibilityTimeline.ts",
-    "packages/dsh-runtime/src/pluginHostConfiguration.ts",
-    "packages/dsh-runtime/src/desktopPluginBundles.ts",
-    "packages/dsh-runtime/src/webClientAssets.ts",
-    "packages/dsh-compatibility-host/src/basic-author-operations.js",
-    "packages/dsh-compatibility-host/src/author-media-resources.js",
-    "packages/dsh-compatibility-host/src/component-metadata.js",
     "packages/dsh-product-api/src/hostInspect.ts",
     "packages/dsh-product-api/src/inspectProvider.ts",
     "packages/dsh-product-api/src/cordisApi.generated.ts",
     "packages/dsh-product-api/src/client/inspect.ts",
     "packages/dsh-product-api/src/client/cordisApi.generated.ts",
     "packages/dsh-product-api/src/client/remoteApi.generated.ts",
+    "tests/**/*.ts",
     "vitest.config.ts"
   ]
 }

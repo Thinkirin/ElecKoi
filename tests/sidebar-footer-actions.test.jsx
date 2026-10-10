@@ -1,9 +1,9 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { SidePanelShell } from '../src/renderer/src/app/windows/shell/components/SidePanelShell.jsx';
+import { SidePanelShell } from '../apps/web/src/app/windows/shell/components/SidePanelShell.jsx';
 
-vi.mock('../src/renderer/src/ui/icons/dshComposerIcons.jsx', () => ({ DshPanelLeftIcon: () => null }));
+vi.mock('../apps/web/src/ui/icons/dshComposerIcons.jsx', () => ({ DshPanelLeftIcon: () => null }));
 
 describe('sidebar footer actions', () => {
   it('keeps plugin actions after the scrollable side panel content', () => {

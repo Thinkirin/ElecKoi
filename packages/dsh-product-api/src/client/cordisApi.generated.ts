@@ -154,6 +154,18 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: '管理聊天目录、官方 Session 的消息显示、提交、停止、回退和角色资料。',
     methods: [
       {
+        signature: 'observeRequestPreviews(id: string, onChange: (requests: ConversationRequestPreviewSummary[]) => void, signal: AbortSignal): Promise<void>',
+        description: '订阅当前运行期间实际发起的请求目录；取消时释放订阅。',
+        parameters: [{ name: 'id', description: '聊天编号。' }, { name: 'onChange', description: '接收不含正文的请求目录。' }, { name: 'signal', description: '关闭弹窗或切换聊天时取消订阅。' }],
+        returns: '订阅结束后完成；失败会拒绝 Promise。',
+      },
+      {
+        signature: 'readRequestPreview(id: string, requestId: string, signal: AbortSignal): Promise<ConversationRequestPreview>',
+        description: '读取当前运行期间某次实际请求的正文；不提供关闭后的恢复。',
+        parameters: [{ name: 'id', description: '聊天编号。' }, { name: 'requestId', description: '请求目录中的标识。' }, { name: 'signal', description: '切换请求时取消读取。' }],
+        returns: '实际发送顺序与可读正文。',
+      },
+      {
         signature: 'getSnapshot(): ConversationCatalogSnapshot',
         description: '读取聊天目录的页面状态。',
         parameters: [],

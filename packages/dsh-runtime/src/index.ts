@@ -1,6 +1,3 @@
-export { DshDesktopPluginHost, resolveDshWebFrontendDirectory } from './desktopPluginHost'
-export { ELECKOI_DESKTOP_BUNDLES, ELECKOI_INSTALL_ANCHOR, registerDesktopBundles } from './desktopPluginBundles'
-export type { DshDesktopPluginHostOptions, DshDesktopPluginHostReady } from './desktopPluginHost'
 export { projectDshTrajectory, readDshSessionLog, readDshTrajectory, removeDshSessionTree } from './trajectory'
 export { rewindDshSession } from './sessionRewind'
 export { editDshSessionMessage } from './sessionMessageEdit'
@@ -21,3 +18,4 @@ export type {
   DshRequestContextKind,
   DshRequestContextRole
 } from './requestContext'
+export { recoverStartupSessions } from './sessionStartupRecovery'

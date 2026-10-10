@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { trajectoryAssistantDefinition, officialTrajectoryFixture } from './helpers/officialTrajectory.js'
-import { adaptTrajectorySnapshot } from '../src/renderer/src/modules/chat/model/trajectorySnapshotAdapter.js'
+import { adaptTrajectorySnapshot } from '../apps/web/src/modules/chat/model/trajectorySnapshotAdapter.js'
 import { deriveTrajectoryLayout } from '../packages/dsh-client-trajectory/src/client/layout.ts'
 import { inputContinuationsProjection } from '../packages/dsh-client-roleplay/src/host/input-continuations-projection.mjs'
 import { zh } from '../packages/dsh-client-trajectory/src/client/locales.ts'
@@ -88,14 +88,11 @@ describe('DSH trajectory assistant request evidence', () => {
       runningCalls: []
     }
 
-    const adapted = adaptTrajectorySnapshot(official, { 20: [{ title: '上下文' }] }, {
+    const adapted = adaptTrajectorySnapshot(official, {
       abortedTurns: [1]
     })
 
-    expect(adapted.requests).toEqual([
-      { ...completed, context: [{ title: '上下文' }] },
-      { ...actualFailure, context: [] }
-    ])
+    expect(adapted.requests).toEqual([completed, actualFailure])
   })
 })
 
@@ -128,7 +125,7 @@ function regenerationEvents(systemPrompt = '合成系统二') {
 
 function adapt(events, official) {
   const state = events.reduce(inputContinuationsProjection.apply, inputContinuationsProjection.init())
-  return adaptTrajectorySnapshot(official, {}, {}, inputContinuationsProjection.wire.view(state))
+  return adaptTrajectorySnapshot(official, {}, inputContinuationsProjection.wire.view(state))
 }
 
 function layout(snapshot) {
@@ -231,14 +228,14 @@ describe('installed trajectory bundle after existing-input regeneration', () => 
     let state = events.reduce(inputContinuationsProjection.apply, inputContinuationsProjection.init())
     expect(state.inputs).toEqual([{ turn: 0, eventSeq: 3, messageId: 'restored-input' }])
     const official = officialTrajectoryFixture().replace(events)
-    let snapshot = adaptTrajectorySnapshot(official, {}, {}, inputContinuationsProjection.wire.view(state))
+    let snapshot = adaptTrajectorySnapshot(official, {}, inputContinuationsProjection.wire.view(state))
     expect(snapshot.inputTurns.has(3)).toBe(false)
     expect(snapshot.turnLabels.has(0)).toBe(false)
     const continued = event('eleckoi/input-continuation', 5, {
       turn: 2, inputEventSeq: 3, inputMessageId: 'restored-input',
     })
     state = inputContinuationsProjection.apply(state, continued)
-    snapshot = adaptTrajectorySnapshot(official, {}, {}, inputContinuationsProjection.wire.view(state))
+    snapshot = adaptTrajectorySnapshot(official, {}, inputContinuationsProjection.wire.view(state))
     expect(snapshot.inputTurns.get(3)).toBe(2)
     expect(snapshot.turnLabels.get(2)).toBe(1)
   })
@@ -330,7 +327,7 @@ describe('installed trajectory bundle after existing-input regeneration', () => 
     expect([...snapshot.turnLabels]).toEqual([[1, 1], [3, 2], [2, 1], [4, 2]])
     expect([...snapshot.inputTurns]).toEqual([[4, 2], [16, 4]])
     expect(snapshot.eventNodes.find(node => node.seq === 4)?.content[0].text).toBe('合成编辑输入')
-    const invalid = adaptTrajectorySnapshot(snapshot, {}, {}, {
+    const invalid = adaptTrajectorySnapshot(snapshot, {}, {
       inputs: [{ turn: 1, eventSeq: 4, messageId: 'input-stable' }],
       links: [{ turn: 99, inputEventSeq: 4, inputMessageId: 'unrelated-input' }],
     })

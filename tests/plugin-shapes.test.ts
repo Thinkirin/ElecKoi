@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { platformPlugin } from '../src/main/host/plugins'
-import { dshHostPlugin } from '../src/main/host/dshHostPlugin'
-import { mainWindowPlugin } from '../src/main/platform/electron/mainWindowPlugin'
-import { mediaProtocolPlugin } from '../src/main/platform/electron/mediaProtocol'
-import { updatesPlugin } from '../src/main/modules/updates'
+import { platformPlugin } from '../apps/desktop/src/main/host/plugins'
+import { dshHostPlugin } from '../apps/desktop/src/main/host/dshHostPlugin'
+import { mainWindowPlugin } from '../apps/desktop/src/main/platform/electron/mainWindowPlugin'
+import { mediaProtocolPlugin } from '../apps/desktop/src/main/platform/electron/mediaProtocol'
+import { updatesPlugin } from '../apps/desktop/src/main/modules/updates'
 
 const plugins = [
   platformPlugin,

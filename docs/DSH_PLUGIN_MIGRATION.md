@@ -6,7 +6,7 @@
 
 面向用户和第三方开发者的安装、启用、停用、卸载与重启恢复统一使用 DSH 官方 profile、bundle、插件管理器和 Web Client 插件机制。ElecKoi 不再提供第二个插件商店、第二种安装包或另一套外部插件生命周期。
 
-`src/main/host/DesktopHost.ts` 中的 Cordis 装配只负责桌面壳、受管 DSH Host 进程、资源协议、窗口和更新，不是供用户安装扩展的插件系统。产品数据库与 Repository 在受管 DSH Host 的 `@eleckoi/dsh-product-data` 插件中运行。第三方扩展不能直接访问 SQLite、Electron 或内部服务；它通过 DSH Remote、Cordis 服务与 Client Slots 获得受控入口。
+`apps/desktop/src/main/host/DesktopHost.ts` 中的 Cordis 装配只负责桌面壳、受管 DSH Host 进程、资源协议、窗口和更新，不是供用户安装扩展的插件系统。产品数据库与 Repository 在受管 DSH Host 的 `@eleckoi/dsh-product-data` 插件中运行。第三方扩展不能直接访问 SQLite、Electron 或内部服务；它通过 DSH Remote、Cordis 服务与 Client Slots 获得受控入口。
 
 ## 插件中心如何显示
 

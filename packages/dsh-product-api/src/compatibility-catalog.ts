@@ -11,7 +11,7 @@ export interface CompatibilityCatalogServices {
     create(character: CharacterRecord): CharacterCollection
     update(character: CharacterRecord): CharacterCollection
     select(id: string): CharacterCollection
-    delete(ids: string[], options?: { deleteChats?: boolean }): Promise<CharacterCollection>
+    delete(ids: string[]): Promise<CharacterCollection>
     prepareImport: ElecKoiProductDataStore['prepareCharacterImports']
     commitImport: ElecKoiProductDataStore['commitCharacterImports']
   }
@@ -259,7 +259,7 @@ export class CompatibilityCatalogOperations {
         const reference = requiredText(p, 'id'), known = this.services.characters.list().items.find(item => item.id === reference)
         if (!known) return false
         const previous = this.raw(reference), index = this.services.characters.list().items.findIndex(item => item.id === reference)
-        await this.services.characters.delete([reference], { deleteChats: p.deleteChats !== false })
+        await this.services.characters.delete([reference])
         for (const scope of ['character-cards', 'character-native-extra', 'character-projections', 'worldbook-primaries']) this.store.delete(scope, reference)
         this.store.delete('bindings', `character:${reference}`)
         this.change('characters.changed', { id: reference, characterId: reference, operation: 'delete', index, previous }); return true

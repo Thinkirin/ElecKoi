@@ -9,15 +9,14 @@ window.__ModuleLoader__.load({
       StateDot,
       Switch
     } = require('@deepseek-ai/dsh-client-ui-primitives')
-    const SettingsPage = React.lazy(() => import((globalThis.__ELECKOI_CLIENT_ASSETS__?.baseUrl ?? 'dsh-app://app/eleckoi/assets/') + 'eleckoi-page-settings.js')
+    const SettingsPage = React.lazy(() => import('dsh-app://app/eleckoi/assets/eleckoi-page-settings.js')
       .then(module => ({ default: module.SettingsPage })))
-    const CreatorStudioNavigationIcon = React.lazy(() => import((globalThis.__ELECKOI_CLIENT_ASSETS__?.baseUrl ?? 'dsh-app://app/eleckoi/assets/') + 'eleckoi-page-settings.js')
+    const CreatorStudioNavigationIcon = React.lazy(() => import('dsh-app://app/eleckoi/assets/eleckoi-page-settings.js')
       .then(module => ({ default: module.CreatorStudioNavigationIcon })))
-    const CommunityNavigationIcon = React.lazy(() => import((globalThis.__ELECKOI_CLIENT_ASSETS__?.baseUrl ?? 'dsh-app://app/eleckoi/assets/') + 'eleckoi-page-settings.js')
+    const CommunityNavigationIcon = React.lazy(() => import('dsh-app://app/eleckoi/assets/eleckoi-page-settings.js')
       .then(module => ({ default: module.CommunityNavigationIcon })))
     const nativeSettingsSections = new Set(['account', 'general', 'models', 'agent-presets'])
     const shellActions = new Set(['creatorStudio', 'community'])
-    const productServices = ['eleckoiCharacters', 'eleckoiSettingLibraries', 'eleckoiVariables', 'eleckoiRegexRules', 'eleckoiDisplayPreferences', 'eleckoiModels', 'eleckoiPersona', 'eleckoiPresets', 'eleckoiWebSearch', 'eleckoiConversations', 'eleckoiCreatorStudio']
     const builtInBundles = [
       "@eleckoi/dsh-client-characters",
       "@eleckoi/dsh-client-character-configuration",
@@ -30,9 +29,9 @@ window.__ModuleLoader__.load({
       "@eleckoi/dsh-client-web-search",
       "@eleckoi/dsh-client-shell",
       "@eleckoi/dsh-client-roleplay",
-      "@eleckoi/dsh-product-api",
-      "@eleckoi/dsh-compatibility-host",
       "@eleckoi/dsh-client-tavern-shared",
+      "@eleckoi/dsh-compatibility-host",
+      "@eleckoi/dsh-product-api",
       "@eleckoi/dsh-runtime",
       "@eleckoi/dsh-web-search-tavily"
     ]
@@ -43,87 +42,19 @@ window.__ModuleLoader__.load({
     }
     const interfaceModeLabels = { replace: '可替换', append: '可追加', register: '可注册', call: '可调用', listen: '可订阅' }
     const interfaceScopeLabels = { root: '全局', session: '会话', 'session-maybe': '会话可为空', client: '客户端', host: 'Host' }
-    const IMAGE_TOOL_ID = 'builtin:auto-illustration'
-    const TOOL_BUNDLE = '@eleckoi/dsh-client-roleplay'
-    let nativeToolSelection = ''
-    let nativeToolServices = null
-    const emptyPresetSnapshot = { status: 'loading', catalog: null }
-    const emptyModels = { status: 'loading', configs: [] }
-    const subscribeEmpty = () => () => {}
-    function NativeAgentToolsContents({ services, selectedToolId }) {
-      const presets = services?.presets, models = services?.models
-      const catalogSnapshot = React.useSyncExternalStore(presets?.subscribe || subscribeEmpty,
-        presets?.getSnapshot || (() => emptyPresetSnapshot))
-      const modelSnapshot = React.useSyncExternalStore(models?.subscribe || subscribeEmpty,
-        models?.getSnapshot || (() => emptyModels))
-      const [detail, setDetail] = React.useState({ status: 'loading', preset: null, error: '' })
-      const activeId = catalogSnapshot.catalog?.activePresetId
-      React.useEffect(() => {
-        let current = true
-        setDetail({ status: 'loading', preset: null, error: '' })
-        if (!presets) return () => { current = false }
-        if (!activeId) {
-          setDetail({ status: catalogSnapshot.status === 'loading' ? 'loading' : 'empty', preset: null, error: catalogSnapshot.error || '' })
-          return () => { current = false }
-        }
-        presets.read(activeId).then(preset => {
-          if (current) setDetail({ status: 'ready', preset, error: '' })
-        }, error => { if (current) setDetail({ status: 'error', preset: null, error: error.message || String(error) }) })
-        return () => { current = false }
-      }, [presets, activeId, catalogSnapshot])
-      const [routeError, setRouteError] = React.useState('')
-      const open = panel => {
-        try { services.openPanel(panel); setRouteError('') }
-        catch (error) { setRouteError(error.message || String(error)) }
-      }
-      const preset = detail.preset
-      const groups = (preset?.toolGroups || []).filter(group => !selectedToolId || group.id === selectedToolId)
-      return React.createElement('section', { 'aria-label': '原生 Agent 工具', 'data-native-agent-tools': true },
-        React.createElement('p', null, '原生 Agent 工具随预设配置，不需要另外安装。'),
-        preset ? React.createElement('p', null, `当前预设：${preset.name}`) : null,
-        detail.status === 'loading' ? React.createElement('p', { role: 'status' }, '正在读取预设工具…') : null,
-        detail.status === 'empty' ? React.createElement('p', { role: 'status' }, '请先在预设页面选择 Agent 预设。') : null,
-        detail.error || routeError ? React.createElement('p', { role: 'alert' }, detail.error || routeError) : null,
-        React.createElement('ul', { className: 'eleckoi-plugin-component-list' }, groups.map(group => {
-          const image = group.id === IMAGE_TOOL_ID
-          const boundId = preset.toolModelConfigIds?.[group.id]
-          const model = modelSnapshot.configs.find(config => config.id === boundId)
-          return React.createElement('li', { key: group.id, className: 'eleckoi-plugin-component-row', 'data-native-tool-id': group.id },
-            React.createElement('span', { className: 'eleckoi-plugin-component-icon', 'aria-hidden': true }, React.createElement(PluginArtworkDefault, { size: 28 })),
-            React.createElement('div', { className: 'eleckoi-plugin-component-main' },
-              React.createElement('strong', null, group.name), React.createElement('span', null, group.description),
-              React.createElement('span', null, group.included && group.enabled ? '当前预设已启用' : '当前预设未启用'),
-              image ? React.createElement('span', null, model ? `图片模型：${model.name || model.model}` : !boundId ? '尚未绑定图片模型'
-                : modelSnapshot.status === 'loading' ? '正在读取已绑定的图片模型…'
-                  : modelSnapshot.status === 'error' ? '图片模型目录暂时无法读取' : '已绑定的图片模型不在当前目录中') : null,
-              React.createElement('span', null, group.members.map(member => member.name).join(' · '))),
-            React.createElement('div', { className: 'eleckoi-plugin-component-main', style: { gap: 6 } },
-              React.createElement('button', { type: 'button', onClick: () => open('presets') }, '预设工具设置'),
-              image ? React.createElement('button', { type: 'button', onClick: () => open('model') }, '图片模型设置') : null))
-        })),
-        detail.status === 'empty' ? React.createElement('button', { type: 'button', onClick: () => open('presets') }, '前往预设设置') : null)
-    }
     function BuiltInPluginContents({ packageName, face }) {
       const snapshot = React.useSyncExternalStore(
         listener => face.hooks.pluginManager.subscribe(listener),
         () => face.hooks.pluginManager.getSnapshot()
       )
       const pkg = snapshot.packages.find(candidate => candidate.name === packageName)
-      const [section, setSection] = React.useState(packageName === TOOL_BUNDLE && nativeToolSelection ? 'tools' : 'components')
-      const [selectedToolId, setSelectedToolId] = React.useState(packageName === TOOL_BUNDLE ? nativeToolSelection : '')
-      React.useEffect(() => {
-        if (packageName !== TOOL_BUNDLE) return
-        const select = () => { setSelectedToolId(nativeToolSelection); setSection(nativeToolSelection ? 'tools' : 'components') }
-        window.addEventListener('eleckoi:dsh-plugins:native-tool', select)
-        return () => window.removeEventListener('eleckoi:dsh-plugins:native-tool', select)
-      }, [packageName])
+      const [section, setSection] = React.useState('components')
       const prefix = React.useId()
       if (!pkg) return React.createElement('p', { role: 'status' }, '插件包信息尚未就绪。')
       const developerInterfaces = pkg.developerInterfaces || []
       const tabs = [
         { value: 'components', label: `运行组件 ${pkg.rows.length}` },
-        { value: 'interfaces', label: `开发接口 ${developerInterfaces.length}` },
-        ...(packageName === TOOL_BUNDLE ? [{ value: 'tools', label: 'Agent 工具' }] : [])
+        { value: 'interfaces', label: `开发接口 ${developerInterfaces.length}` }
       ].map(tab => ({ ...tab, id: `${prefix}-${tab.value}-tab`, panelId: `${prefix}-${tab.value}-panel` }))
       const components = pkg.rows.map(row => {
         const title = row.meta?.title === undefined ? row.rowId : face.resolveText(row.meta.title)
@@ -178,31 +109,13 @@ window.__ModuleLoader__.load({
         tabs.map(tab => React.createElement('div', {
           key: tab.value, id: tab.panelId, role: 'tabpanel', 'aria-labelledby': tab.id, tabIndex: 0,
           hidden: section !== tab.value, 'data-plugin-section': tab.value
-        }, section !== tab.value ? null : tab.value === 'tools'
-          ? React.createElement(NativeAgentToolsContents, { services: nativeToolServices, selectedToolId })
-          : React.createElement('ul', { className: 'eleckoi-plugin-component-list' }, tab.value === 'components' ? components : interfaces)))
+        }, section !== tab.value ? null : React.createElement('ul', { className: 'eleckoi-plugin-component-list' }, tab.value === 'components' ? components : interfaces)))
       )
     }
     function ElecKoiSidebar({ renderContent, renderSlot }) {
       return renderContent(renderSlot)
     }
-    function ElecKoiRootGate({ rootServices, ...props }) {
-      const services = React.useSyncExternalStore(rootServices.subscribe, rootServices.getSnapshot)
-      if (!services) return React.createElement('div', {
-        role: 'status', 'data-eleckoi-client-services': 'waiting',
-        style: { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center' }
-      }, '正在连接应用服务…')
-      return React.createElement(ElecKoiRoot, { ...props, ...services })
-    }
-    function ElecKoiRoot({ layout, slots, subscribeSlotChanges, locale, theme, subscribeTheme, setThemePreference, conversations, characters, characterConfiguration, creatorStudio, models, persona, presets, webSearch, displayPreferences, renderSlot, renderSlotChain }) {
-      React.useEffect(() => {
-        const services = { presets, models, openPanel(panel) {
-          if (!slots.entriesOfSlot('main').some(entry => entry.options.key === panel)) throw new Error('设置页面暂时无法打开')
-          layout.selectPanel(panel)
-        } }
-        nativeToolServices = services
-        return () => { if (nativeToolServices === services) nativeToolServices = null }
-      }, [layout, slots, presets, models])
+    function ElecKoiRoot({ layout, slots, subscribeSlots, locale, theme, subscribeTheme, conversations, characters, characterConfiguration, creatorStudio, models, persona, presets, webSearch, displayPreferences, renderSlot, renderSlotChain }) {
       const [ProductApp, setProductApp] = React.useState(null)
       const [loadError, setLoadError] = React.useState('')
       const settingsVersion = React.useSyncExternalStore(
@@ -266,9 +179,8 @@ window.__ModuleLoader__.load({
       }, [layout, mainVersion, panelInfo, slots])
       const appearance = React.useMemo(() => ({
         theme,
-        setPreference: setThemePreference,
         subscribe: subscribeTheme
-      }), [theme, subscribeTheme, setThemePreference])
+      }), [theme, subscribeTheme])
       const rightbar = React.useMemo(() => ({
         subscribe: layout.rightbarInfo.subscribe,
         getSnapshot: layout.rightbarInfo.getSnapshot,
@@ -305,9 +217,6 @@ window.__ModuleLoader__.load({
         let stopManager = () => {}
         let stopLedger = () => {}
         let stopNavigation = () => {}
-        let nativeGroups = []
-        let nativeReadSequence = 0
-        let disposed = false
         const entries = () => {
           if (!face) return []
           const packages = face.hooks.pluginManager.getSnapshot().packages
@@ -324,8 +233,6 @@ window.__ModuleLoader__.load({
           })
           return [
             ...packages.map(toPackage),
-            ...(packages.some(pkg => pkg.name === TOOL_BUNDLE) && packages.some(pkg => pkg.name === '@eleckoi/dsh-compatibility-host')
-              ? nativeGroups.filter(group => group.id === IMAGE_TOOL_ID).map(group => ({ id: group.id, kind: 'native-tool', name: group.name, icon: '', group: 'eleckoi' })) : []),
             ...face.hooks.configLedger.getSnapshot().items.map(item => ({
               id: item.id, kind: 'item', name: item.label, icon: '',
               group: item.id.startsWith('eleckoi.') ? 'eleckoi' : 'official'
@@ -338,22 +245,10 @@ window.__ModuleLoader__.load({
             detail: {
               entries: entries(),
               status: face?.hooks.pluginManager.getSnapshot().status || 'loading',
-              selected: view?.kind === 'package' && view.name === TOOL_BUNDLE && nativeToolSelection ? `native-tool:${nativeToolSelection}`
-                : view?.kind === 'item' ? `item:${view.id}`
+              selected: view?.kind === 'item' ? `item:${view.id}`
                 : view?.kind === 'package' ? `package:${view.name}` : ''
             }
           }))
-        }
-        const refreshNativeTools = () => {
-          const sequence = ++nativeReadSequence
-          const activeId = presets?.getSnapshot?.().catalog?.activePresetId
-          nativeGroups = []
-          if (!activeId || !presets?.read) { publish(); return }
-          presets.read(activeId).then(preset => {
-            if (disposed || sequence !== nativeReadSequence) return
-            nativeGroups = preset.toolGroups || []
-            publish()
-          }, () => { if (!disposed && sequence === nativeReadSequence) publish() })
         }
         const bind = () => {
           const next = slots.entriesOfSlot('main').find(item => item.options.key === 'plugins') || null
@@ -374,7 +269,6 @@ window.__ModuleLoader__.load({
         const request = () => {
           face?.ensure?.()
           publish()
-          refreshNativeTools()
         }
         const select = event => {
           const { id, kind } = event.detail || {}
@@ -382,9 +276,7 @@ window.__ModuleLoader__.load({
           if (!navigation?.actions?.setView) return
           try {
             layout.selectPanel('plugins')
-            nativeToolSelection = kind === 'native-tool' ? id : ''
-            navigation.actions.setView(kind === 'item' ? { kind: 'item', id } : { kind: 'package', name: kind === 'native-tool' ? TOOL_BUNDLE : id })
-            window.dispatchEvent(new window.Event('eleckoi:dsh-plugins:native-tool'))
+            navigation.actions.setView(kind === 'item' ? { kind: 'item', id } : { kind: 'package', name: id })
             event.detail.opened = true
           } catch (error) {
             event.detail.error = error instanceof Error ? error.message : String(error)
@@ -405,13 +297,8 @@ window.__ModuleLoader__.load({
         window.addEventListener('eleckoi:dsh-plugins:select', select)
         window.addEventListener('eleckoi:dsh-plugins:add', add)
         const stopSlots = slots.subscribe('main', bind)
-        const stopPresets = presets?.subscribe?.(refreshNativeTools) || (() => {})
         bind()
-        refreshNativeTools()
         return () => {
-          disposed = true
-          nativeReadSequence++
-          stopPresets()
           stopSlots()
           stopManager()
           stopLedger()
@@ -420,7 +307,7 @@ window.__ModuleLoader__.load({
           window.removeEventListener('eleckoi:dsh-plugins:select', select)
           window.removeEventListener('eleckoi:dsh-plugins:add', add)
         }
-      }, [layout, slots, presets])
+      }, [layout, slots])
 
       React.useEffect(() => {
         const assets = globalThis.__ELECKOI_CLIENT_ASSETS__
@@ -471,9 +358,8 @@ window.__ModuleLoader__.load({
           id: 'eleckoi-root',
           style: { position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'auto' }
         }, ProductApp ? React.createElement(ProductApp, {
-          frontendSlots: slots,
-          subscribeFrontendSlots: subscribeSlotChanges,
           markdownComponent: MarkdownText,
+          slots, subscribeSlots,
           conversations, characters, characterConfiguration, creatorStudio, models, persona, presets, webSearch, displayPreferences, appearance, settingsSections, rightbar,
           navigation: {
             items: navigationItems,
@@ -509,14 +395,7 @@ window.__ModuleLoader__.load({
     }
 
     function apply(ctx) {
-      // Let the original theme runtime adopt the accepted settings snapshot.
-      // Its optimistic setTheme() can otherwise replay an older settings read.
-      const setThemePreference = async preference => {
-        const form = ctx.configForms.get('ui-theme')
-        if (!await form.set('preference', preference)) {
-          throw new Error('DSH 主题设置保存失败，请重试。')
-        }
-      }
+      const subscribeSlots = listener => ctx.on('slots/changed', listener)
       {
         let panelSnapshot = { activePanelId: null }
         let rightbarSnapshot = {
@@ -599,33 +478,6 @@ window.__ModuleLoader__.load({
         }
         const stopPanelInfo = ctx.slots.provideRoot({ hooks: { panelInfo } })
         const stopLayout = ctx.reflect.provide('layout', layout)
-        let serviceSnapshot = null
-        const serviceListeners = new Set()
-        const rootServices = {
-          getSnapshot: () => serviceSnapshot,
-          subscribe: listener => {
-            serviceListeners.add(listener)
-            return () => serviceListeners.delete(listener)
-          }
-        }
-        function presentServices(services) {
-          serviceSnapshot = services
-          for (const listener of serviceListeners) listener()
-        }
-        // The shell owns the root registration. Conversation/Creator need layout
-        // first and may restart independently; temporarily losing either service
-        // must not remove the renderer's root and crash its React tree.
-        ctx.inject(productServices, rootCtx => {
-          presentServices({
-            conversations: rootCtx.eleckoiConversations, characters: rootCtx.eleckoiCharacters,
-            characterConfiguration: { settingLibraries: rootCtx.eleckoiSettingLibraries,
-              variables: rootCtx.eleckoiVariables, regexRules: rootCtx.eleckoiRegexRules },
-            creatorStudio: rootCtx.eleckoiCreatorStudio, models: rootCtx.eleckoiModels,
-            persona: rootCtx.eleckoiPersona, presets: rootCtx.eleckoiPresets,
-            webSearch: rootCtx.eleckoiWebSearch, displayPreferences: rootCtx.eleckoiDisplayPreferences
-          })
-          return () => presentServices(null)
-        })
         const stopRoot = ctx.slots.register({
           name: 'root',
           priority: -1,
@@ -655,12 +507,20 @@ window.__ModuleLoader__.load({
             'eleckoi.preset.manager': { kind: 'chain', scope: 'root' },
             'eleckoi.roleplay': { kind: 'chain', scope: 'root' }
           },
-          inject: () => ({ layout, rootServices, ...rootServices.getSnapshot(), slots: ctx.slots, subscribeSlotChanges: listener => ctx.on('slots/changed', listener), locale: ctx.locale,
-            theme: ctx.theme, setThemePreference, subscribeTheme: listener => ctx.on('theme/change', listener) })
-          }, ElecKoiRootGate)
+          inject: () => ({ layout, slots: ctx.slots, subscribeSlots, locale: ctx.locale,
+            theme: ctx.theme, subscribeTheme: listener => ctx.on('theme/change', listener),
+            conversations: ctx.get('eleckoiConversations'), characters: ctx.eleckoiCharacters,
+            characterConfiguration: { settingLibraries: ctx.eleckoiSettingLibraries,
+              variables: ctx.eleckoiVariables, regexRules: ctx.eleckoiRegexRules },
+            creatorStudio: ctx.eleckoiCreatorStudio,
+            models: ctx.eleckoiModels,
+            persona: ctx.eleckoiPersona, presets: ctx.eleckoiPresets,
+            webSearch: ctx.eleckoiWebSearch,
+            displayPreferences: ctx.eleckoiDisplayPreferences })
+        }, ElecKoiRoot)
         const disposeRoot = () => {
-          stopRoot()
           navigation.abort()
+          stopRoot()
           stopPanelInfo()
           void stopLayout()
         }
@@ -738,7 +598,7 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'locale', 'theme', 'configForms'],
+      inject: ['slots', 'locale', 'theme', 'eleckoiCharacters', 'eleckoiSettingLibraries', 'eleckoiVariables', 'eleckoiRegexRules', 'eleckoiCreatorStudio', 'eleckoiDisplayPreferences', 'eleckoiModels', 'eleckoiPersona', 'eleckoiPresets', 'eleckoiWebSearch'],
       apply
     }
   }

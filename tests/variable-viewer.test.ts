@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import type { ChatMessage } from '../src/shared/contracts/entities/chat'
+import type { ChatMessage } from '../packages/product-shared/src/contracts/entities/chat'
 import {
   buildVariableViewerTimeline,
   changedVariablePaths,
   countVariableChanges,
   parseVariableStateDocument
-} from '../src/shared/foundation/variables/viewerTimeline'
+} from '../packages/product-shared/src/foundation/variables/viewerTimeline'
 
 function assistant(id: string, state: string, content: string, status: ChatMessage['status'] = 'complete'): ChatMessage {
   return {

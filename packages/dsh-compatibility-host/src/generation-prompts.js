@@ -5,7 +5,7 @@ const aliases = { worldInfoBefore: 'world_info_before', personaDescription: 'per
 const text = value => typeof value === 'string' ? value : '';
 const single = (content, role = 'system') => content ? [{ role, content }] : [];
 
-/** Port of the old Android pure projection. No selected preset/card is changed. */
+/** Compose auxiliary SDK prompts without changing the selected preset or character. */
 export function composeGenerationPrompts(params, preset, card, persona, history, worldbooks = [], injections = []) {
   const data = card?.data || card || {}, overrides = params.overrides || {}, historyOptions = overrides.chat_history || {};
   const maximum = params.max_chat_history;
@@ -51,7 +51,9 @@ export function composeGenerationPrompts(params, preset, card, persona, history,
   const slots = new Map();
   for (const entry of depths.filter(entry => entry.position !== 'none' && entry.content).sort((a, b) => (a.order || 0) - (b.order || 0))) {
     if (entry.depth !== undefined && (!Number.isInteger(entry.depth) || entry.depth < 0)) throw new TypeError('Injection depth must be a nonnegative integer');
-    let index = entry.depth !== undefined ? Math.max(0, result.length - entry.depth)
+    const cacheIndex = result.findIndex(message => message.role !== 'system');
+    let index = entry.worldbookPosition === 'at_depth' && !entry.nativePlacement ? (cacheIndex < 0 ? result.length : cacheIndex)
+      : entry.depth !== undefined ? Math.max(0, result.length - entry.depth)
       : ['afterHistory', 'afterToolContext'].includes(entry.anchor) ? result.length
         : ['beforeLatestUserInput', 'beforeToolContext'].includes(entry.anchor) ? result.findLastIndex(message => message.role === 'user') : 0;
     if (index < 0) index = result.length;

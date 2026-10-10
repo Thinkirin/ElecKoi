@@ -8,7 +8,7 @@ import * as primitives from '@deepseek-ai/dsh-client-ui-primitives';
 import { describe, expect, it, vi } from 'vitest';
 import { parse as parseYaml } from 'yaml';
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-const bundles = JSON.parse(readFileSync(resolve('resources/dsh/runtime-manifest.json'), 'utf8')).desktopProfile.bundles;
+const bundles = JSON.parse(readFileSync(resolve('apps/desktop/resources/dsh/runtime-manifest.json'), 'utf8')).desktopProfile.bundles;
 const bundleManifest = (name) => JSON.parse(readFileSync(resolve(name.replace('@eleckoi/', 'packages/') + '/package.json'), 'utf8'));
 const developerInterfaces = (name) => bundleManifest(name).eleckoi?.developerInterfaces ?? [];
 function packageSource(name) {

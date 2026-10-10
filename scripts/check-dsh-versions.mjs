@@ -3,7 +3,9 @@ import { resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
 const manifests = [
-  ['desktop', readManifest('package.json')],
+  ['workspace', readManifest('package.json')],
+  ['desktop', readManifest('apps/desktop/package.json')],
+  ['desktop-host', readManifest('apps/desktop-host/package.json')],
   ['@eleckoi/dsh-runtime', readManifest('packages/dsh-runtime/package.json')]
 ]
 const packages = new Map()

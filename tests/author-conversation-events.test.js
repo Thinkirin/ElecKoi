@@ -3,7 +3,7 @@ import {
   authorConversationEventNames,
   publicAuthorEvent,
   subscribeAuthorConversationEvents,
-} from '../src/renderer/src/modules/authorFrontend/model/authorConversationEvents.js';
+} from '../apps/web/src/modules/authorFrontend/model/authorConversationEvents.js';
 
 function conversationModel() {
   let details = { id: 'chat-1', status: 'ready', runtimeSessionId: 'session-1', details: { messages: [] } };

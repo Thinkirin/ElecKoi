@@ -14,11 +14,7 @@ import { CompatibilityModelOperations } from './compatibility-models.js'
 import { CompatibilityFrontendOperations } from './compatibility-frontends.js'
 export type * from './frontend-project-types.js'
 import { CompatibilityChatOperations } from './compatibility-chats.js'
-import { ElecKoiCreatorAssistantApi } from './creator-assistant.js'
-export { ElecKoiCreatorAssistantApi } from './creator-assistant.js'
 import { clearConversationCompatibility, exportConversationCompatibility, parseConversationCompatibility, restoreConversationCompatibility } from './conversation-compatibility-archive.js'
-export { extractAndroidBackup, androidArchivePath } from './migration-archive.js'
-export type { ExtractedAndroidBackup, AndroidBackupManifest } from './migration-archive.js'
 import { join } from 'node:path'
 import type {} from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-config-editor'
@@ -26,6 +22,7 @@ import type {} from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type {} from '@deepseek-ai/dsh-session-projection'
+import type {} from '@eleckoi/dsh-client-roleplay/projections'
 import { createUserMessage, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import { SessionLogOffset, type SessionEvent, type SessionHeader, type SessionId } from '@deepseek-ai/dsh-session'
 
@@ -62,6 +59,8 @@ import type {
   ConversationModelSelection,
   ConversationCreateInput,
   ConversationDetailsMetadata,
+  ConversationRequestPreview,
+  ConversationRequestPreviewSummary,
   ConversationMessageDisplayInput,
   ConversationMessageDisplayResult,
   ConversationSummary,
@@ -134,6 +133,8 @@ export type {
   ConversationArchiveSnapshot,
   ConversationRecord,
   ConversationCreateInput,
+  ConversationRequestPreview,
+  ConversationRequestPreviewSummary,
   ConversationSummary,
   CreatorProject,
   CreatorProjectCollection,
@@ -469,6 +470,7 @@ export class ElecKoiConversationsApi extends TypertRemoteService {
     'eleckoiConversationLifecycle',
     'eleckoiRoleplaySessions',
     'eleckoiSessionEditor',
+    'eleckoiRequestPreviews',
     'eleckoiConversationChanges'
   ]
 
@@ -501,17 +503,39 @@ export class ElecKoiConversationsApi extends TypertRemoteService {
   @Remote
   async list(signal: AbortSignal): Promise<ConversationSummary[]> {
     const records = this.productData.readConversationCatalog()
-    return Promise.all(records.map(async (summary) => {
-      try {
-        const inspection = await this.ownerContext.sessionController.inspect(
-          summary.runtimeSessionId as SessionId,
-          signal
-        )
-        return { ...summary, preview: latestSessionPreview(inspection.events) || summary.preview }
-      } catch {
-        return summary
-      }
+    const listed = await this.ownerContext.sessionController.list({}, signal)
+    const previews = new Map(listed.items.map(item => [
+      String(item.sessionId), item.projections?.values.eleckoiConversationPreview
+    ]))
+    return records.map(summary => ({
+      ...summary, preview: previews.get(summary.runtimeSessionId) || summary.preview
     }))
+  }
+
+  /**
+   * 订阅当前运行期间实际请求的轻量目录；关闭 Host 后不恢复。
+   * @param conversationId - ElecKoi 聊天编号。
+   * @param signal - 取消订阅的信号。
+   * @returns 仅包含轮次、请求编号和模型的目录流。
+   */
+  @Remote({ mode: 'stream' })
+  requestPreviews(conversationId: string, signal: AbortSignal): AsyncIterable<ConversationRequestPreviewSummary[]> {
+    const sessionId = this.productData.readConversationDetails(conversationId).runtimeSessionId as SessionId
+    return this.ownerContext.eleckoiRequestPreviews.stream(sessionId, signal)
+  }
+
+  /**
+   * 读取当前运行期间捕获的指定请求，不读取 Session 日志或当前设定重算。
+   * @param conversationId - ElecKoi 聊天编号。
+   * @param requestId - 当前运行期间请求目录中的正式标识。
+   * @param signal - 取消本次读取的信号。
+   * @returns 按实际发送顺序排列的可读输入；关闭后或不存在的请求抛出原因。
+   */
+  @Remote
+  requestPreview(conversationId: string, requestId: string, signal: AbortSignal): ConversationRequestPreview {
+    signal.throwIfAborted()
+    const sessionId = this.productData.readConversationDetails(conversationId).runtimeSessionId
+    return this.ownerContext.eleckoiRequestPreviews.read(sessionId, requestId)
   }
 
   /**
@@ -534,6 +558,7 @@ export class ElecKoiConversationsApi extends TypertRemoteService {
       ...this.productData.readConversationDetails(conversationId, beforeSequence, limit),
       runtimeVariableStateByTurn: this.ownerContext.eleckoiRoleplaySessions.variableStatesByTurn(conversationId),
       compatibilityPresentation: { metadata: store.list(`metadata:${conversationId}`), extensions: store.list(`message-extensions:${conversationId}`),
+        groupId: store.get('group-bindings', conversationId),
         bindings: { ...store.list(`migration:android:message-bindings:${conversationId}`), ...store.list(`message-bindings:${conversationId}`) },
         swipes, variables: messageVariables, timeline: store.get(`message-presentation:${conversationId}`, 'timeline') }
     }
@@ -778,6 +803,9 @@ export class ElecKoiConversationsApi extends TypertRemoteService {
     await this.ownerContext.eleckoiSessionEditor.deleteSession(runtimeSessionId)
     await this.ownerContext.eleckoiRoleplaySessions.removeArtifacts(conversationId, runtimeSessionId)
     await this.productData.deleteConversation(conversationId)
+    this.ownerContext.eleckoiRequestPreviews.forget(runtimeSessionId)
+    const compatibility = this.ownerContext.get('eleckoiCompatibilityApi', false) as ElecKoiCompatibilityApi | undefined
+    compatibility?.forgetConversation(conversationId)
     this.changeFeed.publish({ kind: 'catalog', conversationId, reason: 'deleted' })
   }
 
@@ -843,7 +871,7 @@ export class ElecKoiConversationsApi extends TypertRemoteService {
    * 准备本次输入需要的产品配置和官方 Session，不直接生成回复。
    * @param conversationId - ElecKoi 聊天编号。
    * @param text - 本次输入或待测试文本。
-   * @param signal - 取消准备过程的信号；插件回调也会收到此信号。
+   * @param signal - 取消准备过程的信号。
    * @returns 操作结果，结构见返回类型；失败抛出错误。
    */
   @Remote
@@ -990,7 +1018,6 @@ export class ElecKoiConversationsApi extends TypertRemoteService {
         kind: 'messages',
         conversationId,
         reason: 'deleted',
-        sessionRewritten: true,
         messageIds: visible.slice(selectedVisibleIndex).map(item => String(item.seq))
       })
       return {
@@ -1048,13 +1075,12 @@ export class ElecKoiConversationsApi extends TypertRemoteService {
           await this.ownerContext.eleckoiRoleplaySessions.preparePrompt(conversationId, promptText)
         }))
       } catch (error) {
-        restoreRuntime.rollback()
         preparation.rollback()
-        this.changeFeed.publish({ kind: 'messages', conversationId, reason: 'edited', messageIds: [String(eventSeq)], sessionRewritten: true })
+        this.changeFeed.publish({ kind: 'messages', conversationId, reason: 'edited', messageIds: [String(eventSeq)] })
         throw error
       }
       this.pendingRegenerations.set(conversationId, { requestId, inputMessageId, inputEventSeq: eventSeq })
-      this.changeFeed.publish({ kind: 'messages', conversationId, reason: 'regenerated', messageIds: [String(eventSeq)], sessionRewritten: true })
+      this.changeFeed.publish({ kind: 'messages', conversationId, reason: 'regenerated', messageIds: [String(eventSeq)] })
       return { runtimeSessionId, prepared: true, operationId: this.ownerContext.eleckoiRoleplaySessions.currentOperation(conversationId) }
     })
   }
@@ -1178,21 +1204,6 @@ function storedFilePath(attachmentId: string, name: string): string {
   const home = process.env.DSH_HOME
   if (!home) throw new Error('DSH 附件目录尚未就绪。')
   return join(home, 'attachments', 'v1', 'files', match[1].slice(0, 2), match[1], name)
-}
-
-function latestSessionPreview(events: readonly unknown[]): string {
-  for (let index = events.length - 1; index >= 0; index -= 1) {
-    const event = jsonRecord(events[index])
-    if (event.surfaceOp !== 'append' || (event.type !== 'assistant/message' && event.type !== 'user/message')) continue
-    const message = jsonRecord(jsonRecord(event.data).message)
-    const content = Array.isArray(message.content) ? message.content : []
-    const text = content.flatMap((part) => {
-      const block = jsonRecord(part)
-      return block.type === 'text' && typeof block.text === 'string' ? [block.text] : []
-    }).join('').trim()
-    if (text) return Array.from(text).slice(0, 240).join('')
-  }
-  return ''
 }
 
 function requireSessionMessage(
@@ -1604,21 +1615,20 @@ export class ElecKoiCharactersApi extends TypertRemoteService {
   }
 
   /**
-   * 删除指定角色，并按选项清理关联聊天及官方 Session。
+   * 删除指定角色及其关联聊天和官方 Session。
    * @param characterIds - 待删除角色编号列表。
-   * @param options - 删除选项；deleteChats 为 false 时保留关联聊天，默认删除。
    * @returns 操作结果，结构见返回类型；失败抛出错误。
    */
   @Remote
-  async delete(characterIds: string[], options?: { deleteChats?: boolean }): Promise<CharacterCollection> {
+  async delete(characterIds: string[]): Promise<CharacterCollection> {
     const deleting = new Set(characterIds)
     const conversations = this.productData.readConversationCatalog()
       .filter(item => deleting.has(item.metadata.characterId))
-    for (const conversation of options?.deleteChats === false ? [] : conversations) {
+    for (const conversation of conversations) {
       await this.ownerContext.eleckoiSessionEditor.deleteSession(conversation.runtimeSessionId)
       await this.ownerContext.eleckoiRoleplaySessions.removeArtifacts(conversation.id, conversation.runtimeSessionId)
     }
-    const collection = this.productData.deleteCharacters(characterIds, options)
+    const collection = this.productData.deleteCharacters(characterIds)
     this.publishChange(characterIds)
     this.ownerContext.eleckoiCharacterConfigurationChanges.publish({ kind: 'snapshot' })
     this.ownerContext.eleckoiConversationChanges.publish({ kind: 'snapshot' })
@@ -2211,7 +2221,7 @@ export class ElecKoiCompatibilityApi extends TypertRemoteService {
         ctx.eleckoiCharacterConfigurationChanges.publish({ kind: 'configuration', domain: 'settingLibraries', characterId: payload.name.slice(10) })
       }
       if (change.event === 'presets.changed') ctx.eleckoiCharacterConfigurationChanges.publish({ kind: 'configuration', domain: 'agentPresets' })
-      if (change.event === 'regex.changed') ctx.eleckoiCharacterConfigurationChanges.publish({ kind: 'configuration', domain: 'regexRules', characterId: String(payload.characterId ?? '') })
+      if (change.event === 'regex.changed') ctx.eleckoiCharacterConfigurationChanges.publish({ kind: 'configuration', domain: 'regexRules' })
       if (change.event === 'messages.changed' && typeof payload.conversationId === 'string') {
         ctx.eleckoiConversationChanges.publish({ kind: 'messages', conversationId: payload.conversationId, reason: 'edited', messageIds: [],
           ...payload.sessionRewritten === true ? { sessionRewritten: true } : {} })
@@ -2258,14 +2268,9 @@ export class ElecKoiCompatibilityApi extends TypertRemoteService {
     ctx.provide('eleckoiCompatibilityDataBank', databank)
     ctx.provide('eleckoiCompatibilityVectors', { retrieve: request => databank.retrieveWorldbookVectors(request) })
     ctx.provide('eleckoiWorldbookRounds', worldbooks)
-    const migrationHandlers = ['migration.inspect', 'migration.start', 'migration.status', 'migration.list'].map(method =>
-      [method, (params: CompatibilityCommand['params']) => {
-        const service = ctx.get('eleckoiMigration')
-        if (!service) throw new Error('Android migration service is not initialized')
-        return service.invoke(method, params)
-      }] as const)
-    this.operations = new CompatibilityOperations(ctx.eleckoiProductData, publish, new Map([...catalog.handlers, ...messages.handlers, ...worldbooks.handlers, ...regexes.handlers, ...databank.handlers, ...models.handlers, ...frontends.handlers, ...chats.handlers, ...migrationHandlers]))
-    ctx.effect(() => () => this.feed.close())
+    ctx.effect(() => () => worldbooks.dispose())
+    this.operations = new CompatibilityOperations(ctx.eleckoiProductData, publish, new Map([...catalog.handlers, ...messages.handlers, ...worldbooks.handlers, ...regexes.handlers, ...databank.handlers, ...models.handlers, ...frontends.handlers, ...chats.handlers]))
+    ctx.effect(() => () => { this.operations.dispose(); this.feed.close() })
   }
   /**
    * 读取当前宿主实际注册的兼容命令及协议版本。
@@ -2273,6 +2278,7 @@ export class ElecKoiCompatibilityApi extends TypertRemoteService {
    */
   @Remote
   capabilities(): { methods: string[]; version: number } { return { methods: this.operations.methods, version: 1 } }
+  forgetConversation(conversationId: string): void { this.operations.forget(conversationId) }
   /**
    * 调用兼容命令，复用角色、消息、预设、世界书及其他产品服务。
    * @param command - 包含 method 名称与 params 参数的兼容命令。
@@ -2304,7 +2310,6 @@ const eleckoiProductApiPlugin = {
     await ctx.plugin(ElecKoiCharacterConfigurationApi)
     await ctx.plugin(ElecKoiAgentPresetsApi)
     await ctx.plugin(ElecKoiCreatorStudioApi)
-    await ctx.plugin(ElecKoiCreatorAssistantApi)
     await ctx.plugin(ElecKoiWebSearchApi)
     await ctx.plugin(ElecKoiModelsApi)
     await ctx.plugin(ElecKoiDisplayPreferencesApi)

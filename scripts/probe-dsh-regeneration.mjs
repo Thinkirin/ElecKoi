@@ -7,7 +7,7 @@ import { initProfile, PROFILE_TEMPLATES } from '@deepseek-ai/dsh-app-boot'
 import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
 import { createAssistantMessage, createSystemMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
-import { DshDesktopPluginHost, ELECKOI_DESKTOP_BUNDLES } from '@eleckoi/dsh-runtime'
+import { DshDesktopPluginHost, ELECKOI_DESKTOP_BUNDLES } from '@eleckoi/desktop-host'
 
 const root = mkdtempSync(join(tmpdir(), 'eleckoi-dsh-regeneration-'))
 const profile = join(root, 'home', 'profiles', 'desktop')
@@ -25,8 +25,8 @@ process.env.ELECKOI_SYNTHETIC_PROBE_KEY = 'synthetic-probe-key'
 const options = {
   runtimeDataRoot: root, workspaceRoot: join(root, 'workspace'),
   productDatabasePath: join(root, 'product.sqlite'), productMediaRoot: join(root, 'media'),
-  presetTemplatePath: resolve('resources/dsh/agent-preset-template/agent.cordis.yml'),
-  agentPatchPath: resolve('resources/dsh/desktop-agent.patch.yml'), executablePath: process.execPath,
+  presetTemplatePath: resolve('apps/desktop/resources/dsh/agent-preset-template/agent.cordis.yml'),
+  agentPatchPath: resolve('apps/desktop/resources/dsh/desktop-agent.patch.yml'), executablePath: process.execPath,
 }
 const hosts = []
 async function connect() {

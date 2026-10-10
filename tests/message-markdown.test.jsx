@@ -8,7 +8,7 @@ import { MessageBubble } from "./helpers/officialMarkdown.jsx";
 import {
   prepareMarkdownTextTones,
   registerMarkdownTextToneHighlights,
-} from "../src/renderer/src/ui/messages/markdownTextTones.js";
+} from "../apps/web/src/ui/messages/markdownTextTones.js";
 
 globalThis.React = React;
 
@@ -24,7 +24,7 @@ describe("message markdown presentation", () => {
     }));
 
     expect(html).toContain("<p>第一行\n第二行</p>");
-    expect(readFileSync(resolve("src/renderer/src/modules/chat/styles/chat-panel.css"), "utf8"))
+    expect(readFileSync(resolve("apps/web/src/modules/chat/styles/chat-panel.css"), "utf8"))
       .toMatch(/\.markdown-message \.eleckoi-dsh-markdown p\s*\{[^}]*white-space:\s*pre-wrap;/);
   });
 
@@ -106,7 +106,7 @@ describe("message markdown presentation", () => {
 
   it("keeps the official DSH code toolbar attached to its code card while scrolling", () => {
     const chatStyles = readFileSync(
-      resolve("src/renderer/src/modules/chat/styles/chat-panel.css"),
+      resolve("apps/web/src/modules/chat/styles/chat-panel.css"),
       "utf8",
     );
 
@@ -227,7 +227,7 @@ describe("message markdown presentation", () => {
       markdown: "`<u>代码</u>`\n```html\n<u>代码块</u>\n```",
       underlineTexts: [],
     });
-    const styles = readFileSync(resolve("src/renderer/src/modules/chat/styles/chat-panel.css"), "utf8");
+    const styles = readFileSync(resolve("apps/web/src/modules/chat/styles/chat-panel.css"), "utf8");
     expect(styles).not.toContain("::highlight(");
 
     const root = document.createElement("div");
@@ -277,7 +277,7 @@ describe("message markdown presentation", () => {
     expect(article?.querySelector(":scope > .message-content > .message-tools")).toBeNull();
 
     const chatStyles = readFileSync(
-      resolve("src/renderer/src/modules/chat/styles/chat-panel.css"),
+      resolve("apps/web/src/modules/chat/styles/chat-panel.css"),
       "utf8",
     );
     expect(chatStyles).toMatch(
@@ -346,7 +346,7 @@ describe("message markdown presentation", () => {
 
   it("keeps the outgoing opening frozen until the replacement is painted", () => {
     const source = readFileSync(
-      resolve("src/renderer/src/ui/messages/MessageBubble.jsx"),
+      resolve("apps/web/src/ui/messages/MessageBubble.jsx"),
       "utf8",
     );
     const switchBody = source.match(

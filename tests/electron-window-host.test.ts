@@ -40,7 +40,7 @@ const electronMocks = vi.hoisted(() => {
 
 vi.mock('electron', () => ({ BrowserWindow: electronMocks.BrowserWindow }))
 
-import { ElectronWindowHost } from '../src/main/platform/electron/ElectronWindowHost'
+import { ElectronWindowHost } from '../apps/desktop/src/main/platform/electron/ElectronWindowHost'
 
 beforeEach(() => {
   electronMocks.BrowserWindow.instances = []

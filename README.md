@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="resources/icons/eleckoi-app-icon.png" width="128" alt="电子爱">
+  <img src="apps/desktop/resources/icons/eleckoi-app-icon.png" width="128" alt="电子爱">
 </p>
 
 <h1 align="center">电子爱</h1>
@@ -9,7 +9,7 @@
   <a href="./README.en.md">English</a>
 </p>
 
-电子爱是一个由 DSH Agent 驱动的 AI 角色卡创作与演绎客户端，现已支持 Windows PC 与 Android。Windows 版源码位于本仓库；Android 版源码请前往 [ElecKoi-app](https://github.com/eleckoi/ElecKoi-app)。
+电子爱是一个由 DSH Agent 驱动的 AI 角色卡创作与演绎客户端，现已支持 Windows PC 与 Android。本仓库按 `apps/desktop`、`apps/desktop-host`、`apps/web` 组织 Windows 客户端，后续 Android 工程将纳入 `apps/android`。当前 Android 源码位于 [ElecKoi-app](https://github.com/eleckoi/ElecKoi-app)。
 
 ## 核心亮点
 

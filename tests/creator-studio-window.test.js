@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { openCreatorStudioWindow } from "../src/renderer/src/modules/creatorStudio/window/openCreatorStudioWindow.js";
+import { openCreatorStudioWindow } from "../apps/web/src/modules/creatorStudio/window/openCreatorStudioWindow.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();

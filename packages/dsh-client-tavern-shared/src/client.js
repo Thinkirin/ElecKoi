@@ -22,9 +22,11 @@ window.__ModuleLoader__.load({
         displayPreferences: ctx.eleckoiDisplayPreferences, sdk: window.ElecKoiTavernShared,
         report(error) { console.error('ElecKoi 共享兼容运行时失败', error); window.dispatchEvent(new CustomEvent('eleckoi:plugin-error', { detail: { error } })); } });
       ctx.provide('eleckoiTavernShared', runtime);
-      try { await runtime.start(); } catch (error) { await runtime.dispose(); throw error; }
-      const stop = ctx.on('connection/reset', () => { void runtime.restore().catch(error => runtime.fail(error)); });
-      return async () => { stop(); await runtime.dispose(); };
+      await ctx.effect(async () => {
+        try { await runtime.start(); } catch (error) { await runtime.dispose(); throw error; }
+        const stop = ctx.on('connection/reset', () => { void runtime.restore().catch(error => runtime.fail(error)); });
+        return async () => { stop(); await runtime.dispose(); };
+      }, 'eleckoi: shared frontend runtime');
     }
     return { inject: ['remote', 'remote.eleckoiCompatibility', 'remote.eleckoiAuthorPlugins', 'remote.eleckoiCharacters', 'remote.eleckoiConversations',
       'eleckoiConversations', 'eleckoiDisplayPreferences', 'eleckoiCharacters', 'eleckoiPresets', 'eleckoiModels',

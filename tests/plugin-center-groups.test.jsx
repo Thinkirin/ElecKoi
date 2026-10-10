@@ -2,7 +2,7 @@
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { applyPluginListWheel, PluginListPanel } from '../src/renderer/src/app/windows/shell/components/PluginCenter.jsx'
+import { applyPluginListWheel, PluginListPanel } from '../apps/web/src/app/windows/shell/components/PluginCenter.jsx'
 
 vi.stubGlobal('React', React)
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)

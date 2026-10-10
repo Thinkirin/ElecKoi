@@ -7,13 +7,13 @@ import { OPTIONAL_BUNDLES } from '@deepseek-ai/dsh-app-boot'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const require = createRequire(resolve(root, 'package.json'))
-const desktop = readJson('package.json')
+const desktop = readJson('apps/desktop/package.json')
 const workspace = parseYaml(readFileSync(resolve(root, 'pnpm-workspace.yaml'), 'utf8'))
 const runtime = readJson('packages/dsh-runtime/package.json')
-const manifest = readJson('resources/dsh/runtime-manifest.json')
-const builderConfig = readFileSync(resolve(root, 'electron-builder.yml'), 'utf8')
-const config = readFileSync(resolve(root, 'resources/dsh', manifest.composition), 'utf8')
-const presetConfig = readFileSync(resolve(root, 'resources/dsh', manifest.presetComposition), 'utf8')
+const manifest = readJson('apps/desktop/resources/dsh/runtime-manifest.json')
+const builderConfig = readFileSync(resolve(root, 'apps/desktop/electron-builder.yml'), 'utf8')
+const config = readFileSync(resolve(root, 'apps/desktop/resources/dsh', manifest.composition), 'utf8')
+const presetConfig = readFileSync(resolve(root, 'apps/desktop/resources/dsh', manifest.presetComposition), 'utf8')
 const packagedRuntimeProbe = readFileSync(resolve(root, 'scripts/verify-packaged-dsh-runtime.mjs'), 'utf8')
 const sdkServerSource = readFileSync(require.resolve('@deepseek-ai/dsh-sdk-jsonrpc-server'), 'utf8')
 
@@ -38,7 +38,7 @@ if (!manifest.desktopProfile.bundles?.includes('@eleckoi/dsh-client-roleplay')
   || !manifest.desktopProfile.bundles?.includes('@eleckoi/dsh-product-api')) {
   throw new Error('DSH 桌面 profile 缺少 ElecKoi 角色、产品 Remote 或联网搜索组合包。')
 }
-readFileSync(resolve(root, 'resources/dsh', manifest.desktopProfile.agentPatch))
+readFileSync(resolve(root, 'apps/desktop/resources/dsh', manifest.desktopProfile.agentPatch))
 const developerInterfaceIds = new Set()
 const developerInterfaceKinds = new Set(['ui-slot', 'service', 'event', 'contribution', 'remote'])
 const developerInterfaceRelations = new Set(['provides', 'contributes'])
@@ -85,7 +85,7 @@ if (!builderConfig.includes("- '!node_modules/pnpm/**/*'")) {
   throw new Error('electron-builder 必须排除 app.asar 内重复的 pnpm Runtime。')
 }
 if (!/^\s*- from: node_modules\/pnpm\s*$[\s\S]*?^\s*to: dsh\/pnpm\s*$/m.test(builderConfig)) {
-  throw new Error('electron-builder 必须把唯一的 pnpm Runtime 发布到 resources/dsh/pnpm。')
+  throw new Error('electron-builder 必须把唯一的 pnpm Runtime 发布到 apps/desktop/resources/dsh/pnpm。')
 }
 for (const [option, leaf] of [
   ['productDatabasePath', 'product.sqlite'],
@@ -161,17 +161,17 @@ for (const specifier of [...manifest.plugins, ...manifest.presetPlugins, manifes
 
 for (const specifier of manifest.localPlugins ?? []) {
   if (!specifier.startsWith('./')) throw new Error(`本地 DSH 插件必须使用相对路径：${specifier}`)
-  readFileSync(resolve(root, 'resources/dsh', specifier))
+  readFileSync(resolve(root, 'apps/desktop/resources/dsh', specifier))
 }
 
 for (const specifier of manifest.localModules ?? []) {
   if (!specifier.startsWith('./')) throw new Error(`本地 DSH 支持模块必须使用相对路径：${specifier}`)
-  readFileSync(resolve(root, 'resources/dsh', specifier))
+  readFileSync(resolve(root, 'apps/desktop/resources/dsh', specifier))
 }
 
 for (const specifier of manifest.presetLocalPlugins ?? []) {
   if (!specifier.startsWith('./')) throw new Error(`本地 DSH 预设插件必须使用相对路径：${specifier}`)
-  readFileSync(resolve(root, 'resources/dsh', specifier))
+  readFileSync(resolve(root, 'apps/desktop/resources/dsh', specifier))
 }
 
 if (runtime.dependencies?.['@deepseek-ai/dsh-sdk-client'] !== manifest.upstream.version) {

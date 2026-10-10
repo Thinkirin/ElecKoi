@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   commitKeywordDraft,
   splitKeywordDraft,
-} from "../src/renderer/src/modules/settingLibraries/model/settingLibraryKeywords.js";
+} from "../apps/web/src/modules/settingLibraries/model/settingLibraryKeywords.js";
 
 describe("setting-library keyword tag input", () => {
   it("commits comma, Chinese punctuation and newline separated values without duplicates", () => {

@@ -1,4 +1,5 @@
 export { TrajectoryTable } from './client/TrajectoryTable.tsx'
+export { RequestContextPanel } from './client/RequestContextPanel.tsx'
 export type {
   TrajectoryRequestContextItem,
   TrajectoryRequestNumber,

@@ -1,0 +1,38 @@
+#eleckoi-root {
+  --shell-backdrop: var(--dsw-alias-bg-base, #ffffff);
+  --rail: var(--dsw-specific-sidebar-fill, #f9fafb);
+  --list: var(--dsw-specific-sidebar-fill, #f9fafb);
+  --rail-fg: var(--dsw-alias-label-primary, #252525);
+  --chat: var(--dsw-alias-bg-base, #ffffff);
+  --rail-divider: var(--dsw-alias-border-l1, rgba(27, 37, 49, 0.08));
+  --divider-core: var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.045));
+  --divider-soft: var(--dsw-alias-border-inverted, rgba(0, 0, 0, 0.01));
+  --title-fg: var(--dsw-alias-label-primary, #111111);
+  --text: var(--dsw-alias-label-primary, #111111);
+  --muted: var(--dsw-alias-label-secondary, #8b8b8b);
+  --soft-text: var(--dsw-alias-label-tertiary, #adadad);
+  --line: var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.055));
+  --line-strong: var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.075));
+  --active: var(--dsw-alias-interactive-bg-hover, color-mix(in srgb, var(--text) 6%, transparent));
+  --blue: var(--dsw-alias-link, #13a8ff);
+  --blue-hover: var(--dsw-alias-button-info-hover, #079cf0);
+  --control-bg: var(--dsw-alias-bg-module-platform, #ebebeb);
+  --control-bg-hover: var(--dsw-alias-interactive-bg-hover-solid, #e2e2e2);
+  --bubble-bg: var(--dsw-alias-bg-layer-1, #ffffff);
+  --bubble-fg: var(--dsw-alias-label-primary, #181818);
+  --bubble-blue: var(--dsw-specific-bubble, #cdeeff);
+  --bubble-white: var(--dsw-alias-bg-layer-1, #ffffff);
+  --glass-border: var(--dsw-alias-border-l2, rgba(255, 255, 255, 0.62));
+  --chat-header-fg: var(--dsw-alias-label-primary, #111111);
+  --composer-icon-fg: var(--dsw-alias-label-primary, #111111);
+  --surface-raised: var(--dsw-alias-bg-layer-1, #ffffff);
+  --surface-subtle: var(--dsw-alias-bg-module-platform, #f5f5f5);
+  --surface-muted: var(--dsw-alias-bg-overlay, #eeeeee);
+  --sidebar-primary-action-bg: var(--dsw-alias-button-elevated-fill, #ffffff);
+  --sidebar-primary-action-hover: var(--dsw-alias-button-floating-hover, #f1f3f5);
+  --markdown-code-block-bg: var(--dsw-alias-markdown-code-block, #f9fafb);
+  --markdown-code-block-fg: var(--dsw-alias-label-primary, #0f1115);
+  --field-bg: var(--dsw-alias-bg-layer-1, #ffffff);
+  --field-disabled: var(--dsw-alias-bg-module-platform, #f3f3f3);
+  --on-accent: var(--dsw-alias-label-primary-foreground, #ffffff);
+}

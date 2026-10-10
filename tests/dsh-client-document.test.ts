@@ -10,7 +10,7 @@ import {
   resolveElecKoiClientAssets,
   serveElecKoiClientAsset,
   serveDshClientAsset
-} from '../src/main/platform/electron/dshClientDocument'
+} from '../apps/desktop/src/main/platform/electron/dshClientDocument'
 
 const require = createRequire(import.meta.url)
 const frontendDirectory = join(dirname(require.resolve('@deepseek-ai/dsh-web-frontend/package.json')), 'dist')
@@ -44,9 +44,8 @@ describe('DSH client document transport', () => {
   it('resolves and serves the ElecKoi client bundle inside the DSH document', async () => {
     const root = await mkdtemp(join(tmpdir(), 'eleckoi-dsh-client-'))
     temporaryDirectories.push(root)
-    await mkdir(join(root, 'src/renderer'), { recursive: true })
     await mkdir(join(root, 'assets'), { recursive: true })
-    await writeFile(join(root, 'src/renderer/dsh.html'), '<link rel="stylesheet" href="../../assets/product.css"><script src="../../assets/product.js"></script>')
+    await writeFile(join(root, 'dsh.html'), '<link rel="stylesheet" href="./assets/product.css"><script src="./assets/product.js"></script>')
     await writeFile(join(root, 'assets/product.css'), '.product { color: red }')
     await writeFile(join(root, 'assets/product.js'), 'globalThis.productLoaded = true')
 

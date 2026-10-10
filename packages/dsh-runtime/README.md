@@ -4,8 +4,7 @@
 
 ## Ownership（职责）
 
-- Own the managed DSH Desktop Web Host process, SessionController integration and controlled session editing.
-- Compose ElecKoi Host plugins with the locked official Agent, Session, Jobs and Web Client runtime.
+- Own formal Session operations, SessionController integration and controlled session editing.
 - Keep Electron Main and the product Renderer independent from DSH package internals.
 - Build real ESM/CJS artifacts and declarations in `dist/`; consumers must use the package root export.
 
@@ -13,16 +12,16 @@
 
 - Official DSH Session persistence, projection, streaming, cancellation and restart recovery.
 - Same-Session message editing and rewind for deletion and regeneration.
-- Host lifecycle and child-process startup protocol for the Electron shell.
+- Startup Session recovery used by the desktop Host; the Host lifecycle and child-process protocol belong to `apps/desktop-host`.
 - Trajectory helpers for ElecKoi's request and context presentation.
 - Exact, compatibility-batch DSH dependency versions.
 
-The active conversation path starts the official Web profile through `desktopPluginHostChild.ts`.
-`resources/dsh/desktop-agent.patch.yml` adds desktop Agent settings; DSH profile bundles add
-ElecKoi's roleplay lifecycle and Tavily search provider. `resources/dsh/cordis.yml` remains an
+The active conversation path starts the official Web profile through `apps/desktop-host/src/desktopPluginHostChild.ts`.
+`apps/desktop/resources/dsh/desktop-agent.patch.yml` adds desktop Agent settings; DSH profile bundles add
+ElecKoi's roleplay lifecycle and Tavily search provider. `apps/desktop/resources/dsh/cordis.yml` remains an
 SDK compatibility composition, not the active desktop conversation tree. The pinned upstream
 commit, both composition roles and capability inventory are recorded in
-`resources/dsh/runtime-manifest.json`. Product data and Remote services are owned by
+`apps/desktop/resources/dsh/runtime-manifest.json`. Product data and Remote services are owned by
 `@eleckoi/dsh-product-data` and `@eleckoi/dsh-product-api`; the DSH Web Client loads ElecKoi's
 Client plugins and consumes official Session/Connection projections.
 

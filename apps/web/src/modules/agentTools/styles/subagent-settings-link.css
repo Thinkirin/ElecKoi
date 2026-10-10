@@ -1,0 +1,35 @@
+.subagent-settings-link {
+  width: 100%;
+  min-height: 56px;
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--control-bg);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.subagent-settings-link:hover {
+  border-color: var(--line-strong);
+  background: var(--control-bg-hover);
+}
+
+.subagent-settings-link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--blue) 48%, transparent);
+  outline-offset: 2px;
+}
+
+.subagent-settings-link strong {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.subagent-settings-link > svg {
+  color: var(--text-muted);
+}

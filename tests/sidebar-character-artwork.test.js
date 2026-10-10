@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_SIDEBAR_CHARACTER_ARTWORK,
   normalizeSidebarCharacterArtwork,
-} from "../src/renderer/src/modules/appearance/preferences/sidebarCharacterArtwork.js";
+} from "../apps/web/src/modules/appearance/preferences/sidebarCharacterArtwork.js";
 
 describe("sidebar character artwork preference", () => {
   it("uses cover artwork as the desktop default and preserves the avatar option", () => {

@@ -8,8 +8,8 @@ import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
 import { SessionProjectionRegistry } from '@deepseek-ai/dsh-session-projection'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { afterEach, describe, expect, it } from 'vitest'
-import { requestContextProjection } from '../packages/dsh-client-roleplay/src/host/request-context-projection.mjs'
-import { recordRequestContext, REQUEST_CONTEXT_PROJECTION } from '../packages/dsh-client-roleplay/src/host/request-context-record.mjs'
+
+
 import { readDshSessionLog } from '../packages/dsh-runtime/src/trajectory'
 import { repairRequestContextLog, repairRequestContextLogs } from '../packages/dsh-runtime/src/sessionRequestContextRepair'
 
@@ -23,13 +23,13 @@ async function fixture() {
   await ctx.plugin(JsonlSessionPersistence, { root, compression: 'none' })
   cleanups.push(() => ctx.fiber.dispose())
   const registry = new SessionProjectionRegistry(ctx)
-  registry.register(requestContextProjection)
+
   const session = Session.create(SessionId('annotation-test'))
   session.append('user/message', createUserMessage({ content: [{ type: 'text', text: '合成输入' }], source: { kind: 'user' } }), { surfaceOp: 'append' })
   session.append('turn/start', { turn: 1 })
   const step = session.append('step/start', { turn: 1, step: 1 })
   const context = [{ order: 1, messageId: 'synthetic', role: 'user', kind: 'user', title: '输入', source: 'user', anchor: '', content: '合成请求' }]
-  recordRequestContext(registry, session, context)
+  session.append('eleckoi/request-context', { requestSeq: step.seq, context }, { ignorable: true })
   session.append('step/end', { turn: 1, step: 1 })
   session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
   const handle = await ctx.sessionPersistence.create(session.header)
@@ -68,7 +68,8 @@ describe('request context durable event contract', { timeout: 30_000 }, () => {
     expect(record.ignorable).toBe(true)
     const restored = Session.create(f.session.id, stored.events, f.session.header)
     expect(restored.deriveMessages()).toEqual(f.session.deriveMessages())
-    expect(f.registry.snapshot(restored).values[REQUEST_CONTEXT_PROJECTION][f.step.seq]).toEqual(f.context)
+    expect(f.registry.snapshot(restored).values.eleckoiRequestContexts).toBeUndefined()
+    expect(stored.events.find(event => event.type === 'eleckoi/request-context').data.context).toEqual(f.context)
   })
 
   it('repairs only the marker, retains a backup, and is idempotent across Host startup', async () => {

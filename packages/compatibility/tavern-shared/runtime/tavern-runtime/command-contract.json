@@ -3507,14 +3507,6 @@
         ]
       },
       {
-        "name": "deleteChats",
-        "description": "Whether to also delete all chats with this character",
-        "typeList": [
-          "BOOLEAN"
-        ],
-        "defaultValue": "false"
-      },
-      {
         "name": "silent",
         "description": "Skip the confirmation popup",
         "typeList": [
@@ -3523,7 +3515,7 @@
         "defaultValue": "false"
       }
     ],
-    "helpString": "\n        <div>\n            Deletes a character from the system.\n        </div>\n        <div>\n            If no <code>char</code> argument is provided, deletes the currently selected character.\n        </div>\n        <div>\n            <strong>Warning:</strong> This action is irreversible!\n        </div>\n        <div>\n            <strong>Example:</strong>\n            <ul>\n                <li>\n                    <pre><code>/char-delete</code></pre>\n                    Deletes the currently selected character (will show confirmation popup).\n                </li>\n                <li>\n                    <pre><code>/char-delete char=\"Bob\" deleteChats=true silent=true</code></pre>\n                    Deletes Bob and all associated chats without confirmation.\n                </li>\n            </ul>\n        </div>\n        "
+    "helpString": "\n        <div>\n            Deletes a character and all associated chats from the system.\n        </div>\n        <div>\n            If no <code>char</code> argument is provided, deletes the currently selected character and its chats.\n        </div>\n        <div>\n            <strong>Warning:</strong> This action is irreversible!\n        </div>\n        <div>\n            <strong>Example:</strong>\n            <ul>\n                <li>\n                    <pre><code>/char-delete</code></pre>\n                    Deletes the currently selected character and all associated chats.\n                </li>\n                <li>\n                    <pre><code>/char-delete char=\"Bob\" silent=true</code></pre>\n                    Deletes Bob and all associated chats without confirmation.\n                </li>\n            </ul>\n        </div>\n        "
   },
   "message-role": {
     "name": "message-role",

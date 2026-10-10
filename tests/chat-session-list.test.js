@@ -6,7 +6,7 @@ import {
   restoreConversationEntry,
   selectSessionForCharacter,
   sortSessionsByPinned,
-} from "../src/renderer/src/modules/chat/model/chatSessionView.js";
+} from "../apps/web/src/modules/chat/model/chatSessionView.js";
 
 function session(id, characterId, updatedAt) {
   return {

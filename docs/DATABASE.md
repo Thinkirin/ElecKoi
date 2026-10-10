@@ -7,7 +7,7 @@
 - 唯一所有者：DSH Host 插件 `@eleckoi/dsh-product-data`。
 - 数据库文件：Electron `userData/eleckoi-common.sqlite3`，路径由桌面壳作为 Host 启动参数传入。
 - SQLite 打开、迁移、恢复和所有 Repository 写入均位于 `packages/dsh-product-data/src`。Electron Main、Client 和 Renderer 不打开数据库。
-- 公共 SQL：`resources/database/eleckoi-common-schema-v1.sql`。
+- 公共 SQL：`apps/desktop/resources/database/eleckoi-common-schema-v1.sql`。
 - 当前 `PRAGMA user_version`：`9`。
 - 当前结构：43 张业务表、2 个视图；数据库物理结构版本只使用 SQLite `PRAGMA user_version`。
 
@@ -64,11 +64,11 @@ ElecKoi 当前 43 张产品表需要关系、外键、排序、搜索、跨表�
 | [旧子 Agent 占位路由](../packages/dsh-client-models/src/index.js) | 停止支持 v0.2.3 之前版本直升，且支持的 profile 恢复入口不再携带该路由 | 占位路由过滤、专用常量与用例；与模型设置 schema 转换分别核对 |
 | [旧默认模型路由](../packages/dsh-client-roleplay/src/host/model-selection-migration.mjs) | 停止支持 v0.2.1 及更早版本直升，且支持的 profile 恢复入口不再携带旧路由 | 迁移函数、辅助函数、启动调用和旧路由用例；当前请求快照改为直接解析正式选择，保留每轮冻结与恢复后的模型刷新 |
 | [旧实体化预设 ID](../packages/dsh-client-roleplay/src/host/agent-preset-bridge.mjs) | 支持恢复的 Session、快照和导入记录均已持久选择 `eleckoi-active`，且对应旧版本直升已退役 | 旧声明注册、别名、目录扫描、分支与用例；保留当前预设注册、重组和恢复服务 |
-| [profile 内置 bundle 登记](../packages/dsh-runtime/src/desktopPluginBundles.ts)、[Tavily 首次选择](../packages/dsh-runtime/src/desktopPluginHost.ts) | 支持的升级和 profile 恢复入口分别已完成 `bundles-v5`、`tavily-bundle-v1` 登记 | 各自的一次性函数、调用及旧 profile 用例；保留新 profile 初始化和用户启停选择 |
-| [请求上下文记录修复](../packages/dsh-runtime/src/sessionRequestContextRepair.ts) | 对应旧版本直升已退役，且支持的 Session 恢复和导入入口已有转换缺失可忽略标记的能力 | 修复模块、启动扫描、导出与专用用例；保留当前记录写入、Schema 和投影 |
+| [profile 内置 bundle 登记](../apps/desktop-host/src/desktopPluginBundles.ts)、[Tavily 首次选择](../apps/desktop-host/src/desktopPluginHost.ts) | 支持的升级和 profile 恢复入口分别已完成 `bundles-v5`、`tavily-bundle-v1` 登记 | 各自的一次性函数、调用及旧 profile 用例；保留新 profile 初始化和用户启停选择 |
+| [请求上下文记录修复](../packages/dsh-runtime/src/sessionRequestContextRepair.ts) | 对应旧版本直升已退役，且支持的 Session 恢复和导入入口已有转换缺失可忽略标记的能力 | 修复模块、启动扫描、导出与专用用例；旧事件保留，新预览不落盘，见 [ADR 0029](adr/0029-ephemeral-request-context-preview.md) |
 | [旧聊天独立输入补回](../packages/dsh-runtime/src/sessionHistoryRecovery.ts) | 对应旧聊天直升已退役，且支持的恢复和导入入口已把缺失输入写为正式 Session 消息 | 补回模块、归档读取、启动调用、导出与专用用例；保留逐会话错误隔离、投影重放、检查点和正常重新生成 |
 | [已补回聊天的统计标记](../packages/dsh-client-roleplay/src/host/history-stats-projection.mjs) | 支持恢复的已迁移日志完成等价统计转换，重放结果保持正确 | 仅旧标记分支、专用状态与旧日志用例；保留当前已有输入续接的统计及投影登记 |
-| [V1 请求投影信封读取](../packages/dsh-client-roleplay/src/host/conversation-context.mjs) | 支持恢复和导入的日志已转换持久化 V1 信封 | 旧前缀、解码分支与样例；保留当前 V2 信封和角色请求上下文 |
+| [旧请求投影信封过滤](../packages/dsh-client-roleplay/src/host/conversation-context.mjs) | 支持恢复和导入的旧日志均已不含该插件消息 | 按正式插件来源标识排除旧信封；新请求仅在内存装配，不生产新信封 |
 | [v3 → v4 系统开头补丁](adr/0026-legacy-session-system-head-migration.md) | 锁定上游的正式相邻迁移能通过同一组旧日志用例 | 版本补丁、`patchedDependencies` 登记和锁文件；保留官方格式目录与完整迁移链 |
 
 删除恢复或迁移入口时只移除其专用用例；新建、重开、备份、完整性、当前模型请求、预设重组和重新生成等正常路径的验证继续保留。异常退出后的响应状态恢复是当前运行职责，仍由 [启动恢复](../packages/dsh-product-data/src/storage/sqlite/recoverInterruptedState.ts) 执行。

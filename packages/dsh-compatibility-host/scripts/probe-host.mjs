@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline';
-const root = fileURLToPath(new URL('../../..', import.meta.url));
+const root = fileURLToPath(new URL('../..', import.meta.url));
 const directory = await mkdtemp(join(tmpdir(), 'eleckoi-author-formal-'));
 const report = join(root, 'build/android-runtime/author-shared-host-probe.json');
 const config = join(directory, 'runtime-config.json');

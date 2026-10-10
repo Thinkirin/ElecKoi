@@ -75,3 +75,35 @@ export function officialTrajectoryFixture() {
 }
 
 export const trajectoryAssistantDefinition = officialTrajectoryFixture().definitions.get('trajectory-assistant-step')
+
+export function officialChatFixture() {
+  const chat = loadClient('dsh-client-ui-chat', ', registerConversationNodes')
+  const definitions = new Map()
+  const views = new Map()
+  let fallback
+  chat.registerConversationNodes({ uiConversation: {
+    events: {
+      register: definition => definitions.set(definition.kind, definition),
+      registerFallback: definition => { fallback = definition },
+    },
+    views: { register: definition => views.set(definition.target, definition) },
+    groups: { register() {} },
+  } })
+  const engine = new conversation.ConversationNodeAssembler(
+    { entries: () => [...definitions.values()], fallbackEntry: () => fallback },
+    { entries: () => [...views.values()] },
+  )
+  engine.activateTarget('chat')
+  return {
+    replace(events) {
+      engine.replaceWindow(events.map(event => ({ type: 'durable', event })), false)
+      engine.flush()
+      return engine.snapshot('chat')
+    },
+    append(event) {
+      engine.append({ type: event.type === 'assistant/live-chunk' ? 'transient' : 'durable', event })
+      engine.flush()
+      return engine.snapshot('chat')
+    },
+  }
+}

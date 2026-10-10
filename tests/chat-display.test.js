@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CHAT_DISPLAY_PREFERENCES,
   chatDisplayPreferencesSchema,
-} from "../src/shared/contracts/settings/schemas.ts";
+} from "../packages/product-shared/src/contracts/settings/schemas.ts";
 import {
   chatDisplayCssVariables,
   chatTextColorCssVariables,
@@ -10,7 +10,7 @@ import {
   resolveChatAvatar,
   resolveChatAvatarShape,
   resolveChatDisplayProfile,
-} from "../src/renderer/src/modules/appearance/preferences/chatDisplay.js";
+} from "../apps/web/src/modules/appearance/preferences/chatDisplay.js";
 
 describe("chat display preferences", () => {
   it("keeps the three Android layout profiles independent and defaults to roleplay", () => {

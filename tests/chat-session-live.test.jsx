@@ -2,8 +2,8 @@
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { describe, expect, it, vi } from 'vitest'
-import { useChatSessions } from '../src/renderer/src/modules/chat/hooks/useChatSessions.js'
-import { useConversationMessages } from '../src/renderer/src/modules/chat/hooks/useConversationMessages.js'
+import { useChatSessions } from '../apps/web/src/modules/chat/hooks/useChatSessions.js'
+import { useConversationMessages } from '../apps/web/src/modules/chat/hooks/useConversationMessages.js'
 import { MessageBubble } from './helpers/officialMarkdown.jsx'
 
 describe('DSH chat live rendering', () => {

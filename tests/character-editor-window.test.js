@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { openCharacterEditorWindow } from "../src/renderer/src/modules/persona/window/openCharacterEditorWindow.js";
+import { openCharacterEditorWindow } from "../apps/web/src/modules/persona/window/openCharacterEditorWindow.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();

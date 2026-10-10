@@ -1,7 +1,7 @@
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
-import { CharacterProfilePanel } from '../src/renderer/src/modules/persona/components/CharacterProfilePanel.jsx'
+import { CharacterProfilePanel } from '../apps/web/src/modules/persona/components/CharacterProfilePanel.jsx'
 
 vi.stubGlobal('React', React)
 

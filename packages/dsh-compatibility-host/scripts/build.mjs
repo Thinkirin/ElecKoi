@@ -17,10 +17,11 @@ const artifacts = new WorkspaceTypertGenerator(root, { checkDiagnostics: false }
 if (artifacts.length !== 1 || !artifacts[0].remote) throw new Error('Author Host generated Remote is missing');
 await mkdir(output, { recursive: true });
 await mkdir(path.join(output, 'web'), { recursive: true });
-await cp(path.join(packageRoot, '../dsh-client-tavern-shared/src/runtime.js'), path.join(output, 'web/runtime.js'));
-await cp(path.join(packageRoot, '../dsh-client-tavern-shared/src/media-runtime.js'), path.join(output, 'web/media-runtime.js'));
+const clientSource = path.join(root, 'packages/dsh-client-tavern-shared/src');
+await cp(path.join(clientSource, 'runtime.js'), path.join(output, 'web/runtime.js'));
+await cp(path.join(clientSource, 'media-runtime.js'), path.join(output, 'web/media-runtime.js'));
 for (const name of ['application-api.js', 'background-presentation.js', 'client-appearance-capabilities.js', 'client-api-handlers.js', 'client-character-library.js']) {
-  await cp(path.join(packageRoot, '../dsh-client-tavern-shared/src/' + name), path.join(output, 'web/' + name));
+  await cp(path.join(clientSource, name), path.join(output, 'web/' + name));
 }
 const [artifact] = artifacts;
 await Promise.all(Object.entries({ 'typert.host.js': artifact.js, 'typert.host.d.ts': artifact.dts,

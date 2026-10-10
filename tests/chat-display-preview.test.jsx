@@ -1,8 +1,8 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { SettingsPanel } from "../src/renderer/src/modules/settings/components/SettingsPanel.jsx";
-import { DEFAULT_CHAT_DISPLAY_PREFERENCES } from "../src/shared/contracts/settings/schemas.ts";
+import { SettingsPanel } from "../apps/web/src/modules/settings/components/SettingsPanel.jsx";
+import { DEFAULT_CHAT_DISPLAY_PREFERENCES } from "../packages/product-shared/src/contracts/settings/schemas.ts";
 import { WithOfficialMarkdown } from "./helpers/officialMarkdown.jsx";
 
 globalThis.React = React;

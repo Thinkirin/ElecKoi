@@ -16,9 +16,9 @@ vi.mock('@douyinfe/semi-ui-19/lib/es/input/textarea', () => ({
     <textarea {...props} value={value} onChange={event => onChange(event.target.value)} />
   ),
 }))
-vi.mock('../src/renderer/src/ui/ui/AvatarCropModal.jsx', () => ({ AvatarCropModal: avatarCropModalMock }))
+vi.mock('../apps/web/src/ui/ui/AvatarCropModal.jsx', () => ({ AvatarCropModal: avatarCropModalMock }))
 
-import { CharacterBasicInfoPanel } from '../src/renderer/src/modules/persona/components/CharacterBasicInfoPanel.jsx'
+import { CharacterBasicInfoPanel } from '../apps/web/src/modules/persona/components/CharacterBasicInfoPanel.jsx'
 
 vi.stubGlobal('React', React)
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)

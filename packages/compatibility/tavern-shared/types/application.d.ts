@@ -19,7 +19,7 @@ export interface ApplicationActions {
   characters: {
     refresh(): Promise<ApplicationResult>; create(character: ApplicationDocument): Promise<ApplicationResult>;
     update(character: ApplicationDocument): Promise<ApplicationResult>; select(characterId: string): Promise<ApplicationResult>;
-    delete(characterIds: string[], options?: { deleteChats?: boolean }): Promise<ApplicationResult>; saveGroups(groups: ApplicationDocument[], assignments?: ApplicationDocument[]): Promise<ApplicationResult>;
+    delete(characterIds: string[]): Promise<ApplicationResult>; saveGroups(groups: ApplicationDocument[], assignments?: ApplicationDocument[]): Promise<ApplicationResult>;
     prepareImport(source: string, files: ApplicationDocument[]): Promise<ApplicationResult>; commitImport(token: string): Promise<ApplicationResult>;
     discardImport(token: string): Promise<void>; exportCharacters(characterIds: string[], format: string): Promise<ApplicationResult>;
   };

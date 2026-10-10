@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Rich shared Tavern compatibility runtime migrated from Android; injected Host services and persistent Web state.",
+  "description": "Shared Tavern compatibility runtime with injected Host services.",
   "main": "./src/index.js",
   "types": "./types/index.d.ts",
   "exports": {

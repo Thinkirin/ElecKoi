@@ -5,7 +5,7 @@ import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { RunningWhaleTail } from '../src/renderer/src/modules/chat/components/RunningWhaleTail.jsx'
+import { RunningWhaleTail } from '../apps/web/src/modules/chat/components/RunningWhaleTail.jsx'
 import { MessageBubble, MessageList } from './helpers/officialMarkdown.jsx'
 
 vi.stubGlobal('React', React)
@@ -294,7 +294,7 @@ describe('chat rendering performance', () => {
 
   it('uses the DSH APNG whale with an accessible static fallback', () => {
     const html = renderToStaticMarkup(<RunningWhaleTail />)
-    const image = readFileSync(resolve('src/renderer/src/modules/chat/assets/running-whale@2x.png'))
+    const image = readFileSync(resolve('apps/web/src/modules/chat/assets/running-whale@2x.png'))
     expect(html).toContain('chat-running-whale-animated')
     expect(html).toContain('chat-running-whale-still')
     expect(html).not.toContain('<animate')

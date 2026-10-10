@@ -77,6 +77,7 @@ class Entry {
     const anchors = { before_character_definition: 'beforeCharacterDefinition', after_character_definition: 'afterCharacterDefinition', before_example_messages: 'beforeExamples', after_example_messages: 'afterExamples', before_author_note: 'beforeAuthorNote', after_author_note: 'afterAuthorNote' };
     return { id: this.key, content, conversationId, role: position.role ?? this.value.insert_role ?? 'system', order: this.order,
       worldbookPosition: this.positionType, anchor: this.value.anchor ?? anchors[this.positionType] ?? 'beforeLatestUserInput',
+      ...(this.value.nativePlacement ? { nativePlacement: clone(this.value.nativePlacement) } : {}),
       ...(this.positionType === 'at_depth' ? { depth: position.depth } : {}) };
   }
 }

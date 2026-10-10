@@ -1,5 +1,6 @@
 import type { Context, Plugin } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
+import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type {} from '@eleckoi/dsh-product-api'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import type { AuthorCapabilities, AuthorChange, AuthorCommand, AuthorValue } from './types.js'
@@ -153,6 +154,25 @@ export class ElecKoiAuthorPluginsApi extends TypertRemoteService {
     ctx.effect(() => ctx.webServer.register({ kind: 'prefix', path: '/eleckoi/compat/media', handler: this.media.serve.bind(this.media) }), 'eleckoi: real shared TTS audio files')
     ctx.effect(() => ctx.webServer.register({ kind: 'prefix', path: '/eleckoi/compat/images', handler: this.images.serve.bind(this.images) }), 'eleckoi: original AttachmentStore generated images')
     ctx.effect(() => ctx.webServer.register({ kind: 'prefix', path: ASSETS_BASE_URL.slice(0, -1), handler: createAuthorAssetHandler(this.operations, undefined) }), 'eleckoi: same-origin compatibility resources')
+    ctx.effect(() => ctx.webServer.register({ kind: 'prefix', path: '/eleckoi/frontends', handler: (request, response) => {
+      if (!['GET', 'HEAD'].includes(request.method ?? '')) { response.writeHead(405, { Allow: 'GET, HEAD' }); response.end(); return }
+      let parts: string[]
+      try { parts = new URL(request.url ?? '/', 'http://localhost').pathname.slice('/eleckoi/frontends/'.length).split('/').map(decodeURIComponent) }
+      catch { response.writeHead(400); response.end(); return }
+      const id = parts.shift() ?? '', path = parts.join('/')
+      const frontends = ctx.get('eleckoiCompatibilityFrontends', false)
+      if (!frontends) { response.writeHead(503); response.end(); return }
+      try {
+        const asset = frontends.readAsset(id, path)
+        response.writeHead(200, { 'Content-Type': asset.mimeType, 'Cache-Control': 'no-store' })
+        response.end(request.method === 'HEAD' ? undefined : asset.body)
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT' || !frontends.hasAsset(id, path)) {
+          response.writeHead(404); response.end(); return
+        }
+        throw error
+      }
+    } }), 'eleckoi: authored frontend resources')
     ctx.on('webserver/index-inject', table => { table.push({ kind: 'global', name: '__ELECKOI_COMPATIBILITY_ASSETS__', value: { baseUrl: ASSETS_BASE_URL } }) })
     ctx.effect(() => async () => { this.sessionEvents.close(); await this.mainGeneration.close(); await this.images.close(); this.media.close(); this.generation.close(); this.callbacks.close(); this.feed.close() })
   }

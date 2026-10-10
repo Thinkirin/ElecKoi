@@ -8,7 +8,7 @@ const Module = require('node:module')
 const { transformSync } = Module.createRequire(require.resolve('vite'))('esbuild')
 app.on('window-all-closed', () => {})
 
-const documentPath = resolve('src/main/platform/electron/dshClientDocument.ts')
+const documentPath = resolve('apps/desktop/src/main/platform/electron/dshClientDocument.ts')
 const documentModule = new Module(documentPath, module)
 documentModule.paths = module.paths
 documentModule._compile(transformSync(readFileSync(documentPath, 'utf8'), {
@@ -27,7 +27,7 @@ let failed = false
 let modelServer
 let modelRequests = 0
 async function main() {
-  const { DshDesktopPluginHost, resolveDshWebFrontendDirectory } = await import('@eleckoi/dsh-runtime')
+  const { DshDesktopPluginHost, resolveDshWebFrontendDirectory } = await import('@eleckoi/desktop-host')
   const { OPTIONAL_BUNDLES } = await import('@deepseek-ai/dsh-app-boot')
   await app.whenReady()
   modelServer = createServer((_request, response) => {
@@ -56,15 +56,15 @@ async function main() {
   const endpoint = `http://127.0.0.1:${modelServer.address().port}/v1`
   const hostOptions = { runtimeDataRoot: root, workspaceRoot: join(root, 'workspace'),
     productDatabasePath: join(root, 'product.sqlite'), productMediaRoot: join(root, 'media'),
-    presetTemplatePath: resolve('resources/dsh/agent-preset-template/agent.cordis.yml'),
-    agentPatchPath: resolve('resources/dsh/desktop-agent.patch.yml'), executablePath: process.execPath,
-    packageManager: { entryPath: join(dirname(require.resolve('pnpm')), 'bin', 'pnpm.mjs'), nodeBinPath: resolve('resources/dsh/node-bin') },
+    presetTemplatePath: resolve('apps/desktop/resources/dsh/agent-preset-template/agent.cordis.yml'),
+    agentPatchPath: resolve('apps/desktop/resources/dsh/desktop-agent.patch.yml'), executablePath: process.execPath,
+    packageManager: { entryPath: join(dirname(require.resolve('pnpm')), 'bin', 'pnpm.mjs'), nodeBinPath: resolve('apps/desktop/resources/dsh/node-bin') },
     onDiagnostic: message => { if (message.includes('ERROR')) errors.push(message) },
   }
   host = new DshDesktopPluginHost(hostOptions)
   let ready = await host.start()
   let cookie = await document.authenticateDshClientHost(ready.url)
-  const renderer = resolve('out/renderer-dsh')
+  const renderer = resolve('apps/web/dist')
   const assets = await document.resolveElecKoiClientAssets(renderer)
   protocol.handle('dsh-app', async request => {
     const url = new URL(request.url)
@@ -81,7 +81,7 @@ async function main() {
     callback({ requestHeaders: { ...headers, origin: new URL(ready.url).origin, cookie, 'sec-fetch-site': 'same-origin' } })
   })
   window = new BrowserWindow({ show: false, width: 1440, height: 1000,
-    webPreferences: { preload: resolve('out/preload/preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, offscreen: true, backgroundThrottling: false } })
+    webPreferences: { preload: resolve('apps/desktop/out/preload/preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, offscreen: true, backgroundThrottling: false } })
   window.webContents.on('console-message', ({ level, message }) => { if (level === 'error') errors.push(message) })
   window.webContents.on('did-fail-load', (_event, code, message) => errors.push(`${code}: ${message}`))
   await window.loadURL('dsh-app://app/')
@@ -124,14 +124,22 @@ async function main() {
       await window.webContents.executeJavaScript(`document.querySelector('[data-plugin-package="' + ${JSON.stringify(name)} + '"] [role="switch"]').click()`)
       await waitFor(`document.querySelector('[data-plugin-package="' + ${JSON.stringify(name)} + '"]')?.getAttribute('data-plugin-status') === 'disabled'`, 'Official plugin switch did not disable ' + name)
     }
+    if (process.env.ELECKOI_CLIENT_PROBE_SCREENSHOT) writeFileSync(process.env.ELECKOI_CLIENT_PROBE_SCREENSHOT, (await window.webContents.capturePage()).toPNG())
     process.stdout.write('All four official optional plugin cards, UI switches and cold restart selection passed.\n')
     return
   }
   await window.webContents.executeJavaScript(`Array.from(document.querySelectorAll('button')).find(button => button.getAttribute('aria-label') === '模型配置')?.click()`)
   await waitFor(`document.querySelector('.model-provider-sidebar') !== null || document.body.innerText.includes('基础配置')`, 'Custom model page did not render')
   await waitFor(`document.body.innerText.includes('基础配置') && document.body.innerText.includes('模型参数')`, 'Model editor did not render')
-  const formats = await window.webContents.executeJavaScript(`Array.from(document.querySelector('.model-api-format-control select').options).map(option => option.textContent)`)
-  if (formats.length !== 4 || formats.includes('DeepSeek Messages')) throw new Error('Adapter identity leaked into wire format choices.')
+  const dedicatedFormat = await window.webContents.executeJavaScript(`(() => {
+    const select = document.querySelector('.model-api-format-control select')
+    return { disabled: select.disabled, value: select.value,
+      options: Array.from(select.options).map(option => ({ value: option.value, label: option.textContent })) }
+  })()`)
+  if (!dedicatedFormat.disabled || dedicatedFormat.value !== 'anthropic_messages'
+    || JSON.stringify(dedicatedFormat.options) !== JSON.stringify([{ value: 'anthropic_messages', label: 'Messages API' }])) {
+    throw new Error(`Dedicated model format contract failed: ${JSON.stringify(dedicatedFormat)}`)
+  }
   await window.webContents.executeJavaScript(`Array.from(document.querySelectorAll('button')).find(button => button.innerText.trim() === '添加模型')?.click()`)
   await window.webContents.executeJavaScript(`(() => {
     const input = document.querySelector('input[aria-label="模型名"]')
@@ -150,6 +158,13 @@ async function main() {
   await waitFor(`document.querySelector('.model-parameter-grid input[max="1"]')?.value === '0.96' && Array.from(document.querySelectorAll('.model-save-actions button')).some(button => button.innerText === '保存配置' && button.disabled)`, 'Dedicated parameters did not save through Remote')
   await window.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.model-config-sidebar button')).find(button => button.innerText.includes('自定义模型提供商'))?.click()`)
   await waitFor(`document.querySelector('.model-hero-copy h3')?.innerText === '自定义模型提供商'`, 'Custom provider did not open')
+  const customFormats = await window.webContents.executeJavaScript(`(() => {
+    const select = document.querySelector('.model-api-format-control select')
+    return { disabled: select.disabled, values: Array.from(select.options).map(option => option.value) }
+  })()`)
+  if (customFormats.disabled || JSON.stringify(customFormats.values) !== JSON.stringify([
+    'responses', 'chat_completions', 'anthropic_messages', 'google_gemini'
+  ])) throw new Error(`Custom model format contract failed: ${JSON.stringify(customFormats)}`)
   await window.webContents.executeJavaScript(`(() => {
     const set = (selector, value) => {
       const input = document.querySelector(selector)

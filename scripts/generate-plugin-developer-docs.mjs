@@ -6,11 +6,10 @@ import { generatePluginApiReference } from './generate-plugin-api-reference.mjs'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const outputPath = join(root, 'docs', 'plugins', 'api-reference.md')
 const checkOnly = process.argv.includes('--check')
-const validateOnly = process.argv.includes('--validate')
 const allowedKinds = new Set(['ui-slot', 'service', 'event', 'contribution', 'remote'])
 const allowedRelations = new Set(['provides', 'contributes'])
 
-const runtimeManifest = JSON.parse(await readFile(join(root, 'resources', 'dsh', 'runtime-manifest.json'), 'utf8'))
+const runtimeManifest = JSON.parse(await readFile(join(root, 'apps', 'desktop', 'resources', 'dsh', 'runtime-manifest.json'), 'utf8'))
 const packageDirs = await readdir(join(root, 'packages'), { withFileTypes: true })
 const manifests = new Map()
 
@@ -31,7 +30,7 @@ for (const entry of packageDirs) {
 
 const bundles = runtimeManifest.desktopProfile?.bundles
 if (!Array.isArray(bundles) || bundles.length === 0) {
-  throw new Error('resources/dsh/runtime-manifest.json 没有 desktopProfile.bundles')
+  throw new Error('apps/desktop/resources/dsh/runtime-manifest.json 没有 desktopProfile.bundles')
 }
 
 const rows = []
@@ -118,10 +117,8 @@ lines.push('', '## 完整性规则', '',
   '- `pnpm check:plugin-docs` 与 `pnpm build` 会拒绝过期或不完整的总表。', '')
 
 const generated = `${lines.join('\n')}\n`
-const reference = await generatePluginApiReference(root, { check: checkOnly, validate: validateOnly })
-if (validateOnly && !checkOnly) {
-  console.log(`Plugin API contracts are valid: ${bundles.length} bundles, ${rows.length} interfaces, ${reference.remoteMethods} Remote methods; production generated APIs are current.`)
-} else if (checkOnly) {
+const reference = await generatePluginApiReference(root, { check: checkOnly })
+if (checkOnly) {
   let current = ''
   try {
     current = await readFile(outputPath, 'utf8')

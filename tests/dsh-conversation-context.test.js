@@ -3,17 +3,18 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { createUserMessage, markAgentLoopRequest } from '@deepseek-ai/dsh-llm'
+
 import {
   installConversationContext,
   projectCurrentUserPrompt,
   projectRequestMessages,
   projectProductHistory,
-  projectionPlanFromMessages,
+
   requestContextItems,
   requestProjectionPlan,
   renderRuntimeContext,
   settingInjections
-} from '../resources/dsh/conversation-context.mjs'
+} from '../apps/desktop/resources/dsh/conversation-context.mjs'
 
 function text(message) {
   return message.content.filter((part) => part.type === 'text').map((part) => part.text).join('')
@@ -82,52 +83,15 @@ describe('DSH conversation context', () => {
     ])
   })
 
-  it('registers a durable projection definition instead of a flattened runtime context', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'eleckoi-conversation-context-'))
-    const sessionId = 'session-context-test'
-    const contextFile = join(root, 'conversation-context.json')
-    writeFileSync(contextFile, JSON.stringify({
-        history: [{ role: 'assistant', content: '不应重复写入本轮批次' }],
-        settingLibrary: {
-          entries: [
-            setting('point-1', '固定背景', 'insert_point_1', 1),
-            setting('hidden-timeline', '<roleplay_output_protocol>必须使用 FINAL</roleplay_output_protocol>', 'insert_point_5', 1)
-          ],
-          promptPositions: []
-        }
-    }))
-    writeFileSync(join(root, `${sessionId}.json`), JSON.stringify({ model: { systemPrompt: '' }, contextFile }))
-    const handlers = new Map()
-    const disposers = []
-    const agentCtx = {
-      systemPrompt: {
-        section: vi.fn(() => { const dispose = vi.fn(); disposers.push(dispose); return dispose })
-      },
-      on: vi.fn((event, handler) => {
-        handlers.set(event, handler)
-        const dispose = vi.fn(); disposers.push(dispose); return dispose
-      })
-    }
-    const dispose = installConversationContext(agentCtx, root, sessionId)
-    const decision = await handlers.get('agent/pre-step')({
-      agent: { session: { surface: { nodes: [] }, eventAt: vi.fn() } },
-      signal: new AbortController().signal
-    }, async () => ({
-      kind: 'enter',
-      messages: [createUserMessage({ content: [{ type: 'text', text: '最新用户输入' }], source: { kind: 'user' } })]
-    }))
-
-    expect(agentCtx.on).toHaveBeenCalledTimes(2)
-    expect(projectionPlanFromMessages(decision.messages).map((entry) => [entry.anchor, entry.content])).toEqual([
-      ['insert_point_1', '固定背景'],
-      ['insert_point_5', '<roleplay_output_protocol>必须使用 FINAL</roleplay_output_protocol>']
-    ])
-    expect(decision.messages.at(-1).source.kind).toBe('plugin:eleckoi-request-projection')
+  it('registers only the live request middleware without adding persistent setup messages', () => {
+    const release = vi.fn()
+    const agentCtx = { on: vi.fn(() => release) }
+    const dispose = installConversationContext(agentCtx, 'unused-root', 'synthetic-session', { capture: vi.fn() })
+    expect(agentCtx.on).toHaveBeenCalledWith('llm/stream', expect.any(Function))
+    expect(agentCtx.on).toHaveBeenCalledWith('session/event', expect.any(Function))
     dispose()
-    expect(disposers.every((item) => item.mock.calls.length === 1)).toBe(true)
-    rmSync(root, { recursive: true, force: true })
+    expect(release).toHaveBeenCalledTimes(2)
   })
-
   it('replaces provider-native history before the current input', () => {
     const native = [
       {
@@ -217,10 +181,19 @@ describe('DSH conversation context', () => {
       message('assistant', '<FINAL>上一答</FINAL>', { kind: 'model', provider: 'test', model: 'test' }),
       message('user', '当前问题', { kind: 'user' })
     ]
+
+    const recordedEvents = []
     const session = {
+      id: sessionId,
       surface: { nodes: [] },
-      eventAt: vi.fn(),
-      append: vi.fn(() => ({ seq: 10 })),
+      eventAt: vi.fn(seq => recordedEvents.find(event => event.seq === seq)),
+      append: vi.fn((type, data, options) => {
+        const event = { seq: 10 + recordedEvents.length, type, data, ...options }
+        recordedEvents.push(event)
+
+        if (type === 'user/message') { session.surface.nodes.push(event.seq); nativeMessages.push(data) }
+        return event
+      }),
       deriveMessages: () => nativeMessages,
       snapshotEvents: () => [{ seq: 9, type: 'step/start', time: 2_345, data: { turn: 2, step: 1 } }]
     }
@@ -229,14 +202,16 @@ describe('DSH conversation context', () => {
     const agentCtx = {
       systemPrompt: { section: vi.fn(() => vi.fn()) },
       sessions: { get: vi.fn(() => session) },
-      sessionProjections: { stateOf: () => ({ pendingSeq: 9 }) },
+      sessionProjections: { stateOf: () => ({ inputs: [{ messageId: nativeMessages.findLast(item => item.source.kind === 'user').id }] }) },
+
       llm: { stream: streamed },
       on: vi.fn((event, handler) => {
         listeners.set(event, handler)
         return vi.fn()
       })
     }
-    const dispose = installConversationContext(agentCtx, root, sessionId)
+    const previews = { capture: vi.fn() }; const dispose = installConversationContext(agentCtx, root, sessionId, previews)
+    listeners.get('session/event')(session, { type: 'step/start', data: { turn: 2, step: 1 } })
     const options = markAgentLoopRequest({
       provider: 'test',
       model: 'test',
@@ -251,24 +226,15 @@ describe('DSH conversation context', () => {
       ['assistant', '上一答'],
       ['user', '当前问题（已处理）']
     ])
-    expect(session.append).toHaveBeenCalledWith(
-      'user/message',
-      expect.objectContaining({
-        content: [expect.objectContaining({
-          text: expect.stringContaining('"history":[{"role":"user","content":"上一问"}')
-        })]
-      }),
-      { surfaceOp: 'append' }
-    )
-    expect(text(nativeMessages.at(-1))).toBe('当前问题')
+    expect(session.append).not.toHaveBeenCalled()
+    expect(previews.capture).toHaveBeenCalledWith(session, expect.objectContaining({ messages: result.messages }), [], { round: 1, turn: 2, step: 1 })
+    expect(text(nativeMessages.findLast(message => message.source.kind === 'user'))).toBe('当前问题')
     expect(JSON.stringify(result.messages)).not.toContain('上一轮思考')
     expect(JSON.stringify(result.messages)).not.toContain('call-1')
     expect(JSON.stringify(result.messages)).not.toContain('旧工具结果')
     expect(streamed).toHaveBeenCalledOnce()
-    expect(session.append).toHaveBeenCalledWith('eleckoi/request-context', {
-      requestSeq: 9,
-      context: requestContextItems(result.messages)
-    }, { ignorable: true })
+    expect(recordedEvents.some(event => event.type === 'eleckoi/request-context')).toBe(false)
+    expect(recordedEvents).toEqual([])
     expect(existsSync(requestContextFile)).toBe(false)
 
     nativeMessages.push(

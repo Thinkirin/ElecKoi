@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { classify, filterDeclarations } from '../resources/dsh/tool-policy.mjs'
+import { classify, filterDeclarations } from '../apps/desktop/resources/dsh/tool-policy.mjs'
 
 describe('DSH character tool policy', () => {
   it('classifies the current desktop tool groups and keeps internal probes', () => {

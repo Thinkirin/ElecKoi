@@ -4,8 +4,8 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { DynamicSettingsPanel } from '../src/renderer/src/modules/settingLibraries/components/DynamicSettingsPanel.jsx'
-import { createEntryDraft } from '../src/renderer/src/modules/settingLibraries/model/settingLibraryEditing.js'
+import { DynamicSettingsPanel } from '../apps/web/src/modules/settingLibraries/components/DynamicSettingsPanel.jsx'
+import { createEntryDraft } from '../apps/web/src/modules/settingLibraries/model/settingLibraryEditing.js'
 
 vi.stubGlobal('React', React)
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
@@ -13,7 +13,7 @@ afterEach(() => { document.body.innerHTML = '' })
 
 describe('automatic chat branch settings', () => {
   it('sizes the chat identity to its content instead of reserving an empty fixed column', () => {
-    const css = readFileSync(resolve(process.cwd(), 'src/renderer/src/modules/settingLibraries/styles/dynamic-settings.css'), 'utf8')
+    const css = readFileSync(resolve(process.cwd(), 'apps/web/src/modules/settingLibraries/styles/dynamic-settings.css'), 'utf8')
     const row = css.match(/\.dynamic-settings-conversation-row\s*\{([^}]+)\}/)?.[1]
     expect(row).toContain('grid-template-columns: fit-content(220px) minmax(0, 1fr) auto;')
     expect(row).toContain('gap: 16px;')

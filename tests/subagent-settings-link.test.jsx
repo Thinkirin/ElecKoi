@@ -2,8 +2,8 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { SubagentSettingsLink } from '../src/renderer/src/modules/agentTools/components/SubagentSettingsLink.jsx';
-import { PresetToolsEditor } from '../src/renderer/src/modules/presets/components/PresetToolsEditor.jsx';
+import { SubagentSettingsLink } from '../apps/web/src/modules/agentTools/components/SubagentSettingsLink.jsx';
+import { PresetToolsEditor } from '../apps/web/src/modules/presets/components/PresetToolsEditor.jsx';
 
 vi.stubGlobal('React', React);
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);

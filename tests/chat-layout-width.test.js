@@ -2,11 +2,11 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const chatStyles = readFileSync(
-  new URL('../src/renderer/src/modules/chat/styles/chat-panel.css', import.meta.url),
+  new URL('../apps/web/src/modules/chat/styles/chat-panel.css', import.meta.url),
   'utf8',
 );
 const darkStyles = readFileSync(
-  new URL('../src/renderer/src/app/windows/styles/dark-theme.css', import.meta.url),
+  new URL('../apps/web/src/app/windows/styles/dark-theme.css', import.meta.url),
   'utf8',
 );
 

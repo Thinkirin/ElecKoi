@@ -32,7 +32,7 @@ export class MessageDisplayProjector {
   ): ChatMessage {
     const target: RegexRuleTarget = message.role === 'user' ? 'UserInput' : 'AiOutput'
     const completedAssistant = message.role === 'assistant' && message.status !== 'streaming'
-    const scope = `${message.conversationId}\u0000${collection.characterId}\u0000${collection.revision}`
+    const scope = `${message.conversationId}\u0000${collection.characterId}\u0000${collection.revision}\u0000${collection.agentPresetId}\u0000${collection.agentPresetRegexRevision}`
     if (scope !== this.activeScope) {
       this.cache.clear()
       this.activeScope = scope

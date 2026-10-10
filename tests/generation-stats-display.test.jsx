@@ -13,7 +13,7 @@ import {
   retainVisibleGenerationStats,
   sessionTimeRows,
   sessionUsageRows,
-} from '../src/renderer/src/modules/chat/components/GenerationStats.jsx';
+} from '../apps/web/src/modules/chat/components/GenerationStats.jsx';
 
 globalThis.React = React;
 

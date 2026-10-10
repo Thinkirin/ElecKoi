@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, describe, expect, it, vi } from "vitest";
-import { UnsavedChangesDialog } from "../src/renderer/src/ui/ui/UnsavedChangesDialog.jsx";
+import { UnsavedChangesDialog } from "../apps/web/src/ui/ui/UnsavedChangesDialog.jsx";
 
 vi.stubGlobal("React", React);
 afterAll(() => vi.unstubAllGlobals());

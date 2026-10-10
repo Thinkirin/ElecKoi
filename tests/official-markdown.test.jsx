@@ -4,9 +4,9 @@ import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MarkdownText } from '@deepseek-ai/dsh-client-ui-primitives'
-import { OfficialMarkdown, OfficialMarkdownProvider } from '../src/renderer/src/ui/messages/OfficialMarkdown.jsx'
-import { MessageBubble } from '../src/renderer/src/ui/messages/MessageBubble.jsx'
-import { MarkdownTextareaField } from '../src/renderer/src/modules/settingLibraries/components/MarkdownTextareaField.jsx'
+import { OfficialMarkdown, OfficialMarkdownProvider } from '../apps/web/src/ui/messages/OfficialMarkdown.jsx'
+import { MessageBubble } from '../apps/web/src/ui/messages/MessageBubble.jsx'
+import { MarkdownTextareaField } from '../apps/web/src/modules/settingLibraries/components/MarkdownTextareaField.jsx'
 
 vi.stubGlobal('React', React)
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)

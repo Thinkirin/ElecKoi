@@ -117,6 +117,10 @@ export class CompatibilityFrontendOperations {
     const body = readFileSync(this.path(id, name))
     return { body, mimeType: mimeTypes[extname(name).toLowerCase()] || 'application/octet-stream' }
   }
+  hasAsset(id: string, name: string): boolean {
+    const value = this.data.compatibilityStore().get(PROJECTS, id)
+    return value !== null && Array.isArray(object(value).files) && (object(value).files as CompatibilityValue[]).includes(name)
+  }
   private readFiles(project: FrontendProject): Files {
     return Object.fromEntries(project.files.map(name => [name, this.readAsset(project.id, name).body]))
   }

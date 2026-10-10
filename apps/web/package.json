@@ -1,0 +1,41 @@
+{
+  "name": "@eleckoi/web-client",
+  "version": "0.2.8",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./dist/*": "./dist/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@eleckoi/author-sdk": "workspace:*",
+    "@eleckoi/compatibility-mvu": "workspace:*",
+    "@eleckoi/compatibility-tavern-helper": "workspace:*",
+    "@eleckoi/dsh-client-character-configuration": "workspace:*",
+    "@eleckoi/dsh-client-characters": "workspace:*",
+    "@eleckoi/dsh-client-conversations": "workspace:*",
+    "@eleckoi/dsh-client-creator-studio": "workspace:*",
+    "@eleckoi/dsh-client-display-preferences": "workspace:*",
+    "@eleckoi/dsh-client-models": "workspace:*",
+    "@eleckoi/dsh-client-persona": "workspace:*",
+    "@eleckoi/dsh-client-presets": "workspace:*",
+    "@eleckoi/dsh-client-web-search": "workspace:*",
+    "@eleckoi/dsh-client-roleplay": "workspace:*",
+    "@eleckoi/dsh-client-shell": "workspace:*",
+    "@eleckoi/dsh-client-trajectory": "workspace:*",
+    "@eleckoi/dsh-product-api": "workspace:*",
+    "@eleckoi/dsh-web-search-tavily": "workspace:*",
+    "@eleckoi/product-shared": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "6.4.3",
+    "@vitejs/plugin-react": "4.7.0",
+    "@tailwindcss/vite": "^4.3.3"
+  }
+}

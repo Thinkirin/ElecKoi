@@ -2,7 +2,7 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
-import { useActiveChatModel } from '../src/renderer/src/modules/chat/hooks/useActiveChatModel.js';
+import { useActiveChatModel } from '../apps/web/src/modules/chat/hooks/useActiveChatModel.js';
 
 describe('chat model selection authority', () => {
   it('keeps one global model selection while chats change', async () => {

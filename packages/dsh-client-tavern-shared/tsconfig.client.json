@@ -10,6 +10,12 @@
     "emitDeclarationOnly": true,
     "outDir": "lib/types"
   },
-  "references": [{ "path": "../dsh-client-conversations/tsconfig.client.json" }],
-  "include": ["src/client/types.ts"]
+  "references": [
+    {
+      "path": "../dsh-client-conversations/tsconfig.client.json"
+    }
+  ],
+  "include": [
+    "src/client/types.ts"
+  ]
 }

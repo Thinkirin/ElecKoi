@@ -2,40 +2,40 @@ import { readFileSync } from "node:fs";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { TitleBar } from "../src/renderer/src/app/windows/shell/components/TitleBar.jsx";
+import { TitleBar } from "../apps/web/src/app/windows/shell/components/TitleBar.jsx";
 
 globalThis.React = React;
 
 const mainWindowSource = readFileSync(
-  new URL("../src/renderer/src/app/windows/MainWindow.jsx", import.meta.url),
+  new URL("../apps/web/src/app/windows/MainWindow.jsx", import.meta.url),
   "utf8",
 );
 const rightbarLayoutSource = readFileSync(
-  new URL("../src/renderer/src/app/windows/shell/hooks/useRightbarLayout.js", import.meta.url),
+  new URL("../apps/web/src/app/windows/shell/hooks/useRightbarLayout.js", import.meta.url),
   "utf8",
 );
 const titlebarStyles = readFileSync(
-  new URL("../src/renderer/src/app/windows/shell/styles/titlebar.css", import.meta.url),
+  new URL("../apps/web/src/app/windows/shell/styles/titlebar.css", import.meta.url),
   "utf8",
 );
 const shellStyles = readFileSync(
-  new URL("../src/renderer/src/app/windows/shell/styles/client-shell.css", import.meta.url),
+  new URL("../apps/web/src/app/windows/shell/styles/client-shell.css", import.meta.url),
   "utf8",
 );
 const chatStyles = readFileSync(
-  new URL("../src/renderer/src/modules/chat/styles/chat-panel.css", import.meta.url),
+  new URL("../apps/web/src/modules/chat/styles/chat-panel.css", import.meta.url),
   "utf8",
 );
 const mainWindowPluginSource = readFileSync(
-  new URL("../src/main/platform/electron/mainWindowPlugin.ts", import.meta.url),
+  new URL("../apps/desktop/src/main/platform/electron/mainWindowPlugin.ts", import.meta.url),
   "utf8",
 );
 const preloadSource = readFileSync(
-  new URL("../src/preload/preload.ts", import.meta.url),
+  new URL("../apps/desktop/src/preload/preload.ts", import.meta.url),
   "utf8",
 );
 const desktopShellSource = readFileSync(
-  new URL("../src/shared/contracts/desktopShell.ts", import.meta.url),
+  new URL("../packages/product-shared/src/contracts/desktopShell.ts", import.meta.url),
   "utf8",
 );
 

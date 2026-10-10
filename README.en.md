@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="resources/icons/eleckoi-app-icon.png" width="128" alt="ElecKoi">
+  <img src="apps/desktop/resources/icons/eleckoi-app-icon.png" width="128" alt="ElecKoi">
 </p>
 
 <h1 align="center">ElecKoi</h1>
@@ -9,7 +9,7 @@
   <strong>English</strong>
 </p>
 
-ElecKoi is a DSH Agent-powered AI character-card creation and roleplay client for Windows PC and Android. This repository contains the Windows desktop client; visit [ElecKoi-app](https://github.com/eleckoi/ElecKoi-app) for the Android source code.
+ElecKoi is a DSH Agent-powered AI character-card creation and roleplay client for Windows PC and Android. This workspace organizes the Windows client under `apps/desktop`, `apps/desktop-host`, and `apps/web`. Android will join the same repository under `apps/android`; its current source is available in [ElecKoi-app](https://github.com/eleckoi/ElecKoi-app).
 
 ## Highlights
 

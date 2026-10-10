@@ -17,8 +17,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const read = (relative) => readFileSync(new URL(relative, import.meta.url), 'utf8');
-const conversationStyles = read('../src/renderer/src/modules/chat/styles/conversation-list.css');
-const shellStyles = read('../src/renderer/src/app/windows/shell/styles/client-shell.css');
+const conversationStyles = read('../apps/web/src/modules/chat/styles/conversation-list.css');
+const shellStyles = read('../apps/web/src/app/windows/shell/styles/client-shell.css');
 
 describe('conversation list panel height', () => {
   it('面板自己声明有界高度，滚动容器才有界', () => {

@@ -15,6 +15,7 @@ import productDataPlugin from '@eleckoi/dsh-product-data'
 import { LocalMediaStore } from '@eleckoi/dsh-product-data/media'
 import { ConversationChangeFeed, ElecKoiConversationsApi, ElecKoiConversationLifecycle } from '@eleckoi/dsh-product-api'
 import { TYPERT } from '@eleckoi/dsh-product-api/typert'
+import { RequestPreviewStore } from '../packages/dsh-client-roleplay/src/host/request-preview.mjs'
 import { SqliteDatabase } from '../packages/dsh-product-data/src/storage/sqlite/SqliteDatabase'
 import { CharacterRepository } from '../packages/dsh-product-data/src/domain/personas/CharacterRepository'
 import { ConversationRepository } from '../packages/dsh-product-data/src/domain/conversations/ConversationRepository'
@@ -39,7 +40,7 @@ async function fixture(withOpening = true, { failPreparation = false } = {}) {
     ELECKOI_MEDIA_ROOT: join(root, 'media'),
     ELECKOI_WORKSPACE_ROOT: join(root, 'workspace'),
     ELECKOI_PRESET_ROOT: join(root, 'presets'),
-    ELECKOI_PRESET_TEMPLATE_PATH: resolve('resources/dsh/agent-preset-template/agent.cordis.yml'),
+    ELECKOI_PRESET_TEMPLATE_PATH: resolve('apps/desktop/resources/dsh/agent-preset-template/agent.cordis.yml'),
     ELECKOI_SESSION_SNAPSHOT_ROOT: join(root, 'snapshots'),
     ELECKOI_SESSION_BRIDGE_ROOT: join(root, 'bridges'),
     DSH_HOME: join(root, 'dsh-home'),
@@ -174,6 +175,9 @@ async function fixture(withOpening = true, { failPreparation = false } = {}) {
   }))
   cleanups.push(ctx.typert.register(TYPERT))
   await ctx.plugin(TypertGatewayService)
+  const previews = new RequestPreviewStore()
+  ctx.provide('eleckoiRequestPreviews', previews)
+  cleanups.push(() => previews.close())
   await ctx.plugin(ElecKoiConversationsApi)
   const select = async (selection = { provider: 'test', model: 'test' }) => {
     globalModelSelection = { ...selection }

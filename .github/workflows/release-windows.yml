@@ -51,7 +51,7 @@ jobs:
       - name: Verify tag matches package version
         run: |
           $tagVersion = '${{ inputs.tag }}'.TrimStart('v')
-          $packageVersion = node -p "require('./package.json').version"
+          $packageVersion = node -p "require('./apps/desktop/package.json').version"
           if ($tagVersion -ne $packageVersion) {
             throw "Tag ${{ inputs.tag }} does not match package.json version $packageVersion"
           }
@@ -75,7 +75,7 @@ jobs:
         env:
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-        run: pnpm exec electron-builder --win --x64 --publish never
+        run: pnpm exec electron-builder --projectDir apps/desktop --win --x64 --publish never
 
       - name: Verify packaged DSH runtime
         run: pnpm verify:packaged-dsh

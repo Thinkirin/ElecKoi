@@ -5,12 +5,12 @@ const { join, resolve, sep } = require('node:path')
 const Module = require('node:module')
 const { buildSync } = Module.createRequire(require.resolve('vite'))('esbuild')
 
-const sourcePath = resolve('src/main/platform/electron/mediaProtocol.ts')
+const sourcePath = resolve('apps/desktop/src/main/platform/electron/mediaProtocol.ts')
 const loaded = new Module(sourcePath, module)
 loaded.paths = module.paths
 loaded._compile(buildSync({ entryPoints: [sourcePath], bundle: true, write: false,
   platform: 'node', format: 'cjs', external: ['electron', '@eleckoi/dsh-product-data/media'],
-  alias: { '@shared': resolve('src/shared') },
+  alias: { '@shared': resolve('packages/product-shared/src') },
 }).outputFiles[0].text, sourcePath)
 const media = loaded.exports
 protocol.registerSchemesAsPrivileged([media.localMediaScheme, { scheme: 'dsh-app', privileges: {
@@ -30,7 +30,7 @@ async function main() {
   const editor = buildSync({ stdin: { contents: `
     import React from 'react';
     import { createRoot } from 'react-dom/client';
-    import { AvatarManagerEditor } from './src/renderer/src/ui/ui/AvatarSlotsEditor.jsx';
+    import { AvatarManagerEditor } from './apps/web/src/ui/ui/AvatarSlotsEditor.jsx';
     globalThis.React = React;
     globalThis.savedAvatars = null;
     createRoot(document.getElementById('root')).render(React.createElement(AvatarManagerEditor, {

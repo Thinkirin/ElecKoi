@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
-import { applyAppearanceMode, initializeAppearanceMode } from '../src/renderer/src/modules/appearance/theme/appearanceMode.js';
+import { applyAppearanceMode, initializeAppearanceMode } from '../apps/web/src/modules/appearance/theme/appearanceMode.js';
 
 afterEach(() => {
   delete globalThis.__ELECKOI_DSH_PLATFORM__;

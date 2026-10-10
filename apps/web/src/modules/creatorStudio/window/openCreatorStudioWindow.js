@@ -1,0 +1,11 @@
+const CREATOR_STUDIO_WINDOW_NAME = "creator-studio";
+
+export function openCreatorStudioWindow() {
+  const studioUrl = new URL(window.location.href);
+  studioUrl.search = "?view=creator-studio";
+  window.open(
+    studioUrl.toString(),
+    CREATOR_STUDIO_WINDOW_NAME,
+    "width=1536,height=1070",
+  );
+}

@@ -11,8 +11,9 @@ export function worldbookOrderedKeys(books, scopes, strategy = 'character_first'
 export function worldbookVectorMatches(books, matches, maximumPerBook) {
   if (!Number.isInteger(maximumPerBook) || maximumPerBook < 0) throw new TypeError('Vector maximumPerBook must be a nonnegative integer');
   const groups = Map.groupBy(matches, row => row.id.slice(0, row.id.lastIndexOf(':')));
-  const content = new Set([...groups.values()].flatMap(rows => rows.sort((a, b) => b.score - a.score).slice(0, maximumPerBook)).map(row => row.text));
-  return new Set(Object.entries(books).flatMap(([name, book]) => normalizeWorldbook(book).entries.filter(entry => content.has(entry.content)).map(entry => `${name}:${entry.uid}`)));
+  const matchedIds = new Set([...groups.values()].flatMap(rows => rows.sort((a, b) => b.score - a.score).slice(0, maximumPerBook)).map(row => row.id));
+  return new Set(Object.entries(books).flatMap(([name, book]) => normalizeWorldbook(book).entries
+    .map(entry => `${name}:${entry.uid}`).filter(id => matchedIds.has(id))));
 }
 export function worldbookFragments(entries, position) {
   return entries.filter(entry => entry.worldbookPosition === position).sort((a, b) => (b.order ?? 100) - (a.order ?? 100)).reverse().map(entry => entry.content).filter(Boolean);
@@ -33,17 +34,15 @@ export function projectWorldbookAnchors(entries, note, examples, conversationId)
   };
 }
 
-/** Project onto the host's actual graph, with no lossy ST-to-native anchor substitution. */
+/** Native placements retain their anchors; Tavern insertion depth uses the host cache region. */
 export function projectFrozenWorldbookMessages(messages, fragments, options) {
-  const historyIndexes = messages.flatMap((message, index) => options.isHistoryMessage(message) ? [index] : []);
   const slots = new Map();
   for (const fragment of fragments) {
     let index;
-    if (fragment.worldbookPosition === 'at_depth') {
-      const depth = Number(fragment.depth ?? 4);
-      if (!Number.isInteger(depth) || depth < 0) throw new TypeError(`Invalid worldbook depth: ${depth}`);
-      index = depth === 0 ? (historyIndexes.at(-1) ?? messages.length - 1) + 1
-        : historyIndexes[Math.max(0, historyIndexes.length - depth)] ?? options.anchorIndexes.beforeHistory;
+    if (fragment.nativePlacement) {
+      index = options.anchorIndexes[fragment.nativePlacement.position];
+    } else if (fragment.worldbookPosition === 'at_depth') {
+      index = options.anchorIndexes.cacheSettings;
     } else index = options.anchorIndexes[String(fragment.anchor)];
     if (!Number.isInteger(index) || index < 0 || index > messages.length)
       throw Object.assign(new Error(`Real Prompt anchor is unavailable: ${fragment.anchor}`), { code: 'PROMPT_ANCHOR_NOT_AVAILABLE' });

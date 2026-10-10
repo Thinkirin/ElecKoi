@@ -1,11 +1,11 @@
-import { ConversationList } from "../../../src/renderer/src/modules/chat/index.js";
-import { RoleplayPanel } from "../../../src/renderer/src/app/windows/RoleplayPanel.jsx";
-import { useMainPageView } from "../../../src/renderer/src/app/windows/MainPageContext.jsx";
-export { MessageNavIcon as NavigationIcon } from "../../../src/renderer/src/ui/icons/navIcons.jsx";
+import { ConversationList } from "../../../apps/web/src/modules/chat/index.js";
+import { RoleplayPanel } from "../../../apps/web/src/app/windows/RoleplayPanel.jsx";
+import { useMainPageView } from "../../../apps/web/src/app/windows/MainPageContext.jsx";
+export { MessageNavIcon as NavigationIcon } from "../../../apps/web/src/ui/icons/navIcons.jsx";
 
 export function MessagesPage() {
   const view = useMainPageView();
-  const { chat, appearance, conversations, presets, renderRoleplay, renderConversationList, renderLayout, selectConversation, openCharacterChat, closeChat, openChatBackground, openPresetTools, openCharacterSection } = view;
+  const { chat, appearance, conversations, presets, renderRoleplay, renderConversationList, renderLayout, selectConversation, openChatBackground, openPresetTools, openCharacterSection } = view;
   const listOwner = {
     keyword: chat.keyword,
     setKeyword: chat.setKeyword,
@@ -15,7 +15,7 @@ export function MessagesPage() {
     characters: chat.characters,
     artworkMode: appearance.sidebarCharacterArtwork,
     onLoadChat: selectConversation,
-    onOpenCharacterChat: openCharacterChat,
+    onOpenCharacterChat: chat.openCharacterChat,
     onGoCharacterSettings: openCharacterSection,
     onTogglePinChat: chat.togglePinChat,
     onOpenChatWindow: chat.openChatWindow,
@@ -28,7 +28,6 @@ export function MessagesPage() {
       renderRoleplay={renderRoleplay}
       hasActiveChat={Boolean(chat.sessionId || chat.chatCharacter?.character_id)}
       conversationId={chat.sessionId}
-      characterId={chat.chatCharacter?.character_id || ''}
       isSwitchingChat={chat.isSwitchingChat}
       conversationTransitionRevision={chat.conversationTransitionRevision}
       runtimeSessionId={chat.runtimeSessionId}
@@ -37,7 +36,6 @@ export function MessagesPage() {
       hasCharacters={Boolean(chat.characters?.items?.length)}
       currentTitle={chat.currentTitle}
       persona={chat.chatPersona}
-      characterRecords={chat.characters?.items || []}
       messages={chat.messages}
       input={chat.input}
       setInput={chat.setInput}
@@ -60,10 +58,7 @@ export function MessagesPage() {
       onSend={chat.sendMessage}
       onStop={chat.stopSend}
       onCreateChat={chat.createChat}
-      onOpenChat={chat.loadChat}
-      onCloseChat={closeChat}
       onOpenHistory={chat.openHistory}
-      onCloseHistory={chat.closeHistory}
       onOpenChatBackground={openChatBackground}
       onOpenPresetTools={openPresetTools}
       onRegenerate={chat.regenerateReply}

@@ -6,7 +6,7 @@ import { AgentPresetRepository } from '../packages/dsh-product-data/src/domain/a
 import { LocalMediaStore } from '@eleckoi/dsh-product-data/media'
 import { readPngText } from '@eleckoi/dsh-product-data/media'
 import { SqliteDatabase } from '../packages/dsh-product-data/src/storage/sqlite/SqliteDatabase'
-import { agentPresetSchema } from '../src/shared/contracts/presets/schemas'
+import { agentPresetSchema } from '../packages/product-shared/src/contracts/presets/schemas'
 
 const databases: SqliteDatabase[] = []
 const directories: string[] = []

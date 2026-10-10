@@ -8,7 +8,7 @@ afterEach(() => {
 describe('Renderer Agent request tracking', () => {
   it('releases the composer immediately while cancellation continues in the background', async () => {
     const cancel = vi.fn(async () => ({ cancelled: true }))
-    const { stopChatMessageSend } = await import('../src/renderer/src/modules/chat/hooks/chatMessageSend.js')
+    const { stopChatMessageSend } = await import('../apps/web/src/modules/chat/hooks/chatMessageSend.js')
     const activeRequest = {
       controller: { abort: vi.fn() },
       requestId: 'request-1',
@@ -50,7 +50,7 @@ describe('Renderer Agent request tracking', () => {
       }
       }),
     }
-    const { getChatMessages } = await import('../src/renderer/src/modules/chat/api/chatApi.js')
+    const { getChatMessages } = await import('../apps/web/src/modules/chat/api/chatApi.js')
 
     await expect(getChatMessages('conversation-1', { beforeSequence: 50, limit: 40, model })).resolves.toMatchObject({
       messages: [{ id: 'message-1', sequence: 10, content: '较早消息' }],
@@ -61,7 +61,7 @@ describe('Renderer Agent request tracking', () => {
   })
 
   it('submits messages only through the DSH conversation model', async () => {
-    const { sendChatMessage } = await import('../src/renderer/src/modules/chat/api/chatApi.js')
+    const { sendChatMessage } = await import('../apps/web/src/modules/chat/api/chatApi.js')
     const details = {
       conversation: { id: 'conversation-1', title: '测试', preview: '', createdAt: '', updatedAt: '' },
       metadata: {}, messages: [], hasMore: false, beforeSequence: null

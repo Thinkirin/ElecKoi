@@ -115,7 +115,7 @@ export interface ConversationCatalogSnapshot {
 }
 ```
 
-源码：[packages/dsh-client-conversations/src/client/types.ts:34](../../packages/dsh-client-conversations/src/client/types.ts#L34)
+源码：[packages/dsh-client-conversations/src/client/types.ts:35](../../packages/dsh-client-conversations/src/client/types.ts#L35)
 
 ## ConversationChatSnapshot
 
@@ -126,7 +126,7 @@ export interface ConversationChatSnapshot {
 }
 ```
 
-源码：[packages/dsh-client-conversations/src/client/types.ts:37](../../packages/dsh-client-conversations/src/client/types.ts#L37)
+源码：[packages/dsh-client-conversations/src/client/types.ts:38](../../packages/dsh-client-conversations/src/client/types.ts#L38)
 
 ## ConversationClientDetails
 
@@ -137,7 +137,7 @@ export interface ConversationClientDetails extends Omit<ConversationDetailsMetad
 }
 ```
 
-源码：[packages/dsh-client-conversations/src/client/types.ts:33](../../packages/dsh-client-conversations/src/client/types.ts#L33)
+源码：[packages/dsh-client-conversations/src/client/types.ts:34](../../packages/dsh-client-conversations/src/client/types.ts#L34)
 
 ## ConversationClientMessage
 
@@ -162,7 +162,7 @@ export interface ConversationClientMessage extends Omit<ConversationMessageMetad
 }
 ```
 
-源码：[packages/dsh-client-conversations/src/client/types.ts:14](../../packages/dsh-client-conversations/src/client/types.ts#L14)
+源码：[packages/dsh-client-conversations/src/client/types.ts:15](../../packages/dsh-client-conversations/src/client/types.ts#L15)
 
 ## ConversationDetailsSnapshot
 
@@ -176,7 +176,7 @@ export interface ConversationDetailsSnapshot {
 }
 ```
 
-源码：[packages/dsh-client-conversations/src/client/types.ts:35](../../packages/dsh-client-conversations/src/client/types.ts#L35)
+源码：[packages/dsh-client-conversations/src/client/types.ts:36](../../packages/dsh-client-conversations/src/client/types.ts#L36)
 
 ## ConversationPendingFile
 
@@ -188,7 +188,7 @@ export interface ConversationPendingFile {
 }
 ```
 
-源码：[packages/dsh-client-conversations/src/client/types.ts:12](../../packages/dsh-client-conversations/src/client/types.ts#L12)
+源码：[packages/dsh-client-conversations/src/client/types.ts:13](../../packages/dsh-client-conversations/src/client/types.ts#L13)
 
 ## ConversationPendingImage
 
@@ -202,7 +202,7 @@ export interface ConversationPendingImage {
 }
 ```
 
-源码：[packages/dsh-client-conversations/src/client/types.ts:10](../../packages/dsh-client-conversations/src/client/types.ts#L10)
+源码：[packages/dsh-client-conversations/src/client/types.ts:11](../../packages/dsh-client-conversations/src/client/types.ts#L11)
 
 ## ConversationProcessItem
 
@@ -222,7 +222,7 @@ export interface ConversationProcessItem {
 }
 ```
 
-源码：[packages/dsh-client-conversations/src/client/types.ts:8](../../packages/dsh-client-conversations/src/client/types.ts#L8)
+源码：[packages/dsh-client-conversations/src/client/types.ts:9](../../packages/dsh-client-conversations/src/client/types.ts#L9)
 
 ## ConversationRegenerateInput
 
@@ -236,7 +236,7 @@ export interface ConversationRegenerateInput {
 }
 ```
 
-源码：[packages/dsh-client-conversations/src/client/types.ts:42](../../packages/dsh-client-conversations/src/client/types.ts#L42)
+源码：[packages/dsh-client-conversations/src/client/types.ts:43](../../packages/dsh-client-conversations/src/client/types.ts#L43)
 
 ## ConversationRunResult
 
@@ -247,7 +247,7 @@ export interface ConversationRunResult {
 }
 ```
 
-源码：[packages/dsh-client-conversations/src/client/types.ts:43](../../packages/dsh-client-conversations/src/client/types.ts#L43)
+源码：[packages/dsh-client-conversations/src/client/types.ts:44](../../packages/dsh-client-conversations/src/client/types.ts#L44)
 
 ## ConversationSelection
 
@@ -258,7 +258,7 @@ export interface ConversationSelection {
 }
 ```
 
-源码：[packages/dsh-client-conversations/src/client/types.ts:39](../../packages/dsh-client-conversations/src/client/types.ts#L39)
+源码：[packages/dsh-client-conversations/src/client/types.ts:40](../../packages/dsh-client-conversations/src/client/types.ts#L40)
 
 ## ConversationSendInput
 
@@ -274,7 +274,7 @@ export interface ConversationSendInput {
 }
 ```
 
-源码：[packages/dsh-client-conversations/src/client/types.ts:41](../../packages/dsh-client-conversations/src/client/types.ts#L41)
+源码：[packages/dsh-client-conversations/src/client/types.ts:42](../../packages/dsh-client-conversations/src/client/types.ts#L42)
 
 ## ConversationStreamSnapshot
 
@@ -293,7 +293,7 @@ export interface ConversationStreamSnapshot {
 }
 ```
 
-源码：[packages/dsh-client-conversations/src/client/types.ts:36](../../packages/dsh-client-conversations/src/client/types.ts#L36)
+源码：[packages/dsh-client-conversations/src/client/types.ts:37](../../packages/dsh-client-conversations/src/client/types.ts#L37)
 
 ## ConversationTimelineSnapshot
 
@@ -306,7 +306,7 @@ export interface ConversationTimelineSnapshot {
 }
 ```
 
-源码：[packages/dsh-client-conversations/src/client/types.ts:38](../../packages/dsh-client-conversations/src/client/types.ts#L38)
+源码：[packages/dsh-client-conversations/src/client/types.ts:39](../../packages/dsh-client-conversations/src/client/types.ts#L39)
 
 ## ConversationUploadedFile
 
@@ -320,7 +320,7 @@ export interface ConversationUploadedFile {
 }
 ```
 
-源码：[packages/dsh-client-conversations/src/client/types.ts:40](../../packages/dsh-client-conversations/src/client/types.ts#L40)
+源码：[packages/dsh-client-conversations/src/client/types.ts:41](../../packages/dsh-client-conversations/src/client/types.ts#L41)
 
 ## CreatorStudioSnapshot
 
@@ -382,6 +382,40 @@ export interface PresetDetailSnapshot {
 
 源码：[packages/dsh-client-presets/src/client/types.ts:5](../../packages/dsh-client-presets/src/client/types.ts#L5)
 
+## TavernSharedChatHandlers
+
+```ts
+export type TavernSharedChatHandlers = Record<string, (params: Record<string, unknown>) => unknown | Promise<unknown>>;
+```
+
+源码：[packages/dsh-client-tavern-shared/src/client/types.ts:19](../../packages/dsh-client-tavern-shared/src/client/types.ts#L19)
+
+## TavernSharedPresentation
+
+```ts
+export interface TavernSharedPresentation {
+    conversationId: string;
+    messages: ConversationClientMessage[];
+    isGenerating: boolean;
+    generation?: { runId: string; messageId: string; content: string; sequence: number; };
+}
+```
+
+源码：[packages/dsh-client-tavern-shared/src/client/types.ts:12](../../packages/dsh-client-tavern-shared/src/client/types.ts#L12)
+
+## TavernSharedSnapshot
+
+```ts
+export interface TavernSharedSnapshot {
+    status: 'starting' | 'waiting-for-chat' | 'ready' | 'ready-global' | 'error';
+    error: string;
+    methods: string[];
+    uiEntries: Array<{ pluginId: string; [key: string]: CompatibilityValue; }>;
+}
+```
+
+源码：[packages/dsh-client-tavern-shared/src/client/types.ts:5](../../packages/dsh-client-tavern-shared/src/client/types.ts#L5)
+
 ## WebSearchSnapshot
 
 ```ts
@@ -400,3 +434,11 @@ export interface WebSearchSnapshot {
 ```
 
 源码：[packages/dsh-client-web-search/src/client/types.ts:4](../../packages/dsh-client-web-search/src/client/types.ts#L4)
+
+## 官方和平台类型
+
+官方类型从其对应的 DSH 公开包入口导入；平台类型使用 TypeScript 标准库。
+
+[锁定版本的官方接口目录](https://github.com/deepseek-ai/deepseek-harness/blob/c1b47e41fcd54d20a0f061df28683bfc29ee24e5/docs/subsystems/README.zh.md)
+
+`GenerateOptions`、`Session`

@@ -1,5 +1,5 @@
 import { name1, name2, characters, getCharacterCardFieldsLazy, getGeneratingModel } from '../../../script.js';
-import { groups, selected_group } from '../../../scripts/group-chats.js';
+import { groups, selected_group } from '../../group-chats.js';
 import { logMacroGeneralError } from './MacroDiagnostics.js';
 import { getStringHash } from '/scripts/utils.js';
 /**

@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChatView, chatFixture, userNode, turnNode } from './helpers/officialChatView.jsx'
 import { MessageList } from './helpers/officialMarkdown.jsx'
-import { selectRoleplayChatSeat, selectRoleplayPendingInput } from '../src/renderer/src/modules/chat/model/chatViewSeats.js'
+import { selectRoleplayChatSeat, selectRoleplayPendingInput } from '../apps/web/src/modules/chat/model/chatViewSeats.js'
 
 let observers
 beforeEach(() => {

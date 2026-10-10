@@ -2,7 +2,7 @@
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { SettingsPanel } from '../src/renderer/src/modules/settings/components/SettingsPanel.jsx'
+import { SettingsPanel } from '../apps/web/src/modules/settings/components/SettingsPanel.jsx'
 
 vi.stubGlobal('React', React)
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)

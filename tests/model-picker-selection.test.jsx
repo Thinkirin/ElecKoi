@@ -2,7 +2,7 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
-import { configDefaultModel, ModelPicker } from '../src/renderer/src/modules/models/components/ModelPicker.jsx';
+import { configDefaultModel, ModelPicker } from '../apps/web/src/modules/models/components/ModelPicker.jsx';
 
 describe('model picker configuration selection', () => {
   it('shows an unselected state honestly and saves parameter changes through the supplied model service', async () => {

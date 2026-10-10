@@ -3,7 +3,7 @@ import {
   characterDeckKeyDirection,
   hasBlockingCharacterOverlay,
   preventPointerFocus
-} from '../src/renderer/src/modules/persona/components/characterProfileKeyboard.js'
+} from '../apps/web/src/modules/persona/components/characterProfileKeyboard.js'
 
 function keyboardEvent(overrides = {}) {
   return {

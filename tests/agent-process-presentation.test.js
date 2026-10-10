@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { liveProcessPresentation, processItemPresentation, shouldShowInlineAgentProcess } from '../src/renderer/src/modules/chat/model/agentProcessPresentation.js';
+import { liveProcessPresentation, processItemPresentation, shouldShowInlineAgentProcess } from '../apps/web/src/modules/chat/model/agentProcessPresentation.js';
 
 const pendingAssistant = {
   role: 'assistant',

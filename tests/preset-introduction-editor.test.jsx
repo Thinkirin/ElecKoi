@@ -1,8 +1,8 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
-import { PresetContentComposer, PresetIntroductionEditor } from '../src/renderer/src/modules/presets/components/PresetIntroductionEditor.jsx';
-import { calendarDateValue, createTimelineDraft, createUsageDraft, introductionDraftPatch, isIntroductionDraftDirty, localDateLabel, visibleTimelineRecords } from '../src/renderer/src/modules/presets/model/presetIntroductionDraft.js';
+import { PresetContentComposer, PresetIntroductionEditor } from '../apps/web/src/modules/presets/components/PresetIntroductionEditor.jsx';
+import { calendarDateValue, createTimelineDraft, createUsageDraft, introductionDraftPatch, isIntroductionDraftDirty, localDateLabel, visibleTimelineRecords } from '../apps/web/src/modules/presets/model/presetIntroductionDraft.js';
 
 const profile = { usageInstructions: '选择角色后开始对话。', timeline: [{ id: 'first', title: '首次发布', dateLabel: '2026-9-11', note: '加入基础规则。' }] };
 const props = { preset: { id: 'preset', profile }, saving: false, error: '', onClearError: () => {}, onSaveProfile: async () => true };

@@ -30,7 +30,7 @@ flowchart LR
 
 ### Host
 
-Host 可以使用其显式注入的 DSH 服务。需要操作 ElecKoi 产品数据时，必须使用已经公开的窄合同；第三方插件不能直接打开 ElecKoi SQLite，也不能导入 `src/main` 内部模块。
+Host 可以使用其显式注入的 DSH 服务。需要操作 ElecKoi 产品数据时，必须使用已经公开的窄合同；第三方插件不能直接打开 ElecKoi SQLite，也不能导入 `apps/desktop/src/main` 内部模块。
 
 ### Web Client
 

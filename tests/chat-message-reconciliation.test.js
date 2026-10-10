@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mergeProcessItems, preserveMessageRenderKeys, preservePendingUser } from '../src/renderer/src/modules/chat/hooks/useConversationMessages.js'
+import { mergeProcessItems, preserveMessageRenderKeys, preservePendingUser } from '../apps/web/src/modules/chat/hooks/useConversationMessages.js'
 
 describe('chat message reconciliation', () => {
   it.each([

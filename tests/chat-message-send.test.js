@@ -7,10 +7,10 @@ const api = vi.hoisted(() => ({
 }))
 const images = vi.hoisted(() => ({ encodeImageDraft: vi.fn() }))
 
-vi.mock('../src/renderer/src/modules/chat/api/chatApi.js', () => api)
-vi.mock('../src/renderer/src/modules/chat/hooks/useChatInputImages.js', () => images)
+vi.mock('../apps/web/src/modules/chat/api/chatApi.js', () => api)
+vi.mock('../apps/web/src/modules/chat/hooks/useChatInputImages.js', () => images)
 
-import { runChatMessageSend } from '../src/renderer/src/modules/chat/hooks/chatMessageSend.js'
+import { runChatMessageSend } from '../apps/web/src/modules/chat/hooks/chatMessageSend.js'
 
 beforeEach(() => {
   for (const mock of Object.values(api)) mock.mockReset()

@@ -1,9 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { BlockAssembler, createAssistantMessage, createSystemMessage, createToolResultMessage, attributionHeaders, projectToolUpdates } from '@deepseek-ai/dsh-llm';
+import { BlockAssembler, createAssistantMessage, createSystemMessage, createToolResultMessage, attributionHeaders } from '@deepseek-ai/dsh-llm';
 import { NetworkOperations, remoteTokenizerRequest, remoteTokenizerResult } from './network-operations.js';
 import { composeGenerationPrompts } from './generation-prompts.js';
-import { protocolFor, providerRequest, ProviderResponse } from './generation-protocol.js';
-import { providerWireBaseURL } from './connection-endpoint.js';
+import { protocolFor } from './generation-protocol.js';
 
 export const GENERATION_METHODS = ['generation.invoke', 'generation.preview', 'generation.cancel', 'generation.request', 'generation.start', 'generation.get',
   'network.request', 'network.cancel', 'tokens.model', 'tokens.info', 'tokens.encode', 'tokens.count', 'tokens.decode', 'tokens.remote',
@@ -33,14 +32,14 @@ export class CompatibilityGeneration {
       case 'network.cancel': return this.network.cancel(params.id);
       case 'generation.cancel': return this.cancel(params.id);
       case 'generation.request': {
+        if (typeof params.endpoint !== 'string' || !params.endpoint) throw new TypeError('Low-level generation.request requires an explicit endpoint');
         const connection = await this.connection(params);
         return this.network.request({ ...params, headers: { ...this.authHeaders(connection, params.authMode), ...(params.headers || {}) },
-          endpoint: params.endpoint || providerWireBaseURL(connection) + (connection.api === 'deepseek_messages' ? '/messages' : '/chat/completions') }, true);
+          endpoint: params.endpoint }, true);
       }
       case 'generation.preview': {
         const plan = await this.prepare({ ...params, dryRun: true });
-        const prepared = await this.prepareWire(plan);
-        return { ...plan, format: prepared.format, request: prepared.body };
+        return { ...plan, nativeRequest: await this.prepareNativeRequest(plan) };
       }
       case 'generation.invoke': return this.generate(params);
       case 'generation.start': return this.start(params);
@@ -177,10 +176,7 @@ export class CompatibilityGeneration {
     this.publish({ event: 'generation.started', payload: { id, conversationId: params.conversationId || '' } });
     try {
       const plan = await this.prepare({ ...params, id }, controller.signal);
-      const needsWire = plan.responseFormat === 'json' || plan.json_schema || plan.tool_choice !== undefined || Object.keys(plan.parameters || {}).length
-        || Object.keys(plan.custom_api || {}).length || plan.messages.some(message => message.name || message.tool_calls?.length || Array.isArray(message.content)
-          && message.content.some(part => !['text', 'reasoning'].includes(part.type))) || requiresAdvancedSettings(plan.presetSettings);
-      const result = needsWire ? await this.generateWire(plan, controller.signal) : await this.generateNative(plan, controller.signal);
+      const result = await this.generateNative(plan, controller.signal);
       this.publish({ event: 'generation.requestFinished', payload: { ...result, id, conversationId: params.conversationId || '' } });
       return result;
     } catch (error) {
@@ -188,33 +184,44 @@ export class CompatibilityGeneration {
       throw error;
     } finally { this.running.delete(id); }
   }
-  async generateNative(plan, signal) {
+  async prepareNativeRequest(plan, signal) {
     const selection = await this.readModel(plan.conversationId), provider = plan.configId || selection.provider;
-    // Provider listeners receive the selected wire format once. Non-OpenAI
-    // formats need their real projection before exposing editable fields.
-    const connection = this.hasWebCallbacks() ? await this.connection(plan) : undefined;
-    if (connection && protocolFor(connection.api || '') !== 'ChatCompletions') return this.generateWire(plan, signal);
-    let body = { model: plan.model, messages: plan.messages, stream: plan.stream === true, ...plan.presetSettings,
+    const unsupported = Object.keys(advancedSettings(plan.presetSettings));
+    for (const key of ['json_schema', 'tool_choice', 'topP']) if (plan[key] !== undefined) unsupported.push(key);
+    if (plan.responseFormat === 'json') unsupported.push('responseFormat');
+    if (Object.keys(plan.parameters || {}).length) unsupported.push('parameters');
+    if (Object.keys(plan.custom_api || {}).length) unsupported.push('custom_api');
+    if (plan.presetSettings?.top_p !== undefined) unsupported.push('top_p');
+    if (unsupported.length) throw Object.assign(new Error(`The locked DSH request contract does not support: ${unsupported.join(', ')}`),
+      { code: 'GENERATION_OPTION_NOT_SUPPORTED', fields: unsupported });
+    const body = { model: plan.model, messages: plan.messages, ...plan.presetSettings,
       ...(plan.temperature === undefined ? {} : { temperature: plan.temperature }), ...(plan.topP === undefined ? {} : { top_p: plan.topP }),
       ...(plan.maxTokens === undefined ? {} : { max_tokens: plan.maxTokens }), ...(plan.tools?.length ? { tools: plan.tools } : {}), ...(plan.stop ? { stop: plan.stop } : {}) };
-    if (this.hasWebCallbacks()) body = await this.callback('__ElecKoiBeforeProviderRequest', { conversationId: plan.conversationId, format: 'ChatCompletions', request: body }, { conversationId: plan.conversationId, signal });
-    const unsupported = Object.keys(body).filter(key => !['model', 'messages', 'stream', 'temperature', 'top_p', 'max_tokens', 'max_completion_tokens', 'tools', 'stop'].includes(key));
-    if (unsupported.length) return this.generateWire(plan, signal, { connection, body });
     const messages = body.messages.map(message => {
       const content = typeof message.content === 'string' ? [{ type: 'text', text: message.content }] : message.content;
+      if (!Array.isArray(content) || content.some(block => !['text', 'reasoning'].includes(block.type)
+        && !(['image', 'file'].includes(block.type) && block.attachment))) {
+        throw Object.assign(new Error('SDK image/file content requires an admitted DSH attachment reference'), { code: 'ATTACHMENT_ADMISSION_REQUIRED' });
+      }
       if (message.role === 'user') return { role: 'user', content };
       if (message.role === 'system') return createSystemMessage(contentText(message.content));
-      if (message.role === 'assistant') return createAssistantMessage({ content, source: { provider, model: body.model } });
+      if (message.role === 'assistant') return createAssistantMessage({ content: [...content, ...(message.tool_calls ?? []).map(call => ({
+        type: 'tool-call', id: call.id, name: call.function.name, arguments: call.function.arguments
+      }))], source: { provider, model: body.model } });
       if (message.role === 'tool') return createToolResultMessage({ callId: message.tool_call_id, content, isError: message.isError === true });
       throw new Error(`Unsupported native request role: ${message.role}`);
     });
-    const assembler = new BlockAssembler();
-    for await (const chunk of this.llm.stream({ provider, model: body.model, messages, signal,
+    return { provider, model: body.model, messages, signal,
       ...(body.temperature === undefined ? {} : { temperature: body.temperature }), ...(body.top_p === undefined ? {} : { topP: body.top_p }),
       ...(body.max_tokens === undefined && body.max_completion_tokens === undefined ? {} : { maxTokens: body.max_completion_tokens ?? body.max_tokens }),
       ...(body.stop === undefined ? {} : { stop: body.stop }),
       ...(body.tools ? { tools: body.tools.map(tool => tool.function ? { name: tool.function.name, description: tool.function.description || '', parameters: tool.function.parameters || {} } : tool) } : {}),
-      ...(selection.reasoningEffort === undefined ? {} : { reasoningEffort: selection.reasoningEffort }) })) {
+      ...(provider !== selection.provider || body.model !== selection.model || selection.reasoningEffort === undefined
+        ? {} : { reasoningEffort: selection.reasoningEffort }) };
+  }
+  async generateNative(plan, signal) {
+    const options = await this.prepareNativeRequest(plan, signal), assembler = new BlockAssembler();
+    for await (const chunk of this.llm.stream(options)) {
       assembler.push(chunk);
       if (plan.stream && ['text-delta', 'reasoning-delta'].includes(chunk.type)) this.publish({ event: 'generation.delta', payload: { id: plan.id,
         delta: chunk.type === 'text-delta' ? chunk.text : '', reasoning: chunk.type === 'reasoning-delta' ? chunk.text : '' } });
@@ -229,111 +236,10 @@ export class CompatibilityGeneration {
       if (metadata?.thinkingSignature) { signatures.push(metadata.thinkingSignature); reasoningSignature += metadata.thinkingSignature; }
       if (block.type === 'tool-call') { if (metadata?.thoughtSignature) toolCalls[toolIndex].thought_signature = metadata.thoughtSignature; toolIndex++; }
     }
-    return { id: plan.id, model: body.model, content: blocks.filter(block => block.type === 'text').map(block => block.text).join(''),
+    return { id: plan.id, model: options.model, content: blocks.filter(block => block.type === 'text').map(block => block.text).join(''),
       reasoning: blocks.filter(block => block.type === 'reasoning').map(block => block.text).join(''),
       tool_calls: toolCalls, signatures, ...(reasoningSignature ? { reasoning_signature: reasoningSignature } : {}),
       ...(replay ? { replayState: replay } : {}), ...(assembler.usage ? { usage: assembler.usage } : {}) };
-  }
-  async prepareWire(plan, signal) {
-    const connection = await this.connection(plan), format = protocolFor(connection.api || '');
-    let body = providerRequest(format, plan.model, plan.messages, { ...plan,
-      parameters: { ...advancedSettings(plan.presetSettings), ...(plan.parameters || {}) } });
-    if (this.hasWebCallbacks()) body = await this.callback('__ElecKoiBeforeProviderRequest', { conversationId: plan.conversationId, format, request: body, dryRun: plan.dryRun === true }, { conversationId: plan.conversationId, signal });
-    if (!body || typeof body !== 'object' || Array.isArray(body)) throw new TypeError('Provider request callback must return the actual request object');
-    return { connection, format, body };
-  }
-  async generateWire(plan, signal, prepared = undefined) {
-    const { connection, format = protocolFor(connection.api || ''), body } = prepared || await this.prepareWire(plan, signal);
-    const base = providerWireBaseURL(connection);
-    if (!base) throw new Error('Provider wire request requires the selected connection endpoint');
-    const endpoint = format === 'Responses' ? `${base}/responses` : format === 'AnthropicMessages' ? `${base}/messages`
-      : format === 'GoogleGemini' ? `${base}/models/${plan.model}:${plan.stream ? 'streamGenerateContent?alt=sse' : 'generateContent'}` : `${base}/chat/completions`;
-    const response = new ProviderResponse(format);
-    const consume = async packet => {
-      if (packet === '[DONE]') return;
-      const delta = response.consume(JSON.parse(packet), true);
-      if (delta.content || delta.reasoning) this.publish({ event: 'generation.delta', payload: { id: plan.id, delta: delta.content, reasoning: delta.reasoning } });
-    };
-    const stop = () => this.network.cancel(plan.id); signal.addEventListener('abort', stop, { once: true });
-    try {
-      if (signal.aborted) throw signal.reason;
-      const result = await this.network.request({ id: plan.id, endpoint, method: 'POST', headers: this.authHeaders(connection), body, stream: body.stream ?? plan.stream }, true, { packet: consume });
-      if (!result.ok) throw Object.assign(new Error(`Provider HTTP ${result.status}: ${result.body}`), { status: result.status });
-      if (result.body !== undefined) response.consume(JSON.parse(result.body), false);
-      return response.result(plan.id, body.model || plan.model);
-    } finally { signal.removeEventListener('abort', stop); }
-  }
-  /** Main Agent keeps its official loop and log. Only the missing provider fields take this stream seam. */
-  async *streamWithSettings(options, settings, { conversationId, preparedBody } = {}) {
-    const info = await this.llm.resolveModelInfo(options.provider, options.model, options.signal);
-    const projected = projectToolUpdates(options.messages, options.tools, info.toolUpdate, options.toolHistory);
-    const messages = [];
-    if (options.system) messages.push({ role: 'system', content: options.system });
-    for (const message of projected.messages) {
-      const content = [], toolCalls = [];
-      for (const block of message.content) {
-        if (block.type === 'text') content.push({ type: 'text', text: block.text });
-        else if (block.type === 'reasoning') continue;
-        else if (block.type === 'tool-call') toolCalls.push({ id: block.id, type: 'function', function: { name: block.name, arguments: block.arguments } });
-        else if (this.projectBlock) content.push(await this.projectBlock(block, options.signal));
-        else throw new Error(`Advanced provider request cannot project content block: ${block.type}`);
-      }
-      const replay = message.source?.replayState;
-      let toolIndex = 0;
-      for (const [index, block] of message.content.entries()) if (block.type === 'tool-call') {
-        const signature = replay?.blocks?.[index]?.thoughtSignature;
-        if (signature) toolCalls[toolIndex].thought_signature = signature;
-        toolIndex++;
-      }
-      messages.push({ role: message.role, content: content.length === 1 && content[0].type === 'text' ? content[0].text : content,
-        ...(toolCalls.length ? { tool_calls: toolCalls } : {}), ...(message.role === 'tool' ? { tool_call_id: message.toolCallId, name: message.source?.name,
-          ...(message.isError === undefined ? {} : { is_error: message.isError }) } : {}) });
-    }
-    const connection = await this.connection({ conversationId, configId: options.provider, model: options.model });
-    const format = protocolFor(connection.api || ''), base = providerWireBaseURL(connection);
-    if (!base) throw new Error('Advanced Agent provider request requires the selected endpoint');
-    const params = { model: options.model, messages, stream: true, presetSettings: settings, parameters: advancedSettings(settings),
-      ...(options.temperature === undefined ? {} : { temperature: options.temperature }), ...(options.topP === undefined ? {} : { topP: options.topP }),
-      ...(options.maxTokens === undefined ? {} : { maxTokens: options.maxTokens }), ...(options.stop ? { stop: options.stop } : {}),
-      tools: projected.tools?.map(tool => ({ type: 'function', function: { name: tool.name, description: tool.description, parameters: tool.parameters } })) };
-    let body = preparedBody ?? providerRequest(format, options.model, messages, params);
-    if (!preparedBody && this.hasWebCallbacks()) body = await this.callback('__ElecKoiBeforeProviderRequest', { conversationId, format, request: body }, { conversationId, signal: options.signal });
-    const endpoint = format === 'Responses' ? `${base}/responses` : format === 'AnthropicMessages' ? `${base}/messages`
-      : format === 'GoogleGemini' ? `${base}/models/${options.model}:streamGenerateContent?alt=sse` : `${base}/chat/completions`;
-    const response = new ProviderResponse(format), queue = [], id = randomUUID(); let finished = false, failure, resume;
-    const push = value => { queue.push(value); resume?.(); resume = undefined; };
-    const consume = async packet => {
-      if (packet === '[DONE]') return;
-      const delta = response.consume(JSON.parse(packet), true);
-      if (delta.reasoning) push({ type: 'reasoning-delta', index: 0, text: delta.reasoning });
-      if (delta.content) push({ type: 'text-delta', index: 1, text: delta.content });
-    };
-    const stop = () => this.network.cancel(id); options.signal?.addEventListener('abort', stop, { once: true });
-    const task = (async () => {
-      try {
-        if (options.signal?.aborted) throw options.signal.reason;
-        const result = await this.network.request({ id, endpoint, method: 'POST', headers: this.authHeaders(connection), body, stream: true }, true, { packet: consume });
-        if (!result.ok) throw Object.assign(new Error(`Provider HTTP ${result.status}: ${result.body}`), { status: result.status });
-        if (result.body !== undefined) { const delta = response.consume(JSON.parse(result.body), false); if (delta.reasoning) push({ type: 'reasoning-delta', index: 0, text: delta.reasoning }); if (delta.content) push({ type: 'text-delta', index: 1, text: delta.content }); }
-        for (const [index, call] of [...response.tools.values()].entries()) push({ type: 'block-end', index: index + 2,
-          block: { type: 'tool-call', id: call.id, name: call.function.name, arguments: call.function.arguments } });
-        const usage = response.usage;
-        if (usage) push({ type: 'usage', usage: { inputTokens: usage.prompt_tokens ?? usage.input_tokens ?? usage.promptTokenCount ?? 0,
-          outputTokens: usage.completion_tokens ?? usage.output_tokens ?? usage.candidatesTokenCount ?? 0,
-          ...(usage.total_tokens ?? usage.totalTokenCount ? { totalTokens: usage.total_tokens ?? usage.totalTokenCount } : {}) } });
-        const replayBlocks = [];
-        if (response.reasoning) replayBlocks.push({ type: 'reasoning', thinkingSignature: [...response.signatureFragments.values()].join('') });
-        if (response.content) replayBlocks.push({ type: 'text' });
-        for (const call of response.tools.values()) replayBlocks.push({ type: 'tool-call', ...(call.thought_signature ? { thoughtSignature: call.thought_signature } : {}) });
-        push({ type: 'finish', reason: { kind: ['length', 'max_tokens'].includes(response.finishReason) ? 'max-tokens' : response.tools.size ? 'tool-calls' : 'stop' },
-          replayState: { response: { kind: 'eleckoi-provider-wire', format, signatures: [...response.signatures] }, blocks: replayBlocks } });
-      } catch (error) { failure = error; }
-      finally { finished = true; resume?.(); resume = undefined; }
-    })();
-    try {
-      while (!finished || queue.length) { if (queue.length) yield queue.shift(); else await new Promise(resolve => { resume = resolve; }); }
-      if (failure) throw failure;
-    } finally { stop(); options.signal?.removeEventListener('abort', stop); await task; }
   }
   close() { for (const id of this.running.keys()) this.cancel(id); this.network.close(); }
 }

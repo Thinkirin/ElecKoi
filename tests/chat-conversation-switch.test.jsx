@@ -3,7 +3,7 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { ChatPanel } from '../src/renderer/src/modules/chat/components/ChatPanel.jsx';
+import { ChatPanel } from '../apps/web/src/modules/chat/components/ChatPanel.jsx';
 import { WithOfficialMarkdown } from './helpers/officialMarkdown.jsx';
 import { ChatView, chatFixture, turnNode, userNode } from './helpers/officialChatView.jsx';
 

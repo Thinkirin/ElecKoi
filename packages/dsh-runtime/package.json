@@ -22,10 +22,7 @@
         "default": "./dist/index.cjs"
       }
     },
-    "./desktop-plugin-host": "./dist/desktop-plugin-host.mjs",
-    "./node-host": "./dist/node-host.mjs",
     "./session-edit-plugin": "./dist/session-edit-plugin.mjs",
-    "./android-transcript-import": "./dist/android-transcript-import.mjs",
     "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json",
     "./session-edit-plugin/locale/*.json": "./locale/*.json",
@@ -51,9 +48,9 @@
     "@eleckoi/dsh-client-web-search": "workspace:*",
     "@eleckoi/dsh-client-roleplay": "workspace:*",
     "@eleckoi/dsh-client-shell": "workspace:*",
-    "@eleckoi/dsh-product-api": "workspace:*",
-    "@eleckoi/dsh-compatibility-host": "workspace:*",
     "@eleckoi/dsh-client-tavern-shared": "workspace:*",
+    "@eleckoi/dsh-compatibility-host": "workspace:*",
+    "@eleckoi/dsh-product-api": "workspace:*",
     "@eleckoi/dsh-product-data": "workspace:*",
     "@eleckoi/dsh-web-search-tavily": "workspace:*",
     "@deepseek-ai/dsh": "0.2.0-rc.2",
@@ -81,7 +78,6 @@
     "@deepseek-ai/dsh-sdk-client": "0.2.0-rc.2",
     "@deepseek-ai/dsh-web-frontend": "0.2.0-rc.2",
     "@earendil-works/pi-ai": "0.87.1",
-    "pnpm": "11.7.0",
     "yaml": "2.9.0"
   },
   "devDependencies": {

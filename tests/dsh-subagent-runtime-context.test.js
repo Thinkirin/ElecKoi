@@ -8,9 +8,9 @@ import { AgentRegistry } from '@deepseek-ai/dsh-agent'
 import {
   apply as applyAgentPresetBridge,
   installAgentHandleTracking
-} from '../resources/dsh/agent-preset-bridge.mjs'
-import { apply as applySettingLibraryTools } from '../resources/dsh/setting-library-tools.mjs'
-import { apply as applyVariableTools } from '../resources/dsh/variable-tools.mjs'
+} from '../apps/desktop/resources/dsh/agent-preset-bridge.mjs'
+import { apply as applySettingLibraryTools } from '../apps/desktop/resources/dsh/setting-library-tools.mjs'
+import { apply as applyVariableTools } from '../apps/desktop/resources/dsh/variable-tools.mjs'
 
 const directories = []
 

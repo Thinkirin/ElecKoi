@@ -1,15 +1,15 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-const cjsPath = join(process.cwd(), 'out', 'preload', 'preload.cjs')
-const obsoleteEsmPath = join(process.cwd(), 'out', 'preload', 'preload.mjs')
+const cjsPath = join(process.cwd(), 'apps', 'desktop', 'out', 'preload', 'preload.cjs')
+const obsoleteEsmPath = join(process.cwd(), 'apps', 'desktop', 'out', 'preload', 'preload.mjs')
 
 if (!existsSync(cjsPath)) {
-  throw new Error('Packaged preload must be emitted as out/preload/preload.cjs.')
+  throw new Error('Packaged preload must be emitted as apps/desktop/out/preload/preload.cjs.')
 }
 
 if (existsSync(obsoleteEsmPath)) {
-  throw new Error('Obsolete ESM preload artifact still exists: out/preload/preload.mjs.')
+  throw new Error('Obsolete ESM preload artifact still exists: apps/desktop/out/preload/preload.mjs.')
 }
 
 const preload = readFileSync(cjsPath, 'utf8')

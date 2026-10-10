@@ -2,7 +2,7 @@
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ConversationList } from '../src/renderer/src/modules/chat/components/ConversationList.jsx'
+import { ConversationList } from '../apps/web/src/modules/chat/components/ConversationList.jsx'
 
 vi.stubGlobal('React', React)
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)

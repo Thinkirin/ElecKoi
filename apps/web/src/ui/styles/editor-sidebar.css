@@ -1,0 +1,84 @@
+.editor-sidebar-layout {
+  --editor-sidebar-gap: 56px;
+  position: relative;
+}
+
+.editor-sidebar-layout.is-resizing,
+.editor-sidebar-layout.is-resizing * {
+  cursor: col-resize !important;
+  user-select: none;
+}
+
+.editor-sidebar-pane {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  animation: editor-sidebar-enter 240ms var(--ds-ease-in-out, ease-in-out) both;
+}
+
+.editor-sidebar-pane.is-overlay {
+  position: absolute;
+  z-index: 50;
+  inset: 58px 0 0 auto;
+  width: min(var(--editor-sidebar-width), calc(100% - var(--editor-sidebar-gap)));
+}
+
+.editor-sidebar-pane > aside {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  height: 100%;
+}
+
+.editor-sidebar-pane.is-closing {
+  animation: editor-sidebar-exit 180ms var(--ds-ease-in-out, ease-in-out) both;
+  pointer-events: none;
+}
+
+.editor-sidebar-resizer {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  bottom: 0;
+  left: -5px;
+  display: grid;
+  width: 10px;
+  place-items: center;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.editor-sidebar-resizer > span {
+  width: 1px;
+  height: 100%;
+  background: transparent;
+  transition: background 120ms ease;
+}
+
+.editor-sidebar-resizer:hover > span,
+.editor-sidebar-resizer:focus-visible > span {
+  background: color-mix(in srgb, var(--blue) 66%, transparent);
+}
+
+.editor-sidebar-resizer:focus-visible { outline: 0; }
+
+.editor-sidebar-directory {
+  transition: margin-inline-end 240ms var(--ds-ease-in-out, ease-in-out);
+}
+.editor-sidebar-layout.is-resizing .editor-sidebar-directory { transition: none; }
+
+@keyframes editor-sidebar-enter {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes editor-sidebar-exit {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+@media (max-width: 760px) {
+  .editor-sidebar-layout { --editor-sidebar-gap: 28px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .editor-sidebar-pane, .editor-sidebar-pane.is-closing { animation: none; }
+  .editor-sidebar-directory, .editor-sidebar-resizer > span { transition: none; }
+}

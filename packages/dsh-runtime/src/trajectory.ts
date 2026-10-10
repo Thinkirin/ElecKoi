@@ -11,7 +11,6 @@ import { assistantStreamFirstTokenTime, type AssistantStreamRecord } from '@deep
 import { createSessionFormatCatalogWithChildren, historicalSessionFormatCatalog, sessionFormatCatalog, SessionFormatUnsupportedMigrationError } from '@deepseek-ai/dsh-session-format-catalog'
 import { historicalChildCatalogSource } from '@deepseek-ai/dsh-session-format-v3-to-v4'
 import { finalReplyText } from './finalReply'
-import type { DshRequestContextItem, DshRequestContextRole } from './requestContext'
 
 const REQUEST_PROJECTION_PLUGIN = 'eleckoi-request-projection'
 
@@ -48,7 +47,6 @@ export interface DshTrajectoryRequest {
   cumulativeUsage: DshTrajectoryUsage | null
   detail: string
   rawJson: string
-  context: DshRequestContextItem[]
   timeMillis: number | null
   durationMillis: number | null
   startedAt: number | null
@@ -334,190 +332,6 @@ function mergeLiveEvents(
   return [...merged.entries()].sort(([left], [right]) => left - right).map(([, event]) => event)
 }
 
-/** Rebuild request details from the same Session surface used by DSH. */
-function attachRequestContextsFromLog(records: DshTrajectoryRecord[], events: readonly NormalizedEvent[]): void {
-  const surface: NormalizedEvent[] = []
-  const contexts = new Map<number, DshRequestContextItem[]>()
-  let requestSeq: number | undefined
-  for (const event of events) {
-    if (event.type === 'step/start') requestSeq = event.seq
-    if (requestSeq !== undefined && !contexts.has(requestSeq)
-      && (event.type === 'assistant/message' || event.type === 'assistant/attempt' || event.type === 'tool/call' || event.type === 'step/end')) {
-      contexts.set(requestSeq, contextItemsFromSurface(surface))
-    }
-    if (event.type === 'step/end' || event.type === 'turn/end') requestSeq = undefined
-    const operation = event.surfaceOp
-    if (operation === 'append') {
-      surface.push(event)
-    } else if (isRecord(operation) && operation.op === 'replace') {
-      const start = surface.findIndex((item) => item.seq === operation.startSeq)
-      const end = surface.findIndex((item) => item.seq === operation.endSeq)
-      if (start >= 0 && end >= start) surface.splice(start, end - start + 1, event)
-    }
-  }
-  for (const record of records) {
-    for (const request of record.requests) request.context = contexts.get(request.seq) ?? []
-  }
-}
-
-function contextItemsFromSurface(surface: readonly NormalizedEvent[]): DshRequestContextItem[] {
-  const envelope = [...surface].reverse().find((event) => {
-    if (event.type !== 'user/message') return false
-    return record(record(event.data).source).kind === `plugin:${REQUEST_PROJECTION_PLUGIN}`
-  })
-  const projection = projectionSnapshotFromEnvelope(envelope)
-  const plan = projection.plan
-  const visible = surface.filter((event) => event !== envelope)
-    .map((event) => ({ event, item: contextItemFromEvent(event) }))
-    .filter((entry): entry is { event: NormalizedEvent; item: DshRequestContextItem } => entry.item !== undefined)
-  const firstDialogue = visible.findIndex(({ item }) => item.role !== 'system' && item.kind !== 'tool')
-  const currentUserOnSurface = lastIndexWhere(visible, ({ item }) => item.kind === 'user')
-  const system = visible.flatMap(({ item }, index) => item.role === 'system'
-    && (currentUserOnSurface < 0 || index < firstDialogue || index >= currentUserOnSurface)
-    ? [item] : [])
-  const dialogue = visible.filter(({ item }) => item.role !== 'system')
-  const currentUser = lastIndexWhere(dialogue, ({ item }) => item.kind === 'user')
-  const projectedDialogue = currentUser < 0
-    ? dialogue.map(({ item }) => item)
-    : projection.history === undefined ? [
-        ...historicalDialogueItems(dialogue.slice(0, currentUser)),
-        ...dialogue.slice(currentUser).map(({ item }) => item)
-      ]
-      : [
-          ...projection.history.map((item, index): DshRequestContextItem => ({
-            order: 0,
-            messageId: `eleckoi-product-history-${index}`,
-            role: item.role,
-            kind: 'history',
-            title: item.role === 'assistant' ? '历史助手消息' : '历史用户消息',
-            source: '聊天记录',
-            anchor: '',
-            content: item.content
-          })),
-          ...dialogue.slice(currentUser).map(({ item }) => item)
-        ]
-  const latestUser = lastIndexWhere(projectedDialogue, (item) => item.kind === 'user')
-  const at = (anchor: string) => plan.filter((item) => item.anchor === anchor)
-  const ordered = latestUser < 0
-    ? [...system, ...at('insert_point_1'), ...at('insert_point_2'), ...projectedDialogue,
-      ...at('insert_point_3'), ...at('insert_point_4'), ...at('insert_point_5')]
-    : [...system, ...at('insert_point_1'), ...at('insert_point_2'),
-      ...projectedDialogue.slice(0, latestUser), ...at('insert_point_3'), projectedDialogue[latestUser]!,
-      ...at('insert_point_4'), ...projectedDialogue.slice(latestUser + 1), ...at('insert_point_5')]
-  const latestDirectUser = lastIndexWhere(ordered, (item) => item.kind === 'user')
-  return ordered.map((item, index) => ({
-    ...item,
-    order: index + 1,
-    ...(index === latestDirectUser ? { title: '用户最新输入', source: '本轮输入' } : {})
-  }))
-}
-
-function historicalDialogueItems(
-  entries: readonly { event: NormalizedEvent; item: DshRequestContextItem }[]
-): DshRequestContextItem[] {
-  const history: DshRequestContextItem[] = []
-  const checkpointIndex = lastIndexWhere(entries, ({ event }) =>
-    event.type === 'user/message'
-      && contentText(messageFrom(event.data).content).includes('<compacted-summary>'))
-  if (checkpointIndex >= 0) {
-    history.push({
-      ...entries[checkpointIndex]!.item,
-      title: '历史摘要', source: '上下文压缩'
-    })
-  }
-  let reply: DshRequestContextItem | undefined
-  for (const { event, item } of entries.slice(checkpointIndex + 1)) {
-    if (item.kind === 'user') {
-      if (reply) history.push(reply)
-      reply = undefined
-      history.push({ ...item, kind: 'history', title: '历史用户消息', source: '聊天记录' })
-      continue
-    }
-    if (event.type !== 'assistant/message') continue
-    const blocks = array(messageFrom(event.data).content).map(record)
-    if (blocks.some((block) => text(block.type) === 'tool-call')) continue
-    const content = finalReplyText(blocks
-      .filter((block) => text(block.type) === 'text')
-      .map((block) => text(block.text)).join(''))
-    if (content.trim()) reply = {
-      ...item, kind: 'history', title: '历史助手消息', source: '聊天记录', content
-    }
-  }
-  if (reply) history.push(reply)
-  return history
-}
-
-function lastIndexWhere<T>(items: readonly T[], predicate: (item: T) => boolean): number {
-  for (let index = items.length - 1; index >= 0; index -= 1) {
-    if (predicate(items[index]!)) return index
-  }
-  return -1
-}
-
-function projectionSnapshotFromEnvelope(envelope: NormalizedEvent | undefined): {
-  plan: DshRequestContextItem[]
-  history?: Array<{ role: 'user' | 'assistant'; content: string }> | undefined
-} {
-  if (!envelope) return { plan: [] }
-  const raw = contentText(envelope.data.content)
-  const v2Prefix = 'ELECKOI_REQUEST_PROJECTION_V2\n'
-  const v1Prefix = 'ELECKOI_REQUEST_PROJECTION_V1\n'
-  const prefix = raw.startsWith(v2Prefix) ? v2Prefix : raw.startsWith(v1Prefix) ? v1Prefix : undefined
-  if (!prefix) return { plan: [] }
-  let value: unknown
-  try { value = JSON.parse(raw.slice(prefix.length)) } catch { return { plan: [] } }
-  const entries = Array.isArray(value) ? value : isRecord(value) && Array.isArray(value.plan) ? value.plan : []
-  const plan = entries.flatMap((entry, index) => {
-    if (!isRecord(entry) || typeof entry.content !== 'string' || !entry.content) return []
-    const role: DshRequestContextRole = entry.role === 'system' || entry.role === 'assistant' ? entry.role : 'user'
-    return [{
-      order: index + 1,
-      messageId: `${REQUEST_PROJECTION_PLUGIN}:${text(entry.id)}`,
-      role,
-      kind: 'prompt' as const,
-      title: text(entry.traceTitle) || '设定提示词',
-      source: text(entry.traceSource),
-      anchor: text(entry.anchor),
-      content: entry.content
-    }]
-  })
-  if (Array.isArray(value)) return { plan }
-  const history = isRecord(value) && Array.isArray(value.history)
-    ? value.history.flatMap<{ role: 'user' | 'assistant'; content: string }>((entry) => isRecord(entry)
-      && (entry.role === 'user' || entry.role === 'assistant')
-      && typeof entry.content === 'string' && entry.content.trim()
-      ? [{ role: entry.role, content: entry.content }]
-      : [])
-    : []
-  return { plan, history }
-}
-
-function contextItemFromEvent(event: NormalizedEvent): DshRequestContextItem | undefined {
-  if (!['system/message', 'developer/message', 'user/message', 'assistant/message', 'tool/result'].includes(event.type)) return undefined
-  const message = messageFrom(event.data)
-  const source = record(message.source)
-  const sourceKind = text(source.kind)
-  const content = contentText(message.content)
-  if (!content) return undefined
-  const role: DshRequestContextRole = event.type === 'system/message' ? 'system'
-    : event.type === 'assistant/message' ? 'assistant' : 'user'
-  const kind = role === 'system' ? 'system' as const
-    : event.type === 'tool/result' ? 'tool' as const
-      : role === 'assistant' ? 'assistant' as const
-        : sourceKind === 'user' ? 'user' as const : 'context' as const
-  return {
-    order: 0,
-    messageId: text(message.id) || `${event.type}:${event.seq}`,
-    role,
-    kind,
-    title: role === 'system' ? '系统提示词' : kind === 'tool' ? '工具结果'
-      : role === 'assistant' ? '助手消息' : kind === 'user' ? '用户消息' : '上下文',
-    source: sourceKind || role,
-    anchor: '',
-    content
-  }
-}
-
 export function projectDshTrajectory(
   input: readonly DshSessionEventRecord[],
   header: DshSessionHeader = {}
@@ -620,7 +434,6 @@ export function projectDshTrajectory(
             cumulativeUsage: null,
             detail: currentRequestHeader?.detail ?? pretty(data),
             rawJson: pretty(event),
-            context: [],
             timeMillis: time,
             durationMillis: null,
             startedAt: time,
@@ -839,7 +652,6 @@ export function projectDshTrajectory(
         cumulativeUsage: null,
         detail: pretty(data),
         rawJson: pretty(event),
-        context: [],
         timeMillis: time,
         durationMillis: null,
         startedAt: time,
@@ -913,7 +725,6 @@ export function projectDshTrajectory(
 
   const orderedRecords = records
   orderedRecords.forEach((item, index) => { item.index = index + 1 })
-  attachRequestContextsFromLog(orderedRecords, events)
   attachCumulativeRequestUsage(orderedRecords)
   const times = events.map((event) => nonnegativeInteger(event.time)).filter((value): value is number => value !== null)
   const createdAt = nonnegativeInteger(header.createdAt)
@@ -983,11 +794,9 @@ function locateSessionLog(sessionRoot: string, runtimeThreadId: string): string 
 
 function latestSessionLog(directory: string): string | undefined {
   const candidates = readdirSync(directory, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && !entry.isSymbolicLink())
     .map((entry) => ({ name: entry.name, version: sessionLogVersion(entry.name) }))
     .filter((entry): entry is { name: string; version: number } => entry.version !== undefined)
-    // PRoot implements the official JSONL publisher's hard links as symlinks.
-    // Inspect the committed artifact through its canonical name, like DSH does.
-    .filter((entry) => statSync(join(directory, entry.name)).isFile())
     .sort((left, right) => right.version - left.version)
   return candidates[0] === undefined ? undefined : join(directory, candidates[0].name)
 }

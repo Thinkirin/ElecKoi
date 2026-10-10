@@ -2,7 +2,7 @@
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { describe, expect, it, vi } from 'vitest'
-import { useChatSessions } from '../src/renderer/src/modules/chat/hooks/useChatSessions.js'
+import { useChatSessions } from '../apps/web/src/modules/chat/hooks/useChatSessions.js'
 
 describe('conversation display ownership', () => {
   it('keeps the selected conversation and its opening together during repeated switches and delayed display projection', async () => {

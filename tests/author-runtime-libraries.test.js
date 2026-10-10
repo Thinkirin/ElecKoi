@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AUTHOR_LIBRARY_VERSIONS,
   prepareAuthorRuntimeLibraries,
-} from '../src/renderer/src/modules/authorFrontend/model/authorRuntimeLibraries.js';
+} from '../apps/web/src/modules/authorFrontend/model/authorRuntimeLibraries.js';
 
 const packageJson = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8'),

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { assertTrustedDshClientFrame, isAllowedExternalUrl, isAppRendererUrl, isDshChildUrl } from '../src/main/platform/electron/validateSender'
+import { assertTrustedDshClientFrame, isAllowedExternalUrl, isAppRendererUrl, isDshChildUrl } from '../apps/desktop/src/main/platform/electron/validateSender'
 import type { WebContents } from 'electron'
 
 const originalRendererUrl = process.env.ELECTRON_RENDERER_URL

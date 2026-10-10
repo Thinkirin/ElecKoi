@@ -7,7 +7,7 @@ import {
   parseSettingLibraryFile,
   serializeSettingLibrary,
   switchLibraryVersion,
-} from "../src/renderer/src/modules/settingLibraries/model/settingLibraryTransfer.js";
+} from "../apps/web/src/modules/settingLibraries/model/settingLibraryTransfer.js";
 
 function entry(id, title, groupId = "", order = 1) {
   return {

@@ -114,7 +114,6 @@ export function requestSnapshot(ctx, selection, info) {
   const namespace = ctx.settings?.describe().find(row => row.ns === 'eleckoi-client-models')
   const parameters = namespace?.value?.entries?.[selection.provider]?.parameters?.[selection.model] || {}
   const reasoningEffort = parameters.reasoningEffort ?? selection.reasoningEffort
-  const contextWindow = info?.context?.contextWindow ?? info?.contextWindow
   return {
     configId: selection.provider,
     provider: selection.provider,
@@ -124,7 +123,7 @@ export function requestSnapshot(ctx, selection, info) {
     ...(parameters.topP === undefined ? {} : { topP: parameters.topP }),
     ...(parameters.autoCompactTokenLimit === undefined ? {} : { autoCompactTokenLimit: parameters.autoCompactTokenLimit }),
     ...(info?.defaultMaxTokens === undefined ? {} : { maxTokens: info.defaultMaxTokens }),
-    ...(contextWindow === undefined ? {} : { contextWindow })
+    ...(info?.contextWindow === undefined ? {} : { contextWindow: info.contextWindow })
   }
 }
 

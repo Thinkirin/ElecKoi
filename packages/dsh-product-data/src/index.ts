@@ -121,11 +121,6 @@ class HostPersonaConversationSync {
     }
   }
 
-  detachForCharacter(characterId: string): void {
-    this.store.db.update(chatSessions).set({ characterId: '' }).where(eq(chatSessions.characterId, characterId)).run()
-    this.store.db.update(conversationSpeakers).set({ sourceSpeakerId: '' }).where(eq(conversationSpeakers.sourceSpeakerId, characterId)).run()
-  }
-
   refreshCharacterIdentity(characterId: string, identity: {
     name: string
     avatar: string
@@ -706,8 +701,8 @@ class ProductDataStore {
     return this.withPrimaryOpenings(this.databaseRepositories().characters.saveGroups(groups, assignments))
   }
 
-  deleteCharacters(characterIds: string[], options?: { deleteChats?: boolean }): CharacterCollection {
-    return this.withPrimaryOpenings(this.databaseRepositories().characters.delete(characterIds, options))
+  deleteCharacters(characterIds: string[]): CharacterCollection {
+    return this.withPrimaryOpenings(this.databaseRepositories().characters.delete(characterIds))
   }
 
   exportCharacter(characterId: string, format: CharacterExportFormat): CharacterExportResult {

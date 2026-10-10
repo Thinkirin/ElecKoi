@@ -12,12 +12,12 @@ import {
   SETTING_LIBRARY_PLACEMENT_ROWS,
   SETTING_LIBRARY_POSITION_OPTIONS,
   updateOpening
-} from '../src/renderer/src/modules/settingLibraries/model/settingLibraryEditing.js'
+} from '../apps/web/src/modules/settingLibraries/model/settingLibraryEditing.js'
 import {
   HEADLESS_TREE_ROOT_ID,
   canDropAtHeadlessTarget,
   resolveHeadlessTreeDrop,
-} from '../src/renderer/src/ui/tree/headlessTreeModel.js'
+} from '../apps/web/src/ui/tree/headlessTreeModel.js'
 
 function openingEntry() {
   return {

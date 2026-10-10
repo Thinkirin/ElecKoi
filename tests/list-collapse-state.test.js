@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   LIST_COLLAPSE_AREAS,
   normalizeCollapsedGroups,
-} from '../src/renderer/src/modules/settings/model/listCollapseState.js';
+} from '../apps/web/src/modules/settings/model/listCollapseState.js';
 
 describe('persistent list collapse state', () => {
   it('keeps the four list preferences independent', () => {

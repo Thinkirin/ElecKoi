@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { processBlocks, processItemDetails, subagentDetailPresentation } from '../src/renderer/src/modules/chat/model/agentProcessDetails.js';
+import { processBlocks, processItemDetails, subagentDetailPresentation } from '../apps/web/src/modules/chat/model/agentProcessDetails.js';
 
 function item(overrides) {
   return {

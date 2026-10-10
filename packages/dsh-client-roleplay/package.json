@@ -4,9 +4,15 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.js",
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
     "./client": "./src/client.js",
     "./host/*": "./src/host/*",
+    "./host-types": {
+      "types": "./src/host/types.ts"
+    },
     "./slots": {
       "types": "./src/slots.d.ts"
     },
@@ -28,6 +34,7 @@
     }
   },
   "dependencies": {
+    "@deepseek-ai/dsh-session-projection-cache": "0.2.0-rc.2",
     "@deepseek-ai/dsh-client-ui-chat": "0.2.0-rc.2",
     "@deepseek-ai/dsh-agent-default-model": "0.2.0-rc.2",
     "@deepseek-ai/dsh-api-session-controller": "0.2.0-rc.2",
@@ -35,7 +42,6 @@
     "@deepseek-ai/dsh-llm": "0.2.0-rc.2",
     "@deepseek-ai/dsh-session-projection": "0.2.0-rc.2",
     "@eleckoi/dsh-product-data": "workspace:*",
-    "@eleckoi/dsh-worldbook-compat": "workspace:*",
     "yaml": "2.9.0",
     "zod": "4.1.11",
     "@deepseek-ai/dsh-session": "0.2.0-rc.2"
@@ -256,10 +262,21 @@
         "id": "eleckoi.roleplay.trajectory",
         "kind": "ui-slot",
         "title": "角色聊天轨迹",
-        "description": "替换角色聊天轨迹视图，并读取正式 Session 轨迹和请求上下文投影。",
+        "description": "替换角色聊天轨迹视图，读取正式 Session 轨迹。",
         "mode": "replace",
         "scope": "session",
         "relation": "provides"
+      },
+      {
+        "id": "eleckoiRequestPreviews",
+        "kind": "service",
+        "title": "运行期间请求预览",
+        "description": "在实际发送位置捕获请求，运行期间共用未变化的消息内容；不写入日志、数据库或投影缓存。",
+        "mode": "call",
+        "scope": "host",
+        "relation": "provides",
+        "members": ["capture", "list", "read", "stream", "forget", "close"],
+        "owner": "eleckoiRequestPreviews"
       }
     ]
   }

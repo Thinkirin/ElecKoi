@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
-const source = readFileSync(resolve(root, 'resources/database/eleckoi-common-schema-v1.sql'), 'utf8').replaceAll('\r\n', '\n')
+const source = readFileSync(resolve(root, 'apps/desktop/resources/database/eleckoi-common-schema-v1.sql'), 'utf8').replaceAll('\r\n', '\n')
 const camel = (value) => value.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
 const tables = [...source.matchAll(/^CREATE TABLE IF NOT EXISTS `([^`]+)` \((.+)\);$/gm)]
 if (tables.length === 0) throw new Error('Canonical common schema contains no business tables')

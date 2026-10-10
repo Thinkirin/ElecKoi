@@ -2,7 +2,7 @@ window.__ModuleLoader__.load({
   id: '@eleckoi/dsh-client-conversations',
   factory(require) {
     const React = require('react')
-    const MessagesPage = React.lazy(() => import((globalThis.__ELECKOI_CLIENT_ASSETS__?.baseUrl ?? 'dsh-app://app/eleckoi/assets/') + 'eleckoi-page-messages.js')
+    const MessagesPage = React.lazy(() => import('dsh-app://app/eleckoi/assets/eleckoi-page-messages.js')
       .then(module => ({ default: module.MessagesPage })))
 
     const contentText = content => Array.isArray(content)
@@ -56,7 +56,8 @@ window.__ModuleLoader__.load({
     const processKind = name => name === 'subagent' || name === 'subagent_fork' ? 'subagent' : 'tool'
 
     const orderedChatEntries = snapshot => Array.isArray(snapshot?.order)
-      ? snapshot.order.map(key => ({ key, node: snapshot.nodes?.get(key) })).filter(entry => entry.node)
+      ? snapshot.order.map(key => ({ key, node: snapshot.nodes?.get(key) }))
+        .filter(entry => entry.node && entry.node.visibility !== 'hidden')
       : []
 
     const orderedChatNodes = snapshot => orderedChatEntries(snapshot).map(entry => entry.node)
@@ -355,7 +356,7 @@ window.__ModuleLoader__.load({
       })
     }
 
-    function officialMessages(snapshot, details, runtimeSessionId, processByTurn = new Map(), pendingSubmissions = [], sessionRunning, inputLinks = []) {
+    function officialMessages(snapshot, details, runtimeSessionId, processByTurn = new Map(), pendingSubmissions = [], sessionRunning, inputLinks = [], abortedTurns = []) {
       if (!snapshot) return (details?.messages || []).filter(message => message.id === 'opening')
       const entries = orderedChatEntries(snapshot)
       for (const node of snapshot.nodes?.values?.() || []) {
@@ -366,6 +367,9 @@ window.__ModuleLoader__.load({
       }
       const nodes = entries.map(entry => entry.node)
       const failedTurns = new Set(nodes.filter(node => node.kind === 'turn-error').map(nodeTurn))
+      const endedTurns = new Set(nodes.filter(node => node.kind === 'turn-tail')
+        .map(nodeTurn).filter(Number.isSafeInteger))
+      const aborted = new Set(abortedTurns)
       const closedTurns = new Set(nodes.filter(node => node.kind === 'turn-tail' && node.data?.closing)
         .map(nodeTurn).filter(Number.isSafeInteger))
       const latestOpenAssistantByTurn = new Map()
@@ -409,23 +413,19 @@ window.__ModuleLoader__.load({
           if (!Number.isSafeInteger(turn) || closedTurns.has(turn) || latestOpenAssistantByTurn.get(turn) !== nodeIndex) return []
           const raw = assistantText(node.data?.blocks)
           const live = liveFinalReply(raw)
+          const finalNode = node.data?.finalNode
           return [{
-            role: 'assistant', seq: Number.isSafeInteger(node.data?.seq) ? node.data.seq : Number.MAX_SAFE_INTEGER,
+            role: 'assistant', seq: finalNode?.seq ?? node.data?.seq ?? node.anchorSeq ?? Number.MAX_SAFE_INTEGER,
             time: node.data?.time, content: live.started ? live.content : '',
             displayContent: live.started ? live.content : '',
             dshMessageId: node.data?.messageId || '', nodeKey: entry.key, dshTurn: turn,
-            pending: sessionRunning === true && !failedTurns.has(turn),
-          }]
-        }
-        // Terminal failures are official Chat nodes in their own right. They
-        // are diagnostics, not assistant text or messages that can be edited.
-        if (node.kind === 'turn-error') {
-          const failure = node.data
-          return [{
-            kind: 'turn-error', role: 'system', seq: failure.seq, time: failure.time,
-            content: failure.message, displayContent: failure.message,
-            dshTurn: failure.turn, nodeKey: entry.key,
-            error: { message: failure.message, ...(failure.code ? { code: failure.code } : {}) },
+            // An unknown session state is not proof that generation is still
+            // running. During Session rebind DSH can publish the historical
+            // assistant-step before the new Session state arrives; treating
+            // that gap as streaming hides the normal message actions.
+            pending: sessionRunning === true && !endedTurns.has(turn)
+              && !aborted.has(turn) && node.location?.turn?.status !== 'closed' && node.data?.status !== 'interrupted',
+            interrupted: aborted.has(turn) || node.data?.status === 'interrupted' || finalNode?.interrupted === true,
           }]
         }
         if (node.kind !== 'turn-tail' || !node.data?.closing) return []
@@ -439,7 +439,7 @@ window.__ModuleLoader__.load({
         return [{
           role: 'assistant', seq: finalNode.seq, time: finalNode.time, content: assistantText(closing.blocks),
           displayContent: finalReplyText(assistantText(closing.blocks)),
-          dshMessageId: finalNode.messageId || '', interrupted: finalNode.interrupted === true,
+          dshMessageId: finalNode.messageId || '', interrupted: aborted.has(tail.turn) || finalNode.interrupted === true,
           usage: closing.usage, turnUsage: tail.tokenUsage, sessionEventSeq: finalNode.seq, dshTurn: tail.turn,
           nodeKey: closingAssistant?.key || ''
         }]
@@ -569,6 +569,7 @@ window.__ModuleLoader__.load({
         this.timelineSnapshot = { id: '', status: 'idle', timeline: null, error: '' }
         this.timelineListeners = new Set()
         this.timelineGeneration = 0
+        this.previewStreams = new Set()
         this.streamSnapshot = { id: '', status: 'idle', runId: '', requestId: '', messageId: '', nodeKey: '', sequence: 0, content: '', process: [], error: '' }
         this.streamState = this.streamSnapshot
         this.chatSnapshot = { details: this.detailsSnapshot, stream: this.streamSnapshot }
@@ -844,13 +845,25 @@ window.__ModuleLoader__.load({
         if (Number.isSafeInteger(request?.rewindEventSeq) && next.details) {
           // The selected input owns the visible branch while the Host rewinds.
           // A refresh of the retiring Session must not put its old replies back.
+          // Interrupted process-only rows have an official Chat position but
+          // no editable surface event. Their sequence still belongs to the
+          // retained prefix; sessionEventSeq is only the mutation address.
           const messages = next.details.messages.filter(message => message.id === 'opening'
-            || message.sessionEventSeq <= request.rewindEventSeq)
+            || message.sequence <= request.rewindEventSeq)
           next = { ...next, details: { ...next.details, messages } }
         }
         next = this.applyDisplayProjection(next)
         this.detailsSnapshot = next
         this.officialProjectionSignature = officialProjectionSignature
+        // The active chat observes regex configuration even when its editor
+        // has never been opened, so existing change notifications reach it.
+        const characterId = next.details?.metadata?.characterId
+        if (next.status === 'ready' && characterId
+          && this.regexRules?.getSnapshot?.(characterId)?.status === 'idle') {
+          void this.regexRules.read(characterId).catch(error => {
+            console.error('读取聊天正则配置失败：', error)
+          })
+        }
         return next
       }
 
@@ -1228,7 +1241,7 @@ window.__ModuleLoader__.load({
         const session = this.sessionReference?.binding?.session
         const sessionRunning = session ? session.getSnapshot().running === true : undefined
         const next = { ...details, runtimeSessionId, hasMore,
-          messages: chat ? officialMessages(chat, { ...details, hasMore }, runtimeSessionId, this.officialProcess(chat), [], sessionRunning, this.inputContinuations(runtimeSessionId))
+          messages: chat ? officialMessages(chat, { ...details, hasMore }, runtimeSessionId, this.officialProcess(chat), [], sessionRunning, this.inputContinuations(runtimeSessionId), this.abortedTurns(runtimeSessionId))
             : details.messages.filter(message => message.id === 'opening') }
         if (chat) next.beforeSequence = next.messages.find(message => message.id !== 'opening')?.sequence ?? null
         this.publishDetails({
@@ -1308,6 +1321,13 @@ window.__ModuleLoader__.load({
         return Array.isArray(value?.links) ? value.links : []
       }
 
+      abortedTurns(runtimeSessionId) {
+        const reference = this.sessionReference
+        if (reference?.sessionId !== runtimeSessionId) return []
+        const value = reference.binding.session.projections?.faceOf('eleckoiTurnOutcomes')?.getSnapshot()
+        return Array.isArray(value?.abortedTurns) ? value.abortedTurns : []
+      }
+
       subagentCatalogEntries(runtimeSessionId, face) {
         const direct = face?.getSnapshot()
         const listed = this.sessions.list.getSnapshot()?.projectionsBySession?.[runtimeSessionId]
@@ -1378,11 +1398,12 @@ window.__ModuleLoader__.load({
           hasMore,
           subagentProjectionRevision: this.subagentProjectionRevision,
           inputContinuationsKey: JSON.stringify(this.inputContinuations(runtimeSessionId)),
+          abortedTurnsKey: JSON.stringify(this.abortedTurns(runtimeSessionId)),
           canChangeOpening: this.openingChangeAllowed(this.detailsSnapshot.id, runtimeSessionId),
           sessionRunning,
           pendingSubmissions,
-          nodes: nodes.filter(node => node.kind === 'user' || node.kind === 'steering' || node.kind === 'turn-error'
-            || (node.kind === 'turn-tail' && node.data?.closing)
+          nodes: nodes.filter(node => node.kind === 'user' || node.kind === 'steering'
+            || node.kind === 'turn-tail'
             || node.kind === 'assistant-step' || node.kind === 'tool-call')
         }
       }
@@ -1392,6 +1413,7 @@ window.__ModuleLoader__.load({
           && left?.hasMore === right?.hasMore
           && left?.subagentProjectionRevision === right?.subagentProjectionRevision
           && left?.inputContinuationsKey === right?.inputContinuationsKey
+          && left?.abortedTurnsKey === right?.abortedTurnsKey
           && left?.canChangeOpening === right?.canChangeOpening
           && left?.sessionRunning === right?.sessionRunning
           && left?.pendingSubmissions?.length === right?.pendingSubmissions?.length
@@ -1479,6 +1501,7 @@ window.__ModuleLoader__.load({
             .map(key => [key, binding.session.projections?.faceOf(key)])
           const subagentCatalogFace = binding.session.projections?.faceOf('subagentCatalog')
           const inputContinuationsFace = binding.session.projections?.faceOf('eleckoiInputContinuations')
+          const turnOutcomesFace = binding.session.projections?.faceOf('eleckoiTurnOutcomes')
           const inboxFace = binding.session.projections?.faceOf('inbox')
           const publishProjections = () => {
             if (this.disposed || generation !== this.sessionBindingGeneration || id !== this.detailsSnapshot.id) return
@@ -1521,6 +1544,7 @@ window.__ModuleLoader__.load({
             ...projections.map(([, face]) => face?.subscribe(publishProjections)),
             subagentCatalogFace?.subscribe(publishSubagents),
             inputContinuationsFace?.subscribe(() => { publishProjections(); publish() }),
+            turnOutcomesFace?.subscribe(publish),
             inboxFace?.subscribe(publish),
             this.sessions.list.subscribe?.(publishSubagents),
           ].filter(Boolean)
@@ -1550,7 +1574,7 @@ window.__ModuleLoader__.load({
           if (!this.sameOfficialProjection(signature, this.officialProjectionSignature)) {
             const next = {
               ...details, runtimeSessionId,
-              messages: officialMessages(chat, { ...details, hasMore }, runtimeSessionId, processByTurn, pendingSubmissions, sessionRunning, this.inputContinuations(runtimeSessionId)),
+              messages: officialMessages(chat, { ...details, hasMore }, runtimeSessionId, processByTurn, pendingSubmissions, sessionRunning, this.inputContinuations(runtimeSessionId), this.abortedTurns(runtimeSessionId)),
               hasMore,
             }
             next.beforeSequence = next.messages.find(message => message.id !== 'opening')?.sequence ?? null
@@ -1560,26 +1584,38 @@ window.__ModuleLoader__.load({
             }
           }
         }
-        const nodes = orderedChatNodes(chat)
-        const turns = [...(chat?.timeline?.turns?.values() || [])]
-        const liveTurn = turns.findLast(turn => turn.status === 'open')?.turn
-          ?? turns.at(-1)?.turn
-          ?? nodeTurn(nodes.findLast(node => Number.isSafeInteger(nodeTurn(node))))
-          ?? this.streamState.dshTurn
-        const runningAssistant = nodes
+        const retiredTurns = new Set([
+          ...this.abortedTurns(runtimeSessionId),
+          ...orderedChatNodes(chat).filter(node => node.kind === 'turn-tail' && node.data?.closing).map(nodeTurn),
+          ...(this.sessionReference?.binding.eventSource.getSnapshot().entries || [])
+            .filter(entry => entry.type === 'event' && entry.event.type === 'turn/end'
+              && ['aborted', 'interrupted'].includes(entry.event.data?.reason?.kind))
+            .map(entry => entry.event.data.turn),
+        ])
+        const previousTurn = this.streamState.status === 'running' && !retiredTurns.has(this.streamState.dshTurn)
+          ? this.streamState.dshTurn : undefined
+        const liveTurn = [...(chat?.timeline?.turns?.values() || [])]
+          .findLast(turn => turn.status === 'open' && !retiredTurns.has(turn.turn))?.turn
+          ?? previousTurn
+        const runningAssistant = orderedChatNodes(chat)
           .findLast(node => node.kind === 'assistant-step'
+            && !retiredTurns.has(nodeTurn(node)) && node.location?.turn?.status !== 'closed'
+            && node.data?.status !== 'interrupted'
             && (!Number.isSafeInteger(liveTurn) || nodeTurn(node) === liveTurn)
             && (node.data?.status === 'running' || assistantText(node.data?.blocks).trim() !== ''))
         const current = this.streamState
         const openTurn = nodeTurn(runningAssistant) ?? liveTurn
-        const sameLiveTurn = current.id === id && current.status === 'running' && current.dshTurn === openTurn
+        // A retired current turn still owns its final hand-off. It cannot
+        // identify a future run whose turn/start has not arrived yet.
+        const sameLiveTurn = current.id === id && current.status === 'running'
+          && (current.dshTurn === openTurn || (openTurn === undefined && retiredTurns.has(current.dshTurn)))
         const projectedReply = liveFinalReply(assistantText(runningAssistant?.data?.blocks))
         const content = projectedReply.started ? projectedReply.content
           : !runningAssistant && sameLiveTurn ? current.content : ''
         const promptError = sessionState.promptError?.op === 'send'
           ? sessionState.promptError.error?.message || '生成失败。'
           : ''
-        const terminalFailure = nodes.findLast(node => node.kind === 'turn-error' && nodeTurn(node) === openTurn)
+        const terminalFailure = orderedChatNodes(chat).findLast(node => node.kind === 'turn-error' && nodeTurn(node) === openTurn)
         const executionError = promptError || sessionState.lastAgentError || terminalFailure?.data?.message || sessionState.openError?.message
           || (sessionState.removed ? 'DSH 会话已关闭。' : '')
         const cancellationSettling = this.cancelledStreamConversations.has(id)
@@ -1641,7 +1677,7 @@ window.__ModuleLoader__.load({
             status: 'idle', runId: '', requestId: '', messageId: '', nodeKey: '',
             content: '', process: [], error: ''
           })
-        } else if (sessionState.running) {
+        } else if (sessionState.running && Number.isSafeInteger(openTurn)) {
           if (pendingDetails) this.publishDetails(pendingDetails.snapshot, pendingDetails.signature)
           const message = details?.messages?.findLast(item => item.role === 'assistant'
             && item.status === 'streaming' && item.dshTurn === openTurn)
@@ -1815,10 +1851,12 @@ window.__ModuleLoader__.load({
         if (request.cancelled || input.signal?.aborted) this.unwrap(await session.cancel(), '停止生成失败。')
         const completed = await waitForOfficialSession(session, this.sessionReference.binding.eventSource, input.requestId)
         if (prepared.operationId) {
-          this.unwrap(await this.remote.eleckoiConversations.waitForGeneration(conversationId, prepared.operationId), '等待保存及插件收尾失败。')
+          this.unwrap(await this.remote.eleckoiConversations.waitForGeneration(conversationId, prepared.operationId), '等待聊天保存失败。')
         }
-        const group = this.unwrap(await this.remote.eleckoiConversations.completeGroupRound(conversationId, completed.cancelled || request.cancelled), '群聊回合执行失败。')
-        completed.cancelled ||= group.cancelled
+        if (this.detailsSnapshot.id === conversationId && this.detailsSnapshot.details?.compatibilityPresentation?.groupId) {
+          const group = this.unwrap(await this.remote.eleckoiConversations.completeGroupRound(conversationId, completed.cancelled || request.cancelled), '群聊回合执行失败。')
+          completed.cancelled ||= group.cancelled
+        }
         const details = this.detailsSnapshot.id === conversationId
           ? await this.refreshDetails()
           : this.unwrap(await this.remote.eleckoiConversations.details(conversationId, undefined, undefined), '读取会话详情失败。')
@@ -1911,7 +1949,7 @@ window.__ModuleLoader__.load({
         if (request.cancelled || input.signal?.aborted) this.unwrap(await session.cancel(), '停止生成失败。')
         const completed = await waitForOfficialSession(session, this.sessionReference.binding.eventSource, input.requestId, accepted.turn)
         if (prepared.operationId) {
-          this.unwrap(await this.remote.eleckoiConversations.waitForGeneration(input.conversationId, prepared.operationId), '等待保存及插件收尾失败。')
+          this.unwrap(await this.remote.eleckoiConversations.waitForGeneration(input.conversationId, prepared.operationId), '等待聊天保存失败。')
         }
         const details = await this.refreshDetails()
         return {
@@ -2003,7 +2041,7 @@ window.__ModuleLoader__.load({
           const sessionRunning = session ? session.getSnapshot().running === true : undefined
           const projected = chat
             ? { ...details, runtimeSessionId, hasMore,
-              messages: officialMessages(chat, { ...details, hasMore }, runtimeSessionId, this.officialProcess(chat), [], sessionRunning, this.inputContinuations(runtimeSessionId)) }
+              messages: officialMessages(chat, { ...details, hasMore }, runtimeSessionId, this.officialProcess(chat), [], sessionRunning, this.inputContinuations(runtimeSessionId), this.abortedTurns(runtimeSessionId)) }
             : details
           if (chat) projected.beforeSequence = projected.messages.find(message => message.id !== 'opening')?.sequence ?? null
           if (generation === this.detailGeneration) {
@@ -2016,7 +2054,10 @@ window.__ModuleLoader__.load({
             await this.displayProjectionPromise
             return this.detailsSnapshot.details
           }
-          return projected
+          // A newer Session publication can supersede this read. Its return
+          // value still feeds the renderer, so apply matching display results
+          // just as the published snapshot does.
+          return this.applyDisplayProjection({ id, status: 'ready', details: projected }).details
         } catch (error) {
           if (!this.disposed && generation === this.detailGeneration && this.detailsSnapshot.id === id) {
             this.publishDetails({
@@ -2065,7 +2106,7 @@ window.__ModuleLoader__.load({
           const metadata = { ...latest.details, messages: [...page.messages, ...latest.details.messages] }
           const hasMore = Boolean(this.sessionReference.binding.eventSource.getSnapshot().hasMore)
           const sessionRunning = session ? session.getSnapshot().running === true : undefined
-          const messages = officialMessages(chat, { ...metadata, hasMore }, latest.runtimeSessionId, this.officialProcess(chat), [], sessionRunning, this.inputContinuations(latest.runtimeSessionId))
+          const messages = officialMessages(chat, { ...metadata, hasMore }, latest.runtimeSessionId, this.officialProcess(chat), [], sessionRunning, this.inputContinuations(latest.runtimeSessionId), this.abortedTurns(latest.runtimeSessionId))
           const next = { ...latest.details, messages, hasMore,
             beforeSequence: messages.find(message => message.id !== 'opening')?.sequence ?? null }
           this.publishDetails({ ...latest, status: 'ready', error: '', details: next })
@@ -2083,6 +2124,36 @@ window.__ModuleLoader__.load({
           }
         })
         return page
+      }
+
+      async observeRequestPreviews(id, onChange, signal) {
+        if (this.disposed) throw new Error('DSH 聊天服务已关闭。')
+        signal.throwIfAborted()
+        const controller = new AbortController()
+        const stream = this.remote.$stream({
+          name: 'ElecKoi request preview catalog',
+          open: currentSignal => this.remote.eleckoiConversations.requestPreviews(id, currentSignal),
+          ended: () => new Error('请求上下文预览连接已结束。')
+        })
+        const close = () => { controller.abort(); void stream.dispose() }
+        this.previewStreams.add(close)
+        signal.addEventListener('abort', close, { once: true })
+        try {
+          for await (const frame of stream) {
+            if (controller.signal.aborted || signal.aborted || this.disposed) return
+            onChange(frame.value)
+            frame.accept()
+          }
+        } finally {
+          signal.removeEventListener('abort', close)
+          this.previewStreams.delete(close)
+          close()
+        }
+      }
+
+      async readRequestPreview(id, requestId, signal) {
+        if (this.disposed) throw new Error('DSH 聊天服务已关闭。')
+        return this.unwrap(await this.remote.eleckoiConversations.requestPreview(id, requestId, signal), '请求上下文预览读取失败。')
       }
 
       async refreshTimeline() {
@@ -2136,6 +2207,8 @@ window.__ModuleLoader__.load({
         this.detailGeneration += 1
         this.timelineGeneration += 1
         this.releaseOfficialSession()
+        for (const close of this.previewStreams) close()
+        this.previewStreams.clear()
         this.publishStats('', null)
         this.cancelStreamFrame()
         this.stopEvents()
@@ -2158,7 +2231,7 @@ window.__ModuleLoader__.load({
       ctx.provide('eleckoiConversations', catalog)
       ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: 'messages', registrant: '@eleckoi/dsh-client-conversations' },
         () => React.createElement(MessagesPage)))
-      const NavigationIcon = React.lazy(() => import((globalThis.__ELECKOI_CLIENT_ASSETS__?.baseUrl ?? 'dsh-app://app/eleckoi/assets/') + 'eleckoi-page-messages.js')
+      const NavigationIcon = React.lazy(() => import('dsh-app://app/eleckoi/assets/eleckoi-page-messages.js')
         .then(module => ({ default: module.NavigationIcon })))
       ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
         name: 'sidebar.panellist', id: 'messages', order: -40, label: '消息', registrant: '@eleckoi/dsh-client-conversations'

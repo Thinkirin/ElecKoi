@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./client": "./src/client.ts",
+    "./client/request-context": "./src/client/request-context.ts",
     "./projection": "./src/projection.ts",
     "./package.json": "./package.json"
   },

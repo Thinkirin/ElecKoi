@@ -1,0 +1,13 @@
+{
+  "name": "@eleckoi/product-shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./contracts/*": "./src/contracts/*.ts",
+    "./foundation/*": "./src/foundation/*.ts"
+  },
+  "dependencies": {
+    "zod": "4.1.11"
+  }
+}

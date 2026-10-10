@@ -16,6 +16,7 @@ function fromNative(entry, uid) {
     strategy: { type: entry.triggerMode === 'always' ? 'constant' : 'selective', keys: entry.keywords ?? [],
       keys_secondary: { keys: entry.conditionKeywords ?? [], logic: conditions[entry.keywordCondition] ?? 'and_any' }, scan_depth: entry.keywordScanDepth ?? 1 },
     position: { type: 'at_depth', role: entry.insertRole ?? 'system', depth: 4, order: entry.order ?? 1 },
+    nativePlacement: { position: entry.position, promptPositionId: entry.promptPositionId ?? '' },
     keyword_use_regex: entry.keywordUseRegex ?? false, caseSensitive: !(entry.keywordIgnoreCase ?? true), matchWholeWords: entry.keywordWholeWord ?? false,
     ...(nativeAnchors[entry.position] ? { anchor: nativeAnchors[entry.position] } : {}) }] }).entries[0];
 }
@@ -35,6 +36,7 @@ function overlayNative(source, entry, previous) {
   if (changed('insertRole')) result.position.role = entry.insertRole;
   if (changed('order')) result.position.order = entry.order;
   if (changed('position')) { if (nativeAnchors[entry.position]) result.anchor = nativeAnchors[entry.position]; else delete result.anchor; }
+  if (result.nativePlacement) result.nativePlacement = { position: entry.position, promptPositionId: entry.promptPositionId ?? '' };
   return result;
 }
 function emptyNative(id, timestamp) {
@@ -46,7 +48,6 @@ function emptyNative(id, timestamp) {
 }
 function toNative(entry, existing, timestamp) {
   const source = { ...emptyNative(existing?.id ?? randomUUID(), timestamp), ...clone(existing ?? {}) };
-  const anchorPosition = Object.keys(nativeAnchors).find(position => nativeAnchors[position] === entry.anchor);
   return { ...source, title: String(entry.name || `条目 ${entry.uid}`).slice(0, 120), content: entry.content, enabled: entry.enabled,
     keywords: clone(entry.strategy.keys), conditionKeywords: clone(entry.strategy.keys_secondary.keys),
     keywordCondition: { and_all: 'all', not_any: 'not_any', and_any: 'any' }[entry.strategy.keys_secondary.logic] ?? 'none',
@@ -56,7 +57,9 @@ function toNative(entry, existing, timestamp) {
     keywordWholeWord: entry.matchWholeWords ?? source.keywordWholeWord,
     triggerMode: entry.strategy.type === 'constant' ? 'always' : 'agent_tool',
     agentReadStrategy: entry.strategy.type === 'selective' && entry.strategy.keys.length ? 'keyword' : source.agentReadStrategy,
-    position: anchorPosition ?? source.position, insertRole: entry.position.role, order: Math.max(1, entry.position.order), updatedAt: timestamp };
+    position: entry.nativePlacement ? entry.nativePlacement.position : source.position,
+    promptPositionId: entry.nativePlacement ? entry.nativePlacement.promptPositionId : source.promptPositionId,
+    insertRole: entry.position.role, order: Math.max(1, entry.position.order), updatedAt: timestamp };
 }
 function rawWithNativeChanges(source, current) {
   const normalized = normalizeWorldbook({ entries: [source] }).entries[0];
@@ -79,7 +82,7 @@ function rawWithNativeChanges(source, current) {
   return result;
 }
 
-/** Atomic adapters reuse the author's native repository; only ST-only fields live in companion storage. */
+/** Adapters project compatibility fields onto the native repository and companion storage. */
 export class NativeWorldbookAdapter {
   constructor(adapter) {
     for (const name of ['readNative', 'saveNative', 'readCompanion', 'saveCompanion', 'atomic']) if (typeof adapter[name] !== 'function') throw new TypeError(`Native worldbook adapter requires ${name}`);
@@ -119,8 +122,17 @@ export class NativeWorldbookAdapter {
       const timestamp = new Date().toISOString(), nativeIds = {}, names = new Set();
       const entries = normalized.entries.map(entry => {
         const oldId = companion.nativeIds[entry.uid], base = existing.get(oldId);
+        const previousEntry = prior.get(entry.uid);
+        if (previousEntry?.nativePlacement && equal(entry.position, previousEntry.position) && equal(entry.anchor, previousEntry.anchor)) {
+          entry.nativePlacement = clone(previousEntry.nativePlacement);
+        } else delete entry.nativePlacement;
         const projected = toNative(entry, base, timestamp);
-        if (owned.has(projected.id) || !equal(entry, prior.get(entry.uid))) owned.add(projected.id);
+        const extraFields = value => Object.fromEntries(Object.entries(value ?? {}).filter(([key]) => ![
+          ...fields, 'uid', 'name', 'strategy', 'caseSensitive', 'matchWholeWords', 'keyword_use_regex', 'anchor', 'nativePlacement'
+        ].includes(key)));
+        if (owned.has(projected.id) || !previousEntry || !entry.nativePlacement
+          || !equal(entry.strategy, previousEntry.strategy)
+          || !equal(extraFields(entry), extraFields(previousEntry))) owned.add(projected.id);
         const duplicate = `${projected.groupId}\0${projected.title.toLocaleLowerCase()}`;
         if (names.has(duplicate)) projected.title = `${projected.title.slice(0, 100)} [${entry.uid}]`;
         names.add(`${projected.groupId}\0${projected.title.toLocaleLowerCase()}`);

@@ -7,12 +7,12 @@ import {
 import type {
   AgentSettingLibraryRuntimeContext,
   AgentVariableRuntimeContext
-} from '../src/shared/contracts/agent/runtime'
+} from '../packages/product-shared/src/contracts/agent/runtime'
 import {
   characterCardMacroValues,
   resolveCharacterCardMacros,
   resolveCharacterCardMacrosInJson
-} from '../src/shared/foundation/characterCardMacros'
+} from '../packages/product-shared/src/foundation/characterCardMacros'
 
 const values = { userName: '用户$1', characterName: '测试角色' }
 

@@ -17,9 +17,9 @@ import {
   decorateRichDisplayReplacement,
   detectCompleteStreamingRichMessageDocument,
   detectRichMessagePresentation
-} from '../src/shared/foundation/richMessage'
-import { transformWithRegexRules } from '../src/shared/foundation/regex/RegexRuleProcessor'
-import type { RegexRule, RegexRuleCollection } from '../src/shared/contracts/regex/schemas'
+} from '../packages/product-shared/src/foundation/richMessage'
+import { transformWithRegexRules } from '../packages/product-shared/src/foundation/regex/RegexRuleProcessor'
+import type { RegexRule, RegexRuleCollection } from '../packages/product-shared/src/contracts/regex/schemas'
 import { MessageDisplayProjector } from '../packages/dsh-product-data/src/domain/conversations/MessageDisplayProjector'
 
 function request(method: string, params: Record<string, unknown> = {}) {

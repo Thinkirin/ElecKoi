@@ -2,21 +2,21 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { PresetPromptEditor, shouldConfirmHiddenTimelineDisable } from '../src/renderer/src/modules/presets/components/PresetPromptEditor.jsx';
-import { PresetRegexEditor } from '../src/renderer/src/modules/presets/components/PresetRegexEditor.jsx';
-import { PresetToolsEditor } from '../src/renderer/src/modules/presets/components/PresetToolsEditor.jsx';
-import { PresetProfileHeader } from '../src/renderer/src/modules/presets/components/PresetProfileHeader.jsx';
-import { buildPresetListSections, PresetListRow, presetListContextActions, shouldShowPresetCatalogLoading } from '../src/renderer/src/modules/presets/components/PresetPanel.jsx';
-import { createEntryDraft } from '../src/renderer/src/modules/settingLibraries/model/settingLibraryEditing.js';
-import { treeNodes } from '../src/renderer/src/modules/settingLibraries/model/settingLibraryTree.js';
-import { SettingLibraryInspector } from '../src/renderer/src/modules/settingLibraries/components/SettingLibraryInspector.jsx';
-import { TrashIcon } from '../src/renderer/src/ui/icons/index.jsx';
-import { SETTING_LIBRARY_CREATE_ICONS } from '../src/renderer/src/ui/icons/settingLibraryCreateIcons.jsx';
+import { PresetPromptEditor, shouldConfirmHiddenTimelineDisable } from '../apps/web/src/modules/presets/components/PresetPromptEditor.jsx';
+import { PresetRegexEditor } from '../apps/web/src/modules/presets/components/PresetRegexEditor.jsx';
+import { PresetToolsEditor } from '../apps/web/src/modules/presets/components/PresetToolsEditor.jsx';
+import { PresetProfileHeader } from '../apps/web/src/modules/presets/components/PresetProfileHeader.jsx';
+import { buildPresetListSections, PresetListRow, presetListContextActions, shouldShowPresetCatalogLoading } from '../apps/web/src/modules/presets/components/PresetPanel.jsx';
+import { createEntryDraft } from '../apps/web/src/modules/settingLibraries/model/settingLibraryEditing.js';
+import { treeNodes } from '../apps/web/src/modules/settingLibraries/model/settingLibraryTree.js';
+import { SettingLibraryInspector } from '../apps/web/src/modules/settingLibraries/components/SettingLibraryInspector.jsx';
+import { TrashIcon } from '../apps/web/src/ui/icons/index.jsx';
+import { SETTING_LIBRARY_CREATE_ICONS } from '../apps/web/src/ui/icons/settingLibraryCreateIcons.jsx';
 
-vi.mock('../src/renderer/src/modules/settingLibraries/index.js', async () => {
+vi.mock('../apps/web/src/modules/settingLibraries/index.js', async () => {
   const react = await import('react');
-  const drafts = await import('../src/renderer/src/modules/settingLibraries/model/settingLibraryEditing.js');
-  const tree = await import('../src/renderer/src/modules/settingLibraries/model/settingLibraryTree.js');
+  const drafts = await import('../apps/web/src/modules/settingLibraries/model/settingLibraryEditing.js');
+  const tree = await import('../apps/web/src/modules/settingLibraries/model/settingLibraryTree.js');
   return {
     ...drafts,
     ...tree,
@@ -26,7 +26,7 @@ vi.mock('../src/renderer/src/modules/settingLibraries/index.js', async () => {
     SettingTreeActionsContext: react.createContext(null),
   };
 });
-vi.mock('../src/renderer/src/modules/regex/index.js', () => ({ RegexRuleInspector: () => null, newRegexId: () => crypto.randomUUID() }));
+vi.mock('../apps/web/src/modules/regex/index.js', () => ({ RegexRuleInspector: () => null, newRegexId: () => crypto.randomUUID() }));
 
 vi.stubGlobal('React', React);
 afterAll(() => vi.unstubAllGlobals());
@@ -41,8 +41,8 @@ describe('preset list consistency', () => {
     expect(renderToStaticMarkup(<EntryIcon size={17} />)).toContain('data-icon="setting-library-entry"');
 
     for (const file of [
-      '../src/renderer/src/modules/presets/components/PresetPromptEditor.jsx',
-      '../src/renderer/src/modules/settingLibraries/components/SettingLibraryPanel.jsx',
+      '../apps/web/src/modules/presets/components/PresetPromptEditor.jsx',
+      '../apps/web/src/modules/settingLibraries/components/SettingLibraryPanel.jsx',
     ]) {
       const source = readFileSync(new URL(file, import.meta.url), 'utf8');
       expect(source).toContain('SETTING_LIBRARY_CREATE_ICONS');
@@ -51,11 +51,11 @@ describe('preset list consistency', () => {
   });
 
   it('matches Android creation capabilities and setting-library menu order', () => {
-    const presetSource = readFileSync(new URL('../src/renderer/src/modules/presets/components/PresetPromptEditor.jsx', import.meta.url), 'utf8');
+    const presetSource = readFileSync(new URL('../apps/web/src/modules/presets/components/PresetPromptEditor.jsx', import.meta.url), 'utf8');
     expect(presetSource).not.toContain("createNode('cache'");
     expect(presetSource).not.toContain('新建缓存设定');
 
-    const librarySource = readFileSync(new URL('../src/renderer/src/modules/settingLibraries/components/SettingLibraryPanel.jsx', import.meta.url), 'utf8');
+    const librarySource = readFileSync(new URL('../apps/web/src/modules/settingLibraries/components/SettingLibraryPanel.jsx', import.meta.url), 'utf8');
     const entryOffsets = [...librarySource.matchAll(/requestAddNode\("entry"/g)].map((match) => match.index);
     const referenceOffsets = [...librarySource.matchAll(/requestAddNode\("reference"/g)].map((match) => match.index);
     expect(librarySource).not.toContain('requestAddNode("cache"');
@@ -65,7 +65,7 @@ describe('preset list consistency', () => {
   });
 
   it('uses the Agent preset title in the sidebar', () => {
-    const source = readFileSync(new URL('../src/renderer/src/modules/presets/components/PresetPanel.jsx', import.meta.url), 'utf8');
+    const source = readFileSync(new URL('../apps/web/src/modules/presets/components/PresetPanel.jsx', import.meta.url), 'utf8');
     expect(source).toContain('<h2>Agent预设</h2>');
     expect(source).not.toContain('<h2>预设</h2>');
   });
@@ -111,14 +111,14 @@ describe('preset list consistency', () => {
   });
 
   it('scopes preset manager avatar sizing without stretching the delete marker', () => {
-    const css = readFileSync(new URL('../src/renderer/src/modules/presets/styles/preset-panel.css', import.meta.url), 'utf8');
+    const css = readFileSync(new URL('../apps/web/src/modules/presets/styles/preset-panel.css', import.meta.url), 'utf8');
     expect(css).toMatch(/\.preset-manager-card-open\s*>\s*\.preset-manager-avatar\s*\{/);
     expect(css).not.toMatch(/\.preset-manager-card-open\s*>\s*span\s*\{/);
     expect(css).toMatch(/\.preset-manager-card-open\s*\{[^}]*width:\s*100%;/s);
   });
 
   it('offers PNG and JSON from the existing preset manager export control', () => {
-    const source = readFileSync(new URL('../src/renderer/src/modules/presets/components/PresetManager.jsx', import.meta.url), 'utf8');
+    const source = readFileSync(new URL('../apps/web/src/modules/presets/components/PresetManager.jsx', import.meta.url), 'utf8');
     expect(source).toContain('aria-haspopup="menu"');
     expect(source).toContain('PNG 预设卡');
     expect(source).toContain("exportPreset('png')");
@@ -127,7 +127,7 @@ describe('preset list consistency', () => {
   });
 
   it('opens preset group actions from the whole sidebar while limiting the all-presets row to creation', () => {
-    const source = readFileSync(new URL('../src/renderer/src/modules/presets/components/PresetManager.jsx', import.meta.url), 'utf8');
+    const source = readFileSync(new URL('../apps/web/src/modules/presets/components/PresetManager.jsx', import.meta.url), 'utf8');
     expect(source).toContain('className="preset-manager-groups" onContextMenu={(event) => openGroupMenu(event)}');
     expect(source).toContain('onContextMenu={(event) => openGroupMenu(event, null)}');
     expect(source).toContain("groupMenu.group ? <>");
@@ -141,7 +141,7 @@ describe('preset list consistency', () => {
       'PresetRegexEditor.jsx',
     ];
     for (const file of presetComponents) {
-      const source = readFileSync(new URL(`../src/renderer/src/modules/presets/components/${file}`, import.meta.url), 'utf8');
+      const source = readFileSync(new URL(`../apps/web/src/modules/presets/components/${file}`, import.meta.url), 'utf8');
       expect(source, file).not.toMatch(/import\s*\{[^}]*\bTrash\b[^}]*\}\s*from\s*['"]@phosphor-icons\/react['"]/s);
       expect(source, file).toContain('TrashIcon');
     }
@@ -165,8 +165,8 @@ describe('preset list consistency', () => {
   });
 
   it('keeps prompt rows to an open action and a switch, without an inline delete button', () => {
-    const promptSource = readFileSync(new URL('../src/renderer/src/modules/presets/components/PresetPromptEditor.jsx', import.meta.url), 'utf8');
-    const treeSource = readFileSync(new URL('../src/renderer/src/modules/settingLibraries/components/SettingLibraryTree.jsx', import.meta.url), 'utf8');
+    const promptSource = readFileSync(new URL('../apps/web/src/modules/presets/components/PresetPromptEditor.jsx', import.meta.url), 'utf8');
+    const treeSource = readFileSync(new URL('../apps/web/src/modules/settingLibraries/components/SettingLibraryTree.jsx', import.meta.url), 'utf8');
     expect(promptSource).toContain('<SettingLibraryTree');
     expect(treeSource).toContain('role="switch"');
     expect(treeSource).not.toContain('TrashIcon');

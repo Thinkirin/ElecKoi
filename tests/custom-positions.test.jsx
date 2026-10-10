@@ -2,10 +2,10 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { createEntryDraft } from '../src/renderer/src/modules/settingLibraries/model/settingLibraryEditing.js';
-import { createPositionDraft, fixedPlacementRowSelectable, moveCustomPosition, positionManagementRows, positionPickerRows, removeCustomPosition, savePositionDraft } from '../src/renderer/src/modules/settingLibraries/model/customPositions.js';
-import { CustomPositionManager } from '../src/renderer/src/modules/settingLibraries/components/CustomPositionManager.jsx';
-import { SettingLibraryEntryEditor, VisualPositionPicker } from '../src/renderer/src/modules/settingLibraries/components/SettingLibraryEntryEditor.jsx';
+import { createEntryDraft } from '../apps/web/src/modules/settingLibraries/model/settingLibraryEditing.js';
+import { createPositionDraft, fixedPlacementRowSelectable, moveCustomPosition, positionManagementRows, positionPickerRows, removeCustomPosition, savePositionDraft } from '../apps/web/src/modules/settingLibraries/model/customPositions.js';
+import { CustomPositionManager } from '../apps/web/src/modules/settingLibraries/components/CustomPositionManager.jsx';
+import { SettingLibraryEntryEditor, VisualPositionPicker } from '../apps/web/src/modules/settingLibraries/components/SettingLibraryEntryEditor.jsx';
 
 vi.stubGlobal('React', React);
 afterAll(() => vi.unstubAllGlobals());
@@ -128,7 +128,7 @@ describe('custom position editing', () => {
     expect(presetHtml).toContain('aria-label="固定位置设定插入点 1"');
     expect(presetHtml).not.toContain('aria-label="选择设定插入点 1"');
 
-    const placementCss = readFileSync(new URL('../src/renderer/src/modules/settingLibraries/styles/setting-library.css', import.meta.url), 'utf8');
+    const placementCss = readFileSync(new URL('../apps/web/src/modules/settingLibraries/styles/setting-library.css', import.meta.url), 'utf8');
     expect(placementCss).toMatch(/\.setting-library-placement-row\.is-fixed > i\s*\{[^}]*background:[^}]*border:\s*0;/s);
     expect(placementCss).toMatch(/\.setting-library-placement-row\.is-instructions \.setting-library-placement-choice\s*\{[^}]*color:\s*var\(--text\);[^}]*font-weight:\s*600;/s);
 

@@ -2,6 +2,7 @@ import type { CompatibilityCommand, CompatibilityChange, CompatibilityValue, Ele
 import { CompatibilityPresetOperations, PRESET_COMPATIBILITY_METHODS } from './compatibility-presets.js'
 import { NativeWorldbookAdapter } from '@eleckoi/dsh-worldbook-compat'
 import type { CompatibilityHandler } from './compatibility-catalog.js'
+import { EphemeralPromptHistory } from './ephemeral-prompt-history.js'
 
 export const COMPATIBILITY_METHODS = [
   'storage.get', 'storage.set', 'storage.delete', 'storage.list', 'storage.sql', 'storage.transaction',
@@ -18,6 +19,9 @@ const WORLD_SETTINGS = { scan_depth: 2, context_percentage: 25, budget_cap: 0, m
 export class CompatibilityOperations {
   readonly presets: CompatibilityPresetOperations
   private readonly nativeWorldbooks: NativeWorldbookAdapter
+  private readonly promptHistory = new EphemeralPromptHistory()
+  dispose(): void { this.promptHistory.close() }
+  forget(conversationId: string): void { this.promptHistory.forget(conversationId) }
   constructor(private readonly data: ElecKoiProductDataStore, private readonly publish: (change: CompatibilityChange) => void,
     private readonly handlers: ReadonlyMap<string, CompatibilityHandler> = new Map()) {
     this.presets = new CompatibilityPresetOperations(data, publish)
@@ -121,18 +125,14 @@ export class CompatibilityOperations {
       }
       case 'prompts.history': {
         const operation = text(p.operation) || 'read'
-        if (operation === 'clear') { store.deleteScope('itemized-prompts'); return null }
+        if (operation === 'clear') { this.promptHistory.close(); return null }
         const chat = conversation()
-        if (operation === 'delete') { store.delete('itemized-prompts', chat); return null }
-        const previous = array(store.get('itemized-prompts', chat) ?? [])
-        if (operation === 'read') return previous
+        if (operation === 'delete') { this.promptHistory.forget(chat); return null }
+        if (operation === 'read') return this.promptHistory.read(chat)
         if (operation !== 'save') throw new Error(`Unknown Prompt history operation: ${operation}`)
         const entry = object(value(p, 'entry')), id = value(entry, 'mesId')
-        return store.atomic(() => {
-          const old = previous.find(item => object(item).mesId === id)
-          const requests = [...array(object(old ?? {}).requests ?? []), entry]
-          return store.put('itemized-prompts', chat, [...previous.filter(item => object(item).mesId !== id), { ...entry, requests }])
-        })
+        if (typeof id !== 'string' && typeof id !== 'number') throw new TypeError('Prompt history requires a message identity')
+        return this.promptHistory.save(chat, entry)
       }
       case 'worldbooks.list': return [...this.data.readCharacters().items.map(item => `character:${item.id}`), ...Object.keys(store.list('worldbooks'))]
       case 'worldbooks.get': return getBook(required(p, 'name'))
@@ -178,7 +178,7 @@ export class CompatibilityOperations {
         }
         return { ...WORLD_SETTINGS, ...object(store.get('worldbook-settings', 'global')) }
       }
-      case 'worldbooks.lastScan': return store.get('worldbook-scans', conversation())
+      case 'worldbooks.lastScan': throw new Error('Worldbook round service is not mounted')
       case 'ui.register': {
         const descriptor = object(value(p, 'descriptor')), id = required(descriptor, 'id')
         store.put(`ui:${owner}`, id, descriptor); change('ui.registered', { pluginId: owner, descriptor }); return null

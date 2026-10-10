@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const outputPath = resolve(root, 'resources', 'author-runtime', 'THIRD_PARTY_LICENSES.txt')
+const outputPath = resolve(root, 'apps', 'desktop', 'resources', 'author-runtime', 'THIRD_PARTY_LICENSES.txt')
 const checkOnly = process.argv.includes('--check')
 
 const packages = [

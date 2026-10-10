@@ -2,7 +2,7 @@
 import React, { act, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { BranchSettingsSplitView } from '../src/renderer/src/modules/settingLibraries/components/BranchSettingsSplitView.jsx'
+import { BranchSettingsSplitView } from '../apps/web/src/modules/settingLibraries/components/BranchSettingsSplitView.jsx'
 
 vi.stubGlobal('React', React)
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
@@ -35,7 +35,7 @@ describe('branch settings two-pane layout', () => {
       const width = () => Number(separator.getAttribute('aria-valuenow'))
       const key = async (value, shiftKey = false) => act(async () => separator.dispatchEvent(new KeyboardEvent('keydown', { key: value, shiftKey, bubbles: true })))
       expect(layout.children).toHaveLength(2)
-      expect(separator.className).toBe('setting-library-inspector-resizer')
+      expect(separator.className).toBe('editor-sidebar-resizer')
       expect(separator.parentElement.classList.contains('dynamic-settings-editor-pane')).toBe(true)
       expect(width()).toBe(720)
       await key('ArrowRight')

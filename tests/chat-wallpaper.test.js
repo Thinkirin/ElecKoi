@@ -6,7 +6,7 @@ import {
   chatWallpaperMode,
   normalizeNewCharacterBackground,
   resolveChatWallpaper,
-} from "../src/renderer/src/modules/appearance/preferences/chatWallpaper.js";
+} from "../apps/web/src/modules/appearance/preferences/chatWallpaper.js";
 
 const persona = { assistant_cover: "cover", assistant_square: "square", assistant_avatar: "avatar" };
 

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { initProfile, loadProfileDirectory, OPTIONAL_BUNDLES, PROFILE_TEMPLATES, readProfileManifest, writeProfileBundles } from '@deepseek-ai/dsh-app-boot'
 import { describe, expect, it } from 'vitest'
-import { ELECKOI_DESKTOP_BUNDLES, ELECKOI_INSTALL_ANCHOR, registerDesktopBundles } from '@eleckoi/dsh-runtime'
+import { ELECKOI_DESKTOP_BUNDLES, ELECKOI_INSTALL_ANCHOR, registerDesktopBundles } from '@eleckoi/desktop-host'
 
 describe('desktop bundle registration', () => {
   it('ships every official optional bundle with the locked version and leaves activation to the user', () => {

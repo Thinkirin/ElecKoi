@@ -3,11 +3,11 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { apply as applyAgentPresetBridge } from '../resources/dsh/agent-preset-bridge.mjs'
+import { apply as applyAgentPresetBridge } from '../apps/desktop/resources/dsh/agent-preset-bridge.mjs'
 import { materializeAgentPreset } from '../packages/dsh-client-roleplay/src/host/session-runtime.mjs'
 
 const directories = []
-const templatePath = resolve('resources/dsh/agent-preset-template/agent.cordis.yml')
+const templatePath = resolve('apps/desktop/resources/dsh/agent-preset-template/agent.cordis.yml')
 
 afterEach(() => {
   delete process.env.ELECKOI_SESSION_SNAPSHOT_ROOT

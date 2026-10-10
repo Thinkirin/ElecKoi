@@ -10,7 +10,7 @@ import { AgentPresetRepository } from '../packages/dsh-product-data/src/domain/a
 import { SettingLibraryRepository } from '../packages/dsh-product-data/src/domain/settingLibraries/SettingLibraryRepository'
 import { VariableConfigRepository } from '../packages/dsh-product-data/src/domain/variables/VariableConfigRepository'
 import { SqliteDatabase } from '../packages/dsh-product-data/src/storage/sqlite/SqliteDatabase'
-import { APP_DEFAULT_CHAT_BACKGROUND } from '../src/shared/contracts/characters/chatBackground'
+import { APP_DEFAULT_CHAT_BACKGROUND } from '../packages/product-shared/src/contracts/characters/chatBackground'
 import { LocalMediaStore } from '@eleckoi/dsh-product-data/media'
 import { decodeSettingLibrarySnapshot } from '../packages/dsh-product-data/src/domain/characterTransfer/portableSnapshots'
 import { readPngText } from '@eleckoi/dsh-product-data/media'

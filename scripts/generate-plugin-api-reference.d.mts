@@ -2,7 +2,7 @@ export function assertMembers(label: string, actual: string[], expected: string[
 
 export function generatePluginApiReference(
   root: string,
-  options?: { check?: boolean; validate?: boolean }
+  options?: { check?: boolean }
 ): Promise<{
   hostServices: number
   clientServices: number

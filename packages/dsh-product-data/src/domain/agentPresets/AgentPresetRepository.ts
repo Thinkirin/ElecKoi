@@ -35,7 +35,6 @@ import {
   settingLibraryPromptPositionSchema
 } from '@shared/contracts/settingLibrary/schemas'
 import {
-  withDefaultNovelAIIllustration,
   isHistoryCompactionEntry,
   isHiddenToolTimelineEntry,
   normalizeAgentPresetPrompts
@@ -208,7 +207,7 @@ export class AgentPresetRepository {
       .orderBy(asc(agentPresetGroups.sortIndex)).all()
       .map((item) => settingLibraryGroupSchema.parse(parseObject(item.payloadJson, '预设提示词分组')))
     const prompts = normalizeAgentPresetPrompts(
-      row.id === DEFAULT_AGENT_PRESET_ID ? withDefaultNovelAIIllustration(entries) : entries,
+      entries,
       parseList(contents.get(CONTENT_PROMPT_POSITIONS) ?? '[]', currentPromptPositionSchema, '预设提示词位置')
     )
     const toolConfiguration = this.readToolConfiguration(contents.get(CONTENT_TOOL_CONFIGURATION))
@@ -584,7 +583,7 @@ export class AgentPresetRepository {
           eq(agentPresetContents.kind, CONTENT_PROMPT_POSITIONS)
         )).get()
         const positions = parseList(contents?.content ?? '[]', currentPromptPositionSchema, '预设提示词位置')
-        const normalized = normalizeAgentPresetPrompts(preset.id === DEFAULT_AGENT_PRESET_ID ? withDefaultNovelAIIllustration(entries) : entries, positions)
+        const normalized = normalizeAgentPresetPrompts(entries, positions)
         if (JSON.stringify(normalized.entries) !== JSON.stringify(entries)) {
           replaceEntries(db, preset.id, normalized.entries)
         }
@@ -613,7 +612,7 @@ export class AgentPresetRepository {
             eq(agentPresetVersionContents.kind, CONTENT_PROMPT_POSITIONS)
           )).get()
           const versionPositions = parseList(versionContent?.content ?? '[]', currentPromptPositionSchema, '预设版本提示词位置')
-          const normalizedVersion = normalizeAgentPresetPrompts(preset.id === DEFAULT_AGENT_PRESET_ID ? withDefaultNovelAIIllustration(versionEntries) : versionEntries, versionPositions)
+          const normalizedVersion = normalizeAgentPresetPrompts(versionEntries, versionPositions)
           if (JSON.stringify(normalizedVersion.entries) !== JSON.stringify(versionEntries)) {
             replaceVersionEntries(db, preset.id, version.versionId, normalizedVersion.entries)
           }
@@ -911,7 +910,7 @@ function defaultContents(): Array<[string, string]> {
     [CONTENT_REGEX_RULES, '[]'],
     [CONTENT_TOOL_CONFIGURATION, JSON.stringify({
       version: TOOL_CONFIGURATION_VERSION,
-      includedGroupIds: [...DEFAULT_AGENT_TOOL_GROUP_IDS, 'builtin:auto-illustration'],
+      includedGroupIds: [...DEFAULT_AGENT_TOOL_GROUP_IDS],
       enabledGroupIds: [...DEFAULT_AGENT_TOOL_GROUP_IDS],
       roleplayPlan: defaultRoleplayPlanSettings()
     })]

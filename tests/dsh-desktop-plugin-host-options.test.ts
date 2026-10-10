@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { DshDesktopPluginHost, type DshDesktopPluginHostOptions } from '@eleckoi/dsh-runtime'
+import { DshDesktopPluginHost, type DshDesktopPluginHostOptions } from '@eleckoi/desktop-host'
 
 const completeOptions: DshDesktopPluginHostOptions = {
   runtimeDataRoot: 'runtime',

@@ -1,8 +1,8 @@
 import React from 'react'
 import { MarkdownText } from '@deepseek-ai/dsh-client-ui-primitives'
-import { OfficialMarkdownProvider } from '../../src/renderer/src/ui/messages/OfficialMarkdown.jsx'
-import { MessageBubble as ProductMessageBubble } from '../../src/renderer/src/ui/messages/MessageBubble.jsx'
-import { MessageList as ProductMessageList } from '../../src/renderer/src/modules/chat/components/ChatPanel.jsx'
+import { OfficialMarkdownProvider } from '../../apps/web/src/ui/messages/OfficialMarkdown.jsx'
+import { MessageBubble as ProductMessageBubble } from '../../apps/web/src/ui/messages/MessageBubble.jsx'
+import { MessageList as ProductMessageList } from '../../apps/web/src/modules/chat/components/ChatPanel.jsx'
 
 export function WithOfficialMarkdown({ children }) {
   return <OfficialMarkdownProvider component={MarkdownText}>{children}</OfficialMarkdownProvider>

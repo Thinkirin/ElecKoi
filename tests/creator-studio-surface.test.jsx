@@ -1,22 +1,22 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, describe, expect, it, vi } from "vitest";
-import { CreatorStudioWindow } from "../src/renderer/src/app/windows/CreatorStudioWindow.jsx";
+import { CreatorStudioWindow } from "../apps/web/src/app/windows/CreatorStudioWindow.jsx";
 import {
   CanvasDotGrid,
   CreatorStudioCanvas,
   normalizeCanvasConnection,
   zoomCanvasViewportWithWheel,
-} from "../src/renderer/src/modules/creatorStudio/components/CreatorStudioCanvas.jsx";
-import { getMagneticHandleOffset } from "../src/renderer/src/modules/creatorStudio/components/CreatorStudioCanvasParts.jsx";
+} from "../apps/web/src/modules/creatorStudio/components/CreatorStudioCanvas.jsx";
+import { getMagneticHandleOffset } from "../apps/web/src/modules/creatorStudio/components/CreatorStudioCanvasParts.jsx";
 import {
   canvasScreenPointToWorld,
   clampCanvasOverlayCenter,
   CreatorCanvasConnectionLine,
   CreatorCanvasEdge,
   placeCanvasNodeAtAnchor,
-} from "../src/renderer/src/modules/creatorStudio/components/CreatorStudioCanvasFlow.jsx";
-import { CreatorStudioPagination, ProjectCollection, paginateCreatorProjects } from "../src/renderer/src/modules/creatorStudio/components/CreatorStudioProjectHome.jsx";
+} from "../apps/web/src/modules/creatorStudio/components/CreatorStudioCanvasFlow.jsx";
+import { CreatorStudioPagination, ProjectCollection, paginateCreatorProjects } from "../apps/web/src/modules/creatorStudio/components/CreatorStudioProjectHome.jsx";
 
 vi.stubGlobal("React", React);
 afterAll(() => vi.unstubAllGlobals());

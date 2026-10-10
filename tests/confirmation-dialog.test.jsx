@@ -1,7 +1,7 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { ConfirmationDialog } from '../src/renderer/src/ui/ui/ConfirmationDialog.jsx';
+import { ConfirmationDialog } from '../apps/web/src/ui/ui/ConfirmationDialog.jsx';
 
 describe('confirmation dialog', () => {
   it('states the destructive message action before it can run', () => {

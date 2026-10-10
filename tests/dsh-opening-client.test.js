@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import { describe, expect, it } from 'vitest'
 import { dshClientPlugin } from './helpers/dshClientPlugin'
-import { mapChatDetails } from '../src/renderer/src/modules/chat/api/chatApi.js'
+import { mapChatDetails } from '../apps/web/src/modules/chat/api/chatApi.js'
 
 const source = readFileSync(new URL('../packages/dsh-client-conversations/src/client.js', import.meta.url), 'utf8')
 

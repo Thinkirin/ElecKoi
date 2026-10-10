@@ -1,0 +1,80 @@
+{
+  "name": "@eleckoi/desktop-host",
+  "version": "0.2.8",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "files": [
+    "dist/**/*"
+  ],
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./host": "./dist/host.mjs",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown"
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis": "4.0.4",
+    "@deepseek-ai/dsh-launch-environment": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-llm-pi-ai": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-llm-deepseek-api-key": "0.2.0-rc.2",
+    "@eleckoi/dsh-client-characters": "workspace:*",
+    "@eleckoi/dsh-client-character-configuration": "workspace:*",
+    "@eleckoi/dsh-client-conversations": "workspace:*",
+    "@eleckoi/dsh-client-creator-studio": "workspace:*",
+    "@eleckoi/dsh-client-display-preferences": "workspace:*",
+    "@eleckoi/dsh-client-models": "workspace:*",
+    "@eleckoi/dsh-client-persona": "workspace:*",
+    "@eleckoi/dsh-client-presets": "workspace:*",
+    "@eleckoi/dsh-client-web-search": "workspace:*",
+    "@eleckoi/dsh-client-roleplay": "workspace:*",
+    "@eleckoi/dsh-client-shell": "workspace:*",
+    "@eleckoi/dsh-product-api": "workspace:*",
+    "@eleckoi/dsh-product-data": "workspace:*",
+    "@eleckoi/dsh-web-search-tavily": "workspace:*",
+    "@deepseek-ai/dsh": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-agent": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-app-boot": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-api-gateway": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-api-session-controller": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-connection": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-file-upload": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-credentials": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-experimental-agent-team-profile": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-experimental-auto-review": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-experimental-schedule-bundle": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-experimental-voice-input-bundle": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-host-webserver": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-jobs": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-attachment": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-attachment-local": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-llm": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-session": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-session-persistence": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-session-persistence-jsonl": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-session-format-catalog": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-token-meter": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-sdk-client": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-web-frontend": "0.2.0-rc.2",
+    "@earendil-works/pi-ai": "0.87.1",
+    "yaml": "2.9.0",
+    "@eleckoi/dsh-runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "tsdown": "0.16.6",
+    "typescript": "5.9.3"
+  }
+}

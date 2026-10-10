@@ -3,7 +3,7 @@ import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessageBubble, WithOfficialMarkdown } from './helpers/officialMarkdown.jsx'
-import { ChatPanel } from '../src/renderer/src/modules/chat/components/ChatPanel.jsx'
+import { ChatPanel } from '../apps/web/src/modules/chat/components/ChatPanel.jsx'
 
 const opening = {
   id: 'opening', role: 'assistant', content: '合成开场一', selectedOpeningId: 'entry-a', canChangeOpening: true,

@@ -12,6 +12,10 @@
 
 升级时先锁定同一上游发布批次的提交、包和构建产物，再把上述引用与本仓库的依赖一起更新。不同版本的官方文件不能混作一次架构依据。
 
+## 工作区目录
+
+应用入口位于 `apps/desktop`、`apps/desktop-host`、`apps/web`；公共合同位于 `packages/product-shared`，Windows 原生源码位于 `native/windows-frame`。后续 Android 工程进入 `apps/android`，使用独立的平台构建和本地数据。目录决策见 [ADR 0028](adr/0028-multi-application-workspace.md)。
+
 ## 要达到的结构
 
 1. Electron 负责官方桌面客户端所需的窗口、可信来源、受限 preload、本机资源、启动、恢复和更新；不另外发明一套与 DSH Web 应用竞争的客户端框架。
@@ -26,7 +30,7 @@
 
 | 现状 | 与官方基准的关系 | 后续核对 |
 | --- | --- | --- |
-| `packages/dsh-runtime` 启动同一个 DSH Web Host，并经官方 SessionController 驱动角色会话 | 已采用官方运行路径 | 按精确版本验证会话和插件生命周期 |
+| `apps/desktop-host` 启动同一个 DSH Web Host，并经官方 SessionController 驱动角色会话 | 已采用官方运行路径 | 按精确版本验证会话和插件生命周期 |
 | `@eleckoi/dsh-product-data` 在 DSH Host 打开产品数据库、执行迁移并持有全部领域 Repository | 产品 Client 调用全部使用生成的 Typert Remote；数据库唯一写入权、迁移链与媒体写入均已移交 Host | 保持 Host 单一所有权，禁止把 Repository、迁移或第二套跨端业务协议放回 Main |
 | `@eleckoi/dsh-client-*` 在官方 Web Client 运行代内贡献界面和受控产品接入点 | 已使用官方 Client model、Slots、Renderer 与 Session 作用域 | 按公开类型和安装探针持续验证第三方插件行为 |
 | `patches/` 对锁定官方包进行最小适配；预设桥接通过官方 `agent/created` 生命周期装配顶层 Session 作用域，并以 `agent/request` waterfall 覆盖当前全局模型；子 Agent 模型只由 DSH 官方子智能体设置决定；Session 信息性记录补丁见 ADR 0019 | 与上游实现紧耦合，补丁清单以 `pnpm-workspace.yaml` 为准 | 对照同版本公开扩展点；可替代则迁移，不能替代则记录例外和升级测试 |

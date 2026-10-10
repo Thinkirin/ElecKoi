@@ -14,19 +14,7 @@
       "types": "./lib/media.d.ts",
       "default": "./lib/media.js"
     },
-    "./package.json": "./package.json",
-    "./android-import": {
-      "types": "./lib/android-import.d.ts",
-      "default": "./lib/android-import.js"
-    },
-    "./android-conversations": {
-      "types": "./lib/android-conversations.d.ts",
-      "default": "./lib/android-conversations.js"
-    },
-    "./android-files": {
-      "types": "./lib/android-files.d.ts",
-      "default": "./lib/android-files.js"
-    }
+    "./package.json": "./package.json"
   },
   "files": [
     "lib/index.js",
@@ -35,9 +23,6 @@
     "lib/media.js",
     "lib/media.d.ts",
     "lib/media.js.map",
-    "lib/android-import.js",
-    "lib/android-import.d.ts",
-    "lib/android-import.js.map",
     "lib/*.js",
     "lib/*.js.map"
   ],

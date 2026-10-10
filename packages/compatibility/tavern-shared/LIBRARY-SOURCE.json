@@ -1,5 +1,4 @@
 {
-  "sourceRepository": "E:/10_Projects/ElecKoi-compat",
   "sourceHead": "ba272b2ac93b0ac83ee8167ed159b46bcabf466f",
   "sourceIncludesWorkingTree": true,
   "changes": "Only browser resource base URL projected to same-origin DSH HTTP route; old generated Tavern runtime excluded",

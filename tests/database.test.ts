@@ -19,12 +19,12 @@ import { emptyEntry } from '../packages/dsh-product-data/src/domain/settingLibra
 import { readEntry, writeEntry } from '../packages/dsh-product-data/src/domain/settingLibraries/settingLibraryCodec'
 import { AgentPresetRepository } from '../packages/dsh-product-data/src/domain/agentPresets/AgentPresetRepository'
 import { DEFAULT_AGENT_TOOL_GROUP_IDS } from '../packages/dsh-product-data/src/domain/agentTools'
-import { defaultRoleplayPlanSettings } from '../src/shared/contracts/presets/roleplayPlan'
-import { DEFAULT_HIDDEN_TOOL_TIMELINE_CONTENT } from '../src/shared/contracts/presets/builtIns'
-import { settingLibraryEntrySchema, settingLibraryPromptPositionSchema, settingLibraryStoredEntrySchema } from '../src/shared/contracts/settingLibrary/schemas'
+import { defaultRoleplayPlanSettings } from '../packages/product-shared/src/contracts/presets/roleplayPlan'
+import { DEFAULT_HIDDEN_TOOL_TIMELINE_CONTENT } from '../packages/product-shared/src/contracts/presets/builtIns'
+import { settingLibraryEntrySchema, settingLibraryPromptPositionSchema, settingLibraryStoredEntrySchema } from '../packages/product-shared/src/contracts/settingLibrary/schemas'
 import { VariableConfigRepository } from '../packages/dsh-product-data/src/domain/variables/VariableConfigRepository'
 import { VariableStateRepository } from '../packages/dsh-product-data/src/domain/variables/VariableStateRepository'
-import { VARIABLE_INITIALIZATION_OBJECT_ID } from '../src/shared/contracts/variables/schemas'
+import { VARIABLE_INITIALIZATION_OBJECT_ID } from '../packages/product-shared/src/contracts/variables/schemas'
 
 const directories: string[] = []
 const connections: Array<{ close(): void }> = []
@@ -507,7 +507,7 @@ describe('shared SQLite baseline', () => {
     expect(database.native.pragma('secure_delete', { simple: true })).toBe(2)
     expect(database.native.pragma('foreign_key_check')).toEqual([])
     expect(database.native.pragma('integrity_check', { simple: true })).toBe('ok')
-    expect(commonSchemaSql).toBe(readFileSync('resources/database/eleckoi-common-schema-v1.sql', 'utf8').replaceAll('\r\n', '\n'))
+    expect(commonSchemaSql).toBe(readFileSync('apps/desktop/resources/database/eleckoi-common-schema-v1.sql', 'utf8').replaceAll('\r\n', '\n'))
   })
 
   it('upgrades a v3 response ledger with its existing messages intact', () => {

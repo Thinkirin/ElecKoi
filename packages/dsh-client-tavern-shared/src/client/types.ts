@@ -58,5 +58,5 @@ declare module '@deepseek-ai/cordis' {
 }
 
 /** Client 插件入口，加载共同 SDK 后提供应用共享运行时。 */
-export declare function apply(ctx: Context): Promise<() => Promise<void>>
+export declare function apply(ctx: Context): Promise<void>
 export declare const inject: string[]

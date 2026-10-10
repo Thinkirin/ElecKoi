@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { basename, join, resolve, sep } from 'node:path'
 import { initProfile, loadLayeredEnv, loadProfileDirectory, OPTIONAL_BUNDLES, PROFILE_TEMPLATES, readProfileManifest } from '@deepseek-ai/dsh-app-boot'
 import { runProfile } from '@deepseek-ai/dsh/profile-boot'
-import { ELECKOI_DESKTOP_BUNDLES, ELECKOI_INSTALL_ANCHOR, registerDesktopBundles } from '@eleckoi/dsh-runtime'
+import { ELECKOI_DESKTOP_BUNDLES, ELECKOI_INSTALL_ANCHOR, registerDesktopBundles } from '@eleckoi/desktop-host'
 
 const root = mkdtempSync(join(tmpdir(), 'eleckoi-built-in-bundles-'))
 const profilePath = join(root, 'home', 'profiles', 'desktop')
@@ -36,7 +36,7 @@ try {
   assert.deepEqual(profile.skippedBundles, [])
   running = await runProfile({
     environment: loadLayeredEnv('dsh'), profile: 'desktop', resolvedProfile: { profile, installAnchor: ELECKOI_INSTALL_ANCHOR },
-    patchFiles: [patch, resolve('resources/dsh/desktop-agent.patch.yml')], args: ['--no-open', '--port', '0'],
+    patchFiles: [patch, resolve('apps/desktop/resources/dsh/desktop-agent.patch.yml')], args: ['--no-open', '--port', '0'],
   })
   const manager = running.ctx.pluginManager
   const bundles = await manager.listBundles()
@@ -106,7 +106,7 @@ try {
   running = await runProfile({
     environment: loadLayeredEnv('dsh'), profile: 'desktop',
     resolvedProfile: { profile: loadProfileDirectory('dsh', profilePath, ELECKOI_INSTALL_ANCHOR), installAnchor: ELECKOI_INSTALL_ANCHOR },
-    patchFiles: [patch, resolve('resources/dsh/desktop-agent.patch.yml')], args: ['--no-open', '--port', '0'],
+    patchFiles: [patch, resolve('apps/desktop/resources/dsh/desktop-agent.patch.yml')], args: ['--no-open', '--port', '0'],
   })
   assert.equal(running.ctx.eleckoiWebSearchApi.selection(), 'tavily')
   assert.equal(running.ctx.settings.describe().find(row => row.ns === 'web-search-tavily').value.maxResults, 8)

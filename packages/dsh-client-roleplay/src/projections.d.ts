@@ -1,6 +1,5 @@
 import type {} from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-projection/types'
-import type { Message } from '@deepseek-ai/dsh-llm'
 
 export interface RoleplayRequestContextItem {
   order: number
@@ -11,14 +10,6 @@ export interface RoleplayRequestContextItem {
   source: string
   anchor: string
   content: string
-}
-
-export type RoleplayRequestContexts = Record<string, RoleplayRequestContextItem[]>
-
-export interface RoleplayRequestContextState {
-  surface: Array<{ seq: number; message: Message | null }>
-  pendingSeq: number | null
-  contexts: RoleplayRequestContexts
 }
 
 export interface RoleplayInputContinuation {
@@ -53,13 +44,18 @@ declare module '@deepseek-ai/dsh-session/types' {
 
 declare module '@deepseek-ai/dsh-session-projection/types' {
   interface SessionProjectionMap {
-    eleckoiRequestContexts: RoleplayRequestContexts
+    eleckoiConversationPreview: string
     eleckoiHistoryStatsAdjustment: { steps: number; turns: number }
     eleckoiTurnOutcomes: { abortedTurns: number[] }
     eleckoiInputContinuations: RoleplayInputContinuations
   }
   interface SessionProjectionStateMap {
-    eleckoiRequestContexts: RoleplayRequestContextState
     eleckoiInputContinuations: RoleplayInputContinuationsState
+  }
+}
+
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    eleckoiRequestPreviews: import('./host/request-preview.mjs').RequestPreviewStore
   }
 }

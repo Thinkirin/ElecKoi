@@ -8,7 +8,7 @@ import { CharacterRepository } from '../packages/dsh-product-data/src/domain/per
 import { LocalMediaStore } from '@eleckoi/dsh-product-data/media'
 import { SettingLibraryRepository } from '../packages/dsh-product-data/src/domain/settingLibraries/SettingLibraryRepository'
 import { emptyEntry } from '../packages/dsh-product-data/src/domain/settingLibraries/settingLibraryNormalization'
-import { apply as applySettingLibraryTools } from '../resources/dsh/setting-library-tools.mjs'
+import { apply as applySettingLibraryTools } from '../apps/desktop/resources/dsh/setting-library-tools.mjs'
 import { writeSessionSnapshot } from '../packages/dsh-client-roleplay/src/host/session-snapshot.mjs'
 
 const directories = []

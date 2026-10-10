@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AuthorAudioHost } from '../src/renderer/src/modules/authorFrontend/model/authorAudioHost.js';
+import { AuthorAudioHost } from '../apps/web/src/modules/authorFrontend/model/authorAudioHost.js';
 
 class FakeAudio {
   constructor() {

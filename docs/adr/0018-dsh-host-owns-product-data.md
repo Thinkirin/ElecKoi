@@ -23,7 +23,7 @@
 
 ## 验收
 
-- `src/main` 不包含产品 Repository、SQLite 实现或自建 Agent Runtime。
+- `apps/desktop/src/main` 不包含产品 Repository、SQLite 实现或自建 Agent Runtime。
 - `@eleckoi/dsh-product-data` 独立完成数据库创建、v1 至 v6 迁移、开发 v6 整理、外键和完整性检查。
 - 产品 Client 的跨端方法都来自生成的 Typert Remote；实时 Agent 与轨迹来自 DSH Session/Connection。
 - 编辑、删除、回退和重新生成保留同一聊天与 Session ID，不使用 Session 分叉。

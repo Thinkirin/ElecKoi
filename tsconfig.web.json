@@ -15,9 +15,9 @@
     "allowImportingTsExtensions": true,
     "allowSyntheticDefaultImports": true,
     "paths": {
-      "@renderer/*": ["./src/renderer/src/*"],
-      "@shared/*": ["./src/shared/*"]
+      "@renderer/*": ["./apps/web/src/*"],
+      "@shared/*": ["./packages/product-shared/src/*"]
     }
   },
-  "include": ["src/renderer/src/**/*.ts", "src/renderer/src/**/*.tsx", "src/shared/**/*.ts"]
+  "include": ["apps/web/src/**/*.ts", "apps/web/src/**/*.tsx", "packages/product-shared/src/**/*.ts"]
 }

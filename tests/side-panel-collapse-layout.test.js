@@ -2,11 +2,11 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const layoutSource = readFileSync(
-  new URL("../src/renderer/src/app/windows/shell/hooks/useSidePanelLayout.js", import.meta.url),
+  new URL("../apps/web/src/app/windows/shell/hooks/useSidePanelLayout.js", import.meta.url),
   "utf8",
 );
 const shellStyles = readFileSync(
-  new URL("../src/renderer/src/app/windows/shell/styles/client-shell.css", import.meta.url),
+  new URL("../apps/web/src/app/windows/shell/styles/client-shell.css", import.meta.url),
   "utf8",
 );
 

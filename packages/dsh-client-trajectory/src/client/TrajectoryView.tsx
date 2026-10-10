@@ -10,7 +10,6 @@ import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { JsonTreeProps } from '@deepseek-ai/dsh-client-ui-primitives'
 import {
   TrajectoryTable,
-  type TrajectoryRequestContextItem,
   type TrajectoryRequestNumber,
   type TrajectoryUsage,
 } from './TrajectoryTable.tsx'
@@ -92,15 +91,6 @@ interface UsageLike {
   cacheWriteTokens?: number
   outputTokens?: number
   reasoningTokens?: number
-}
-
-interface RequestContextCarrier {
-  readonly context?: readonly TrajectoryRequestContextItem[]
-}
-
-function requestContext(value: unknown): readonly TrajectoryRequestContextItem[] | undefined {
-  const context = (value as RequestContextCarrier | undefined)?.context
-  return Array.isArray(context) ? context : undefined
 }
 
 function requestUsage(value: unknown): TrajectoryUsage | undefined {
@@ -266,7 +256,6 @@ export function TrajectoryView({
         const provider = request?.providerMetadata?.provider ?? node?.providerMetadata?.provider
         const model = request?.providerMetadata?.model ?? node?.providerMetadata?.model
         const requestConfig = request?.requestConfig ?? node?.requestConfig
-        const context = requestContext(request)
         numbered.push({
           seq: entry.seq,
           turn,
@@ -289,12 +278,10 @@ export function TrajectoryView({
           ...(requestConfig === undefined ? {} : { requestConfig }),
           ...(usage === undefined ? {} : { usage }),
           ...(cumulativeUsage === undefined ? {} : { cumulativeUsage }),
-          ...(context === undefined ? {} : { context }),
         })
         continue
       }
       const request = entry.request
-      const context = requestContext(request)
       numbered.push({
         seq: request.startSeq,
         turn: request.turn,
@@ -317,7 +304,6 @@ export function TrajectoryView({
         ...(request.requestConfig === undefined ? {} : { requestConfig: request.requestConfig }),
         ...(usage === undefined ? {} : { usage }),
         ...(cumulativeUsage === undefined ? {} : { cumulativeUsage }),
-        ...(context === undefined ? {} : { context }),
       })
     }
 

@@ -11,9 +11,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { recoverSessionHistory } from '../packages/dsh-runtime/src/sessionHistoryRecovery'
 import { readDshSessionLog } from '../packages/dsh-runtime/src/trajectory'
 import { rewindDshSession } from '../packages/dsh-runtime/src/sessionRewind'
-import { replayRequestContext } from '../packages/dsh-client-roleplay/src/host/conversation-context.mjs'
+import { legacyFixtureRequest } from './helpers/legacyRequestContext.js'
 import { projectProductHistory } from '../packages/dsh-client-roleplay/src/host/conversation-context.mjs'
-import { requestContextProjection } from '../packages/dsh-client-roleplay/src/host/request-context-projection.mjs'
+
 import { refreshSessionProjections } from '../packages/dsh-runtime/src/sessionProjectionRefresh'
 import { historyStatsProjection } from '../packages/dsh-client-roleplay/src/host/history-stats-projection.mjs'
 
@@ -45,7 +45,7 @@ async function fixture(alreadyNative = false, lateSystemHead = false) {
       plan: [], history: [{ role: 'assistant', content: '合成开场白' }, { role: 'user', content: '合成历史输入' }]
     }) }], source: { kind: 'plugin:eleckoi-request-projection' }
   }), { surfaceOp: 'append' })
-  const context = replayRequestContext(session.deriveMessages())
+  const context = legacyFixtureRequest(session.deriveMessages())
   append('eleckoi/request-context', { requestSeq: step.seq, context }, { ignorable: true })
   append('step/end', { turn: 1, step: 1 })
   append('turn/end', { turn: 1, reason: { kind: 'completed' } })
@@ -92,7 +92,7 @@ describe('old unanswered history recovery', { timeout: 30_000 }, () => {
     const request = stored.events.find(event => event.type === 'eleckoi/request-context')
     expect(stored.events[request.data.requestSeq].type).toBe('step/start')
     expect(request.data.context).toEqual(f.context)
-    expect(replayRequestContext(restored.deriveMessages())).toEqual(f.context)
+    expect(legacyFixtureRequest(restored.deriveMessages())).toEqual(f.context)
     const backup = readdirSync(join(f.path, '..')).find(name => name.includes('.history-') && name.endsWith('.bak'))
     expect(readFileSync(join(f.path, '..', backup), 'utf8')).toBe(before)
     const recovered = readFileSync(f.path, 'utf8')
@@ -148,7 +148,7 @@ describe('old unanswered history recovery', { timeout: 30_000 }, () => {
       const registry = new SessionProjectionRegistry(ctx)
       installSessionStats({ sessionProjections: registry })
       registry.register(historyStatsProjection)
-      registry.register(requestContextProjection)
+
       const stored = await reopen(f)
       const original = Session.create(f.session.id, stored.events, stored.header)
       const originalStats = registry.snapshot(original).values
@@ -161,7 +161,7 @@ describe('old unanswered history recovery', { timeout: 30_000 }, () => {
       const baseline = registry.snapshot(regenerated).values
       expect(baseline.sessionStats).toMatchObject({ steps: 1, turns: 1 })
       expect(baseline.eleckoiHistoryStatsAdjustment).toEqual({ steps: 1, turns: 1 })
-      expect(baseline.eleckoiRequestContexts).toEqual({})
+      expect(baseline.eleckoiRequestContexts).toBeUndefined()
       regenerated.append('turn/start', { turn: 2 })
       const step = regenerated.append('step/start', { turn: 2, step: 1 })
       regenerated.append('user/message', createUserMessage({
@@ -173,7 +173,8 @@ describe('old unanswered history recovery', { timeout: 30_000 }, () => {
       const stats = registry.snapshot(regenerated).values
       expect(stats.sessionStats.steps - stats.eleckoiHistoryStatsAdjustment.steps).toBe(1)
       expect(stats.sessionStats.turns - stats.eleckoiHistoryStatsAdjustment.turns).toBe(1)
-      expect(Object.keys(stats.eleckoiRequestContexts)).toEqual([String(step.seq)])
+      expect(stats.eleckoiRequestContexts).toBeUndefined()
+      expect(regenerated.snapshotEvents().findLast(event => event.type === 'eleckoi/request-context').data.context).toEqual(f.context)
       const regeneratedLog = regenerated.snapshotEvents()
       const unchanged = Session.create(f.session.id, regeneratedLog, regenerated.header)
       expect(registry.snapshot(unchanged).values).toEqual(stats)
@@ -201,7 +202,7 @@ describe('old unanswered history recovery', { timeout: 30_000 }, () => {
     await ctx.plugin(JsonlSessionPersistence, { root: f.root, compression: 'none' })
     try {
       const registry = new SessionProjectionRegistry(ctx)
-      registry.register(requestContextProjection)
+
       let snapshot
       await refreshSessionProjections({
         sessionPersistence: ctx.sessionPersistence,
@@ -209,8 +210,8 @@ describe('old unanswered history recovery', { timeout: 30_000 }, () => {
         sessionProjectionCache: { write: async session => { snapshot = registry.snapshot(session) } }
       }, f.session.id)
       const restored = await reopen(f)
-      const step = restored.events.find(event => event.type === 'step/start')
-      expect(snapshot.values.eleckoiRequestContexts[step.seq]).toEqual(f.context)
+      expect(snapshot.values.eleckoiRequestContexts).toBeUndefined()
+      expect(restored.events.findLast(event => event.type === 'eleckoi/request-context').data.context).toEqual(f.context)
     } finally { await ctx.fiber.dispose() }
   })
 

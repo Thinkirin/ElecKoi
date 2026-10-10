@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 
 const readStyles = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
-const shellStyles = readStyles('../src/renderer/src/app/windows/shell/styles/client-shell.css');
-const pluginStyles = readStyles('../src/renderer/src/app/windows/shell/styles/plugin-center.css');
-const characterStyles = readStyles('../src/renderer/src/modules/persona/styles/character-list.css');
-const modelStyles = readStyles('../src/renderer/src/modules/models/styles/model-config.css');
-const presetStyles = readStyles('../src/renderer/src/modules/presets/styles/preset-panel.css');
-const conversationStyles = readStyles('../src/renderer/src/modules/chat/styles/conversation-list.css');
+const shellStyles = readStyles('../apps/web/src/app/windows/shell/styles/client-shell.css');
+const pluginStyles = readStyles('../apps/web/src/app/windows/shell/styles/plugin-center.css');
+const characterStyles = readStyles('../apps/web/src/modules/persona/styles/character-list.css');
+const modelStyles = readStyles('../apps/web/src/modules/models/styles/model-config.css');
+const presetStyles = readStyles('../apps/web/src/modules/presets/styles/preset-panel.css');
+const conversationStyles = readStyles('../apps/web/src/modules/chat/styles/conversation-list.css');
 
 describe('sidebar list scrolling', () => {
   it('keeps the shared side-panel height bounded', () => {

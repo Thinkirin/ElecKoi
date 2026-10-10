@@ -9,10 +9,10 @@ let window
 const diagnostics = []
 
 async function main() {
-  const { DshDesktopPluginHost } = await import('@eleckoi/dsh-runtime')
+  const { DshDesktopPluginHost } = await import('@eleckoi/desktop-host')
   const packageManager = {
     entryPath: join(dirname(require.resolve('pnpm')), 'bin', 'pnpm.mjs'),
-    nodeBinPath: join(__dirname, '..', 'resources', 'dsh', 'node-bin')
+    nodeBinPath: join(__dirname, '..', 'apps', 'desktop', 'resources', 'dsh', 'node-bin')
   }
   await app.whenReady()
   if (process.env.ELECKOI_PLUGIN_CLIENT_THEME === 'dark') nativeTheme.themeSource = 'dark'
@@ -21,8 +21,8 @@ async function main() {
     workspaceRoot: join(root, 'workspace'),
     productDatabasePath: join(root, 'product.sqlite'),
     productMediaRoot: join(root, 'media'),
-    presetTemplatePath: resolve('resources/dsh/agent-preset-template/agent.cordis.yml'),
-    agentPatchPath: resolve('resources/dsh/desktop-agent.patch.yml'),
+    presetTemplatePath: resolve('apps/desktop/resources/dsh/agent-preset-template/agent.cordis.yml'),
+    agentPatchPath: resolve('apps/desktop/resources/dsh/desktop-agent.patch.yml'),
     executablePath: process.execPath,
     packageManager,
     onDiagnostic: message => diagnostics.push(`host:${message}`)

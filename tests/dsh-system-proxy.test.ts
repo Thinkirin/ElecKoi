@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { resolveDshSystemProxyEnvironment } from '../src/main/platform/electron/systemProxy'
+import { resolveDshSystemProxyEnvironment } from '../apps/desktop/src/main/platform/electron/systemProxy'
 
 describe('DSH system proxy bridge', () => {
   it('converts Electron HTTP and HTTPS proxy routes into the DSH launch environment', async () => {

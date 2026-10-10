@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { openCharacterManagerWindow } from "../src/renderer/src/modules/persona/window/openCharacterManagerWindow.js";
-import { characterArtworkAspectRatio } from "../src/renderer/src/modules/persona/components/CharacterManager.jsx";
-import { openPresetManagerWindow } from "../src/renderer/src/modules/presets/window/openPresetManagerWindow.js";
+import { openCharacterManagerWindow } from "../apps/web/src/modules/persona/window/openCharacterManagerWindow.js";
+import { characterArtworkAspectRatio } from "../apps/web/src/modules/persona/components/CharacterManager.jsx";
+import { openPresetManagerWindow } from "../apps/web/src/modules/presets/window/openPresetManagerWindow.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();

@@ -4,6 +4,8 @@
 
 已采纳，2026-10-02。
 
+2026-10-07 更新：新请求已按 [ADR 0029](0029-ephemeral-request-context-preview.md) 停止全文事件写入和请求投影；本 ADR 的信封合同与修复继续用于已有 Session 的恢复和导入。
+
 ## 依据与问题
 
 锁定提交 `c1b47e41fcd54d20a0f061df28683bfc29ee24e5` 的 `SessionEvent.ignorable`、`known-event-types.ts` 和《为外部插件保留可忽略会话事件》规定：第一方词汇之外的信息性事件必须显式保存 `ignorable: true`，未知必需事件继续拒绝读取。请求上下文只记录实际输入供轨迹查看，不改变 Session surface 或模型历史，符合该规则。

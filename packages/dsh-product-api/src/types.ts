@@ -78,6 +78,32 @@ export interface ConversationSummary extends ConversationRecord {
   runtimeSessionId: string
 }
 
+/** 本次运行期间实际发起的请求目录，不包含请求正文。 */
+export interface ConversationRequestPreviewSummary {
+  id: string
+  round: number | null
+  request: number
+  turn: number
+  step: number
+  provider: string
+  model: string
+}
+
+/** 仅存在于运行期间内存的实际请求输入。 */
+export interface ConversationRequestPreview {
+  id: string
+  items: Array<{
+    order: number
+    messageId: string
+    role: 'system' | 'user' | 'assistant'
+    kind: 'system' | 'prompt' | 'history' | 'user' | 'assistant' | 'tool' | 'context'
+    title: string
+    source: string
+    anchor: string
+    content: string
+  }>
+}
+
 /**
  * Live changes to the product-owned conversation catalog.
  *
@@ -168,7 +194,7 @@ export interface ConversationDetailsMetadata {
   beforeSequence: number | null
   /** Committed post-turn variable snapshots keyed by the authoritative DSH turn. */
   runtimeVariableStateByTurn?: Record<string, string>
-  compatibilityPresentation?: { metadata: { [id: string]: CompatibilityValue }; extensions: { [id: string]: CompatibilityValue };
+  compatibilityPresentation?: { groupId?: CompatibilityValue; metadata: { [id: string]: CompatibilityValue }; extensions: { [id: string]: CompatibilityValue };
     bindings: { [id: string]: CompatibilityValue }; swipes?: { [id: string]: CompatibilityValue };
     variables?: { [id: string]: CompatibilityValue }; timeline: CompatibilityValue }
 }
@@ -787,7 +813,7 @@ export interface ElecKoiProductDataStore {
   updateCharacter(character: CharacterRecord): CharacterCollection
   selectCharacter(characterId: string): CharacterCollection
   saveCharacterGroups(groups: string[], assignments: CharacterGroupAssignment[]): CharacterCollection
-  deleteCharacters(characterIds: string[], options?: { deleteChats?: boolean }): CharacterCollection
+  deleteCharacters(characterIds: string[]): CharacterCollection
   exportCharacter(characterId: string, format: CharacterExportFormat): CharacterExportResult
   prepareCharacterImports(files: CharacterImportFile[], source: CharacterImportSource): CharacterImportPreview
   commitCharacterImports(token: string): CharacterImportResult

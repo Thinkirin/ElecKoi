@@ -6,7 +6,7 @@ import type { SessionFormatEvent, SessionFormatJsonObject } from '@deepseek-ai/d
 import { createSessionFormatCatalogWithChildren, sessionFormatCatalog } from '@deepseek-ai/dsh-session-format-catalog'
 import { releasedV3SessionFormatCodec } from '@deepseek-ai/dsh-session-format-v3-to-v4'
 import { projectDshTrajectory, readDshSessionLog, readDshTrajectory, removeDshSessionTree } from '@eleckoi/dsh-runtime'
-import { agentTrajectorySnapshotSchema } from '../src/shared/contracts/agent/trajectory'
+import { agentTrajectorySnapshotSchema } from '../packages/product-shared/src/contracts/agent/trajectory'
 
 // Session codecs validate cwd with the host platform's path semantics.
 const fixtureWorkspace = join(tmpdir(), 'eleckoi-trajectory-workspace')
@@ -187,12 +187,7 @@ describe('DSH trajectory projection', () => {
       output: '我来查看',
       requests: [{ number: 1, seq: 1, provider: 'deepseek-official', model: 'deepseek-chat' }]
     })
-    expect(result.records[2]?.requests[0]?.context).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        role: 'user', kind: 'history', title: '历史用户消息', content: '被回退后保留的问题'
-      }),
-      expect.objectContaining({ role: 'user', kind: 'user', title: '用户最新输入', content: '你好' })
-    ]))
+    expect(result.records[2]?.requests[0]).not.toHaveProperty('context')
     expect(result.records[3]).toMatchObject({
       title: 'read',
       input: '{\n  "path": "README.md"\n}',
@@ -320,9 +315,7 @@ describe('DSH trajectory projection', () => {
     const latest = readDshTrajectory(root, runtimeThreadId, { limit: 2 })
     expect(latest.records.map((record) => record.kind)).toEqual(['tool', 'assistant'])
     expect(latest).toMatchObject({ totalRecords: 3, hasMore: true, beforeIndex: 2 })
-    expect(latest.records.flatMap((record) => record.requests)[0]?.context).toEqual([
-      expect.objectContaining({ order: 1, title: '用户最新输入', content: '问题' })
-    ])
+    expect(latest.records.flatMap((record) => record.requests)[0]).not.toHaveProperty('context')
 
     const older = readDshTrajectory(root, runtimeThreadId, { beforeIndex: latest.beforeIndex ?? undefined, limit: 2 })
     expect(older.records.map((record) => record.kind)).toEqual(['user'])
@@ -334,8 +327,7 @@ describe('DSH trajectory projection', () => {
       requestSeq: 1, turn: 1, step: 1, timeMillis: 999,
       items: [{ order: 1, messageId: 'stale', role: 'user', kind: 'user', title: '旧请求', source: '', anchor: '', content: '已回退的正文' }]
     })}\n`)
-    expect(readDshTrajectory(root, runtimeThreadId).records.flatMap((record) => record.requests)[0]?.context)
-      .toEqual([expect.objectContaining({ content: '问题' })])
+    expect(readDshTrajectory(root, runtimeThreadId).records.flatMap((record) => record.requests)[0]).not.toHaveProperty('context')
   })
 
   it('reuses one decoded current Session version and invalidates it after the log changes', () => {
@@ -428,7 +420,7 @@ describe('DSH trajectory projection', () => {
     expect(JSON.stringify(result)).not.toContain('系统提示词')
   })
 
-  it('shows only prior dialogue while retaining the current turn tool chain in request context', () => {
+  it('keeps request metadata without copying historical or current tool context into the ledger', () => {
     const result = projectDshTrajectory([
       event(0, 'turn/start', { turn: 1 }, 1_000),
       event(1, 'user/message', { id: 'user-1', role: 'user', source: { kind: 'user' },
@@ -479,19 +471,14 @@ describe('DSH trajectory projection', () => {
     const requests = result.records.flatMap((record) => record.requests).filter((request) => request.turn === 2)
 
     expect(requests).toHaveLength(2)
-    expect(requests[0]?.context.map((item) => item.content)).toEqual([
-      '上轮问题', '上轮答复', '本轮问题', '本轮运行上下文'
-    ])
-    expect(requests[1]?.context.map((item) => item.content)).toEqual([
-      '上轮问题', '上轮答复', '本轮问题', '本轮运行上下文',
-      expect.stringContaining('本轮推理'), '本轮工具结果'
-    ])
+    expect(requests[0]).not.toHaveProperty('context')
+    expect(requests[1]).not.toHaveProperty('context')
     expect(JSON.stringify(requests)).not.toContain('上轮推理')
     expect(JSON.stringify(requests)).not.toContain('上轮工具结果')
     expect(JSON.stringify(requests)).not.toContain('上轮最终推理')
   })
 
-  it('keeps the active compaction checkpoint in the reconstructed request context', () => {
+  it('keeps compaction request metadata without eagerly reconstructing its context', () => {
     const result = projectDshTrajectory([
       event(0, 'turn/start', { turn: 1 }, 1_000),
       event(1, 'user/message', { role: 'user', source: { kind: 'user' },
@@ -521,13 +508,8 @@ describe('DSH trajectory projection', () => {
       } }, 1_090, 'append')
     ])
 
-    const context = result.records.flatMap((record) => record.requests)
-      .find((request) => request.turn === 3)?.context
-    expect(context?.map((item) => item.content)).toEqual([
-      '<compacted-summary>历史摘要</compacted-summary>',
-      '摘要后的问题', '摘要后的答复', '当前问题'
-    ])
-    expect(JSON.stringify(context)).not.toContain('压缩前的问题')
+    const request = result.records.flatMap((record) => record.requests).find(request => request.turn === 3)
+    expect(request).not.toHaveProperty('context')
   })
 
   it('does not project headerless constructor seed steps as model requests', () => {

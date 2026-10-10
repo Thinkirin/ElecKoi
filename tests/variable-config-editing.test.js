@@ -10,16 +10,16 @@ import {
   variablePointerPath,
   syncActiveVersion,
   withGeneratedInitialState,
-} from "../src/renderer/src/modules/variables/model/variableConfigEditing.js";
+} from "../apps/web/src/modules/variables/model/variableConfigEditing.js";
 import {
   createVariableVersion,
   deleteActiveVariableVersion,
   importVariableConfig,
   serializeVariableConfig,
   switchVariableVersion,
-} from "../src/renderer/src/modules/variables/model/variableConfigTransfer.js";
-import { variableTreeNodes } from "../src/renderer/src/modules/variables/model/variableConfigTree.js";
-import { variableConfigSchema } from "../src/shared/contracts/variables/schemas.ts";
+} from "../apps/web/src/modules/variables/model/variableConfigTransfer.js";
+import { variableTreeNodes } from "../apps/web/src/modules/variables/model/variableConfigTree.js";
+import { variableConfigSchema } from "../packages/product-shared/src/contracts/variables/schemas.ts";
 
 const stamp = "2026-09-06T00:00:00.000Z";
 function config() {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AUTHOR_API_VERSION } from '@eleckoi/author-sdk';
-import { routeAuthorConversationRequest } from '../src/renderer/src/modules/authorFrontend/model/authorConversationHost.js';
+import { routeAuthorConversationRequest } from '../apps/web/src/modules/authorFrontend/model/authorConversationHost.js';
 
 function request(method, params = {}) {
   return JSON.stringify({ id: `${method}-request`, apiVersion: AUTHOR_API_VERSION, method, params });

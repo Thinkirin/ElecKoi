@@ -6,8 +6,8 @@ import { spawnSync } from 'node:child_process'
 if (process.platform !== 'win32') process.exit(0)
 
 const repositoryRoot = resolve(import.meta.dirname, '..')
-const source = join(repositoryRoot, 'packages', 'windows-native-frame', 'src', 'native_frame.cpp')
-const output = join(repositoryRoot, 'resources', 'native', 'win32-x64', 'eleckoi-window-frame.dll')
+const source = join(repositoryRoot, 'native', 'windows-frame', 'src', 'native_frame.cpp')
+const output = join(repositoryRoot, 'apps', 'desktop', 'resources', 'native', 'win32-x64', 'eleckoi-window-frame.dll')
 const vswhere = join(process.env['ProgramFiles(x86)'] ?? '', 'Microsoft Visual Studio', 'Installer', 'vswhere.exe')
 
 if (!existsSync(vswhere)) {

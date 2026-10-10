@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { dshClientPlugin } from './helpers/dshClientPlugin'
 import { mvuMessageDisplayCompatibility } from '@eleckoi/compatibility-mvu'
 import { MessageDisplayProjector } from '../packages/dsh-product-data/src/domain/conversations/MessageDisplayProjector'
-import type { RegexRuleCollection } from '../src/shared/contracts/regex/schemas'
-import { detectRichMessagePresentation } from '../src/shared/foundation/richMessage'
+import type { RegexRuleCollection } from '../packages/product-shared/src/contracts/regex/schemas'
+import { detectRichMessagePresentation } from '../packages/product-shared/src/foundation/richMessage'
 
 const source = readFileSync(new URL('../packages/dsh-client-conversations/src/client.js', import.meta.url), 'utf8')
 const settle = () => new Promise<void>(resolve => setImmediate(resolve))

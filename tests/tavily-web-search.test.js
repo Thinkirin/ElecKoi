@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { apply } from '../resources/dsh/tavily-web-search.mjs';
+import { apply } from '../apps/desktop/resources/dsh/tavily-web-search.mjs';
 
 afterEach(() => {
   vi.unstubAllGlobals();

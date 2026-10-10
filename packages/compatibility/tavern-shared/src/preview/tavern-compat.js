@@ -2341,9 +2341,9 @@ export function installTavernCompatibility(global) {
       const value = await updater(await getCharacter(character.native_id));
       await replaceCharacter(character.native_id, value); return value;
     },
-    deleteCharacter: async (reference, options = {}) => {
+    deleteCharacter: async (reference) => {
       const raw = RawCharacter.find({ name: reference }); if (!raw) return false;
-      const deleted = await call('characters.delete', { id: raw.native_id, deleteChats: options.delete_chats ?? true }); await refresh(); return deleted;
+      const deleted = await call('characters.delete', { id: raw.native_id }); await refresh(); return deleted;
     },
     getChatHistoryBrief, getChatHistoryDetail, importRawCharacter, importRawChat, importRawTavernRegex,
     isAdmin: () => true,

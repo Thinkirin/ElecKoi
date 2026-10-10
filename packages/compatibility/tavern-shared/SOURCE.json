@@ -6,7 +6,8 @@
     "Replace Kotlin JSON bridge with injectable JS Host adapter",
     "Keep rich compatibility semantics and change build/test resource roots",
     "Provider sync tokenizer is an explicit capability without a native Kotlin bridge",
-    "Browser resource roots now point to same-origin shared Host HTTP assets"
+    "Browser resource roots now point to same-origin shared Host HTTP assets",
+    "Character deletion always removes associated chats through the native one-argument action"
   ],
   "package": "@eleckoi/compatibility-tavern-shared",
   "nativeHostAcceptanceInherited": false,
@@ -14,7 +15,7 @@
     {
       "sourcePath": "tools/tavern-runtime/command-contract.json",
       "path": "runtime/tavern-runtime/command-contract.json",
-      "migratedSha256": "2342ca51e13ecfff890ef508f4480a2d0f1a28d4e141aa36d30b04cdac2bdabf",
+      "migratedSha256": "6fa1043a8538834f54c767ead28189eaac191be1dc614338fb14ff104a78ecab",
       "sourceSha256": "2342ca51e13ecfff890ef508f4480a2d0f1a28d4e141aa36d30b04cdac2bdabf"
     },
     {
@@ -722,7 +723,7 @@
     {
       "sourcePath": "tools/vendor/sillytavern/public/scripts/slash-commands/SlashCommandParser.js",
       "path": "runtime/vendor/sillytavern/public/scripts/slash-commands/SlashCommandParser.js",
-      "migratedSha256": "2ed3512bf887be9e944bacc5f29461ad460a87bd876277f5898e9a53766017eb",
+      "migratedSha256": "a771e02b4799b6185dc3c518aa6bf453314f30155f73f2588b3e703f13908741",
       "sourceSha256": "2ed3512bf887be9e944bacc5f29461ad460a87bd876277f5898e9a53766017eb"
     },
     {
@@ -842,7 +843,7 @@
     {
       "sourcePath": "app/src/main/assets/frontend/preview/tavern-compat.js",
       "path": "src/preview/tavern-compat.js",
-      "migratedSha256": "cf1c9523688ad870f5375de2c83d67c32ebaf5759e5609b77eb11bf6420cc6da",
+      "migratedSha256": "7b6754d5cf076aee189d8ff5fbe5166db8113d76a13678136683a20902a7a02e",
       "sourceSha256": "fca995f6a8cc4982f658498077a86f309099570ba42c80b9a8c96a688e67a6d9"
     },
     {
@@ -871,6 +872,5 @@
     }
   },
   "scope": "Shared JS/runtime sources only; full legacy snapshot is owned by migration root",
-  "legacyRoot": "E:\\10_Projects\\ElecKoi-compat",
   "schemaVersion": 1
 }

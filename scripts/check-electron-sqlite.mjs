@@ -6,7 +6,7 @@ const executable = electron
 const probe = [
   "const Database = require('better-sqlite3')",
   "const db = new Database(':memory:')",
-  "db.exec(require('node:fs').readFileSync('resources/database/eleckoi-common-schema-v1.sql', 'utf8'))",
+  "db.exec(require('node:fs').readFileSync('apps/desktop/resources/database/eleckoi-common-schema-v1.sql', 'utf8'))",
   "const tables = db.prepare(\"SELECT count(*) AS n FROM sqlite_master WHERE type='table'\").get().n",
   "const views = db.prepare(\"SELECT count(*) AS n FROM sqlite_master WHERE type='view'\").get().n",
   "const userVersion = db.pragma('user_version', { simple: true })",

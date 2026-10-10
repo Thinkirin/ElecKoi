@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   findLatestRegenerateTargetMessageId,
   findRegenerateBranchUserIndex,
-} from "../src/renderer/src/modules/chat/model/chatRegeneration.js";
+} from "../apps/web/src/modules/chat/model/chatRegeneration.js";
 
 describe("chat regeneration targets", () => {
   it('uses the explicit continuation input identity instead of a later same-turn or same-content row', () => {

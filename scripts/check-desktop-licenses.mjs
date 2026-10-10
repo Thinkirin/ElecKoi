@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const expectedVersion = '1.7.0'
 const packageNames = ['@headless-tree/core', '@headless-tree/react']
-const noticePath = resolve(root, 'resources', 'licenses', 'headless-tree-MIT.txt')
+const noticePath = resolve(root, 'apps', 'desktop', 'resources', 'licenses', 'headless-tree-MIT.txt')
 
 const expectedNotice = `MIT License
 

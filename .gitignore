@@ -32,24 +32,17 @@ out/
 release/
 packages/dsh-product-api/lib/
 packages/dsh-product-data/lib/
-packages/dsh-compatibility-host/lib/
 packages/dsh-client-*/lib/
-resources/native/
+packages/dsh-compatibility-host/lib/
+apps/desktop/resources/native/
 coverage/
 playwright-report/
 test-results/
 .tmp-boot-diagnostics/
 *.tsbuildinfo
 
-# Android build outputs and local migration archives
-apps/android/.gradle/
-apps/android/**/build/
-apps/android/local.properties
-build/
-
 # Local maintenance and review material
 /AGENTS.md
-/.claude/
 /.playwright-cli/
 /.ui-craft/
 /output/

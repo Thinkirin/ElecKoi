@@ -5,24 +5,24 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const saveCharacter = vi.hoisted(() => vi.fn())
 
-vi.mock('../src/renderer/src/modules/persona/index.js', () => ({
+vi.mock('../apps/web/src/modules/persona/index.js', () => ({
   CharacterBasicInfoPanel: ({ character }) => <div data-testid="built-in-card">{character.name}</div>,
 }))
-vi.mock('../src/renderer/src/modules/appearance/index.js', () => ({ applyAppearanceTheme: () => {} }))
-vi.mock('../src/renderer/src/modules/settingLibraries/index.js', () => ({
+vi.mock('../apps/web/src/modules/appearance/index.js', () => ({ applyAppearanceTheme: () => {} }))
+vi.mock('../apps/web/src/modules/settingLibraries/index.js', () => ({
   DynamicSettingsPanel: () => null,
   SettingLibraryPanel: () => null,
 }))
-vi.mock('../src/renderer/src/modules/variables/index.js', () => ({ VariableConfigPanel: () => null }))
-vi.mock('../src/renderer/src/modules/regex/index.js', () => ({ RegexRulesPanel: () => null }))
-vi.mock('../src/renderer/src/app/services/windowControls.js', () => ({
+vi.mock('../apps/web/src/modules/variables/index.js', () => ({ VariableConfigPanel: () => null }))
+vi.mock('../apps/web/src/modules/regex/index.js', () => ({ RegexRulesPanel: () => null }))
+vi.mock('../apps/web/src/app/services/windowControls.js', () => ({
   appWindow: { close: vi.fn() },
   showCurrentWindow: () => Promise.resolve(),
 }))
-vi.mock('../src/renderer/src/app/windows/shell/components/TitleBar.jsx', () => ({ TitleBar: () => null }))
-vi.mock('../src/renderer/src/ui/ui/UnsavedChangesDialog.jsx', () => ({ UnsavedChangesDialog: () => null }))
+vi.mock('../apps/web/src/app/windows/shell/components/TitleBar.jsx', () => ({ TitleBar: () => null }))
+vi.mock('../apps/web/src/ui/ui/UnsavedChangesDialog.jsx', () => ({ UnsavedChangesDialog: () => null }))
 
-import { CharacterEditorWindow } from '../src/renderer/src/app/windows/CharacterEditorWindow.jsx'
+import { CharacterEditorWindow } from '../apps/web/src/app/windows/CharacterEditorWindow.jsx'
 
 vi.stubGlobal('React', React)
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)

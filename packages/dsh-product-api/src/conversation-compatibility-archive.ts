@@ -16,7 +16,7 @@ export interface ConversationCompatibilityArchive {
   group?: ObjectValue
 }
 const scoped = ['metadata', 'swipes', 'message-extensions', 'message-presentation', 'migration:android:message-bindings']
-const keyed = ['temporary-chats', 'chat-import-headers', 'worldbook-timing', 'worldbook-scans', 'conversation-personas', 'itemized-prompts']
+const keyed = ['temporary-chats', 'chat-import-headers', 'worldbook-timing', 'conversation-personas']
 const selected = ['bindings', 'persona-selection']
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 

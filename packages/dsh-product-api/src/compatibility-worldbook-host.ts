@@ -1,4 +1,4 @@
-import { CompatibilityWorldbookRounds, type WorldbookRoundInput, type WorldbookRoundServices } from './compatibility-worldbook-round.js'
+import { CompatibilityWorldbookRounds, type WorldbookAgentRound, type WorldbookRoundInput, type WorldbookRoundServices } from './compatibility-worldbook-round.js'
 import type { CompatibilityCatalogOperations, CompatibilityHandler } from './compatibility-catalog.js'
 import type { CompatibilityMessageOperations } from './compatibility-messages.js'
 import type { CompatibilityChange, CompatibilityValue, ConversationRuntimePreparation, ElecKoiProductDataStore } from './types.js'
@@ -33,12 +33,21 @@ export interface WorldbookHostRoundRequest {
 /** Links common services without making a second Agent or depending on an Android bridge. */
 export class CompatibilityWorldbookHost {
   readonly rounds: CompatibilityWorldbookRounds
+  private readonly active = new Map<string, WorldbookAgentRound>()
+  activate(sessionId: string, round: WorldbookAgentRound): void { this.active.set(sessionId, round) }
+  current(sessionId: string): WorldbookAgentRound | undefined { return this.active.get(sessionId) }
+  release(sessionId: string, conversationId?: string): void {
+    this.active.delete(sessionId)
+    if (conversationId) this.rounds.forget(conversationId)
+  }
+  dispose(): void { this.active.clear(); this.rounds.dispose() }
   readonly handlers: ReadonlyMap<string, CompatibilityHandler>
   constructor(private readonly data: ElecKoiProductDataStore, private readonly providers: ProviderLookup,
     private readonly catalog: CompatibilityCatalogOperations, private readonly messages: CompatibilityMessageOperations,
     publish: (change: CompatibilityChange) => void) {
     this.rounds = new CompatibilityWorldbookRounds(data, publish)
-    this.handlers = new Map([
+    this.handlers = new Map<string, CompatibilityHandler>([
+      ['worldbooks.lastScan', p => this.rounds.lastScan(requiredId(p.conversationId))],
       ['worldbooks.scan', async p => {
         if (!Array.isArray(p.messages) || p.messages.some(item => typeof item !== 'string')) throw new TypeError('worldbooks.scan requires actual message text history')
         const conversationId = requiredId(p.conversationId)

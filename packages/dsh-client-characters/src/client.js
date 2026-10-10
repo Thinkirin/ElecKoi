@@ -2,7 +2,7 @@ window.__ModuleLoader__.load({
   id: '@eleckoi/dsh-client-characters',
   factory(require) {
     const React = require('react')
-    const CharacterPage = React.lazy(() => import((globalThis.__ELECKOI_CLIENT_ASSETS__?.baseUrl ?? 'dsh-app://app/eleckoi/assets/') + 'eleckoi-page-character.js')
+    const CharacterPage = React.lazy(() => import('dsh-app://app/eleckoi/assets/eleckoi-page-character.js')
       .then(module => ({ default: module.CharacterPage })))
     class CharacterCatalog {
       constructor(remote) {
@@ -118,8 +118,8 @@ window.__ModuleLoader__.load({
         return this.mutate('saveGroups', [groups, assignments], '保存角色分组失败。')
       }
 
-      delete(characterIds, options = {}) {
-        return this.mutate('delete', [characterIds || [], options], '删除角色失败。')
+      delete(characterIds) {
+        return this.mutate('delete', [characterIds || []], '删除角色失败。')
       }
 
       async prepareImport(source, files) {
@@ -172,7 +172,7 @@ window.__ModuleLoader__.load({
       ctx.provide('eleckoiCharacters', catalog)
       ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: 'character', registrant: '@eleckoi/dsh-client-characters' },
         () => React.createElement(CharacterPage)))
-      const NavigationIcon = React.lazy(() => import((globalThis.__ELECKOI_CLIENT_ASSETS__?.baseUrl ?? 'dsh-app://app/eleckoi/assets/') + 'eleckoi-page-character.js')
+      const NavigationIcon = React.lazy(() => import('dsh-app://app/eleckoi/assets/eleckoi-page-character.js')
         .then(module => ({ default: module.NavigationIcon })))
       ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
         name: 'sidebar.panellist', id: 'character', order: -30, label: '角色列表', registrant: '@eleckoi/dsh-client-characters'

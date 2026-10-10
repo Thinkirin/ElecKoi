@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { runInNewContext } from 'node:vm'
 import { describe, expect, it, vi } from 'vitest'
 import { dshClientPlugin } from './helpers/dshClientPlugin'
-import { useChatSessions } from '../src/renderer/src/modules/chat/hooks/useChatSessions.js'
+import { useChatSessions } from '../apps/web/src/modules/chat/hooks/useChatSessions.js'
 import source from '../packages/dsh-client-conversations/src/client.js?raw'
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0))

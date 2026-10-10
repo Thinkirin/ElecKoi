@@ -75,6 +75,10 @@ export function projectWorldbookRequestMessages<T>(messages: readonly T[], round
 /** Business adapter for durable product bindings and one captured Agent round. */
 export class CompatibilityWorldbookRounds {
   readonly native: NativeWorldbookAdapter
+  private readonly scans = new Map<string, CompatibilityValue>()
+  lastScan(conversationId: string): CompatibilityValue { return this.scans.get(conversationId) ?? null }
+  forget(conversationId: string): void { this.scans.delete(conversationId) }
+  dispose(): void { this.scans.clear() }
   constructor(private readonly data: ElecKoiProductDataStore, private readonly publish: (change: CompatibilityChange) => void) {
     this.native = new NativeWorldbookAdapter({
       readNative: id => data.readSettingLibrary(id),
@@ -134,7 +138,7 @@ export class CompatibilityWorldbookRounds {
       const scan = await freezeWorldbookRound({
         readTiming: id => record(store.get('worldbook-timing', id)),
         saveTiming: (id, value) => store.put('worldbook-timing', id, json(value)),
-        saveLastScan: (id, value) => store.put('worldbook-scans', id, json(value)),
+        saveLastScan: (id, value) => this.scans.set(id, json(value)),
         atomic: operation => store.atomic(operation)
       }, {
         books, messages: captured.messages, scanText: captured.scanText, conversationId: captured.conversationId,

@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
-const outputPath = join(process.cwd(), 'resources', 'licenses', 'THIRD_PARTY_NOTICES.txt')
+const outputPath = join(process.cwd(), 'apps', 'desktop', 'resources', 'licenses', 'THIRD_PARTY_NOTICES.txt')
 const checkOnly = process.argv.includes('--check')
 const pnpmCli = process.env.npm_execpath
 const command = pnpmCli ? process.execPath : (process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm')

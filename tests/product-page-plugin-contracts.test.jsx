@@ -2,17 +2,17 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('../src/renderer/src/modules/persona/index.js', () => ({
+vi.mock('../apps/web/src/modules/persona/index.js', () => ({
   CharacterListPanel: () => <div>角色列表</div>,
   CharacterProfilePanel: () => <div>角色简介</div>,
   openCharacterEditorWindow: vi.fn(),
 }))
-vi.mock('../src/renderer/src/modules/chat/index.js', () => ({
+vi.mock('../apps/web/src/modules/chat/index.js', () => ({
   ConversationList: () => <div>对话列表</div>,
   ChatPanel: () => <div>角色聊天</div>,
 }))
 
-import { MainPageContext } from '../src/renderer/src/app/windows/MainPageContext.jsx'
+import { MainPageContext } from '../apps/web/src/app/windows/MainPageContext.jsx'
 import { CharacterPage } from '../packages/dsh-client-characters/src/page.jsx'
 import { MessagesPage } from '../packages/dsh-client-conversations/src/page.jsx'
 

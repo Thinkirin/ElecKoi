@@ -9,11 +9,8 @@ import { durableProductPluginSpecifier } from './preset-definition.mjs'
 import { turnOutcomesProjection } from './turn-outcomes-projection.mjs'
 import { inputContinuationsProjection } from './input-continuations-projection.mjs'
 import { currentRequestSnapshot } from './model-selection-migration.mjs'
-import { resolvePresetModelBindings } from './preset-model-bindings.mjs'
-import { synchronizeCompatibilityTools, installCompatibilityTools } from './compatibility-tools.mjs'
-import { synchronizeImageGenerationTools, installImageGenerationTools } from './image-generation-tools.mjs'
-import { installRequestConfig } from './request-config.mjs'
-import { installConversationContext, previewConversationRequest } from './conversation-context.mjs'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import { projectRequestInput, requestProjectionSnapshot, sessionInstructions } from './conversation-context.mjs'
 
 export { requestSnapshot } from './model-selection-migration.mjs'
 
@@ -41,169 +38,67 @@ export function installRoleplaySessionRuntime(ctx, presetRegistrar) {
   const workspaceRoot = requiredEnv('ELECKOI_WORKSPACE_ROOT')
   const disposeHistoryStats = ctx.sessionProjections.register(historyStatsProjection)
   const disposeTurnOutcomes = ctx.sessionProjections.register(turnOutcomesProjection)
-  const generationOptions = new Map()
   const disposeInputContinuations = ctx.sessionProjections.register(inputContinuationsProjection)
+  const generationOptions = new Map()
 
-  const prepareCurrentPreset = async (conversationId, text, creating = false, previewing = false) => {
+  const prepareCurrentPreset = async (conversationId, text, creating = false) => {
+    const runtime = ctx.eleckoiProductData.prepareConversationRuntime(conversationId, text)
+    const previous = readOptionalSnapshot(snapshotRoot, runtime.runtimeSessionId)
     const controls = generationOptions.get(conversationId) ?? {}
     const mainModel = { ...await currentRequestSnapshot(ctx), ...(controls.responseLength ? { maxTokens: controls.responseLength } : {}) }
-    const compatibilityRuntime = optionalService(ctx, 'eleckoiCompatibilityRuntime')
-    const compatibility = compatibilityRuntime
-      ? await compatibilityRuntime.prepare(conversationId, text, mainModel, { speakerId: controls.speakerId })
-      : undefined
-    const runtime = compatibility?.runtimePreparation ?? ctx.eleckoiProductData.prepareConversationRuntime(conversationId, text)
-    if (compatibility?.preset?.compatibility === true) runtime.conversationContext = {
-      ...runtime.conversationContext,
-      compatibilityPreset: compatibility.preset,
-      compatibilityPersona: compatibility.persona,
-      compatibilityCard: compatibility.card
-    }
-    const groups = optionalService(ctx, 'eleckoiCompatibilityChats')
-    if (groups?.speaker(conversationId)) {
-      const group = await groups.groupPrompts(conversationId)
-      if (group?.card && compatibility) {
-        const merged = { ...compatibility.card.data, ...group.card, mes_example: group.card.mesExamples ?? compatibility.card.data?.mes_example ?? '' }
-        compatibility.card.data = merged
-        runtime.conversationContext.compatibilityCard = compatibility.card
-        for (const entry of runtime.conversationContext.settingLibrary?.entries ?? []) {
-          const field = entry.id.match(/^compat-character:[^:]+:(description|personality|scenario|mes_example)$/)?.[1]
-          if (field) entry.content = String(merged[field] ?? '')
-        }
-      }
-      runtime.conversationContext.groupDepthPrompts = group?.depthPrompts ?? []
-    }
-    const previous = readOptionalSnapshot(snapshotRoot, runtime.runtimeSessionId)
     const effectiveToolPolicy = { disabledGroupIds: [...(runtime.disabledToolGroupIds ?? [])] }
-    const modelBindings = await resolvePresetModelBindings(ctx, runtime.agentPreset, mainModel, effectiveToolPolicy.disabledGroupIds)
-    const requestedPreset = previewing ? { id: runtime.agentPreset.id, revision: '' } : materializeAgentPreset(
+    const requestedPreset = materializeAgentPreset(
       presetRoot,
       templatePath,
       runtime.agentPreset,
       effectiveToolPolicy,
       mainModel
     )
-    if (!creating && !previewing) await presetRegistrar.prepareForSession(runtime.runtimeSessionId, requestedPreset.id)
-    return { runtime, compatibility, compatibilityRuntime, previous, mainModel, modelBindings, effectiveToolPolicy, requestedPreset }
+    if (!creating) await presetRegistrar.prepareForSession(runtime.runtimeSessionId, requestedPreset.id)
+    return { runtime, previous, mainModel, effectiveToolPolicy, requestedPreset }
   }
 
-  const prepare = async (conversationId, text, creating = false, prepareRound = !creating, previewing = false, signal) => {
+  const prepare = async (conversationId, text, creating = false, signal) => {
     signal?.throwIfAborted()
-    if (!previewing) await ctx.eleckoiConversationLifecycle.drain(conversationId)
-    const controls = generationOptions.get(conversationId) ?? {}
-    const callbacks = optionalService(ctx, 'eleckoiCompatibilityCallbacks')
-    if (prepareRound && callbacks?.hasClients()) await callbacks.callback('__ElecKoiBeforeGeneration', {
-      conversationId, purpose: controls.type ?? 'chat', dryRun: previewing, options: controls
-    }, { conversationId })
+    await ctx.eleckoiConversationLifecycle.drain(conversationId)
     const {
       runtime,
-      compatibility,
-      compatibilityRuntime,
       previous,
       mainModel,
-      modelBindings,
       effectiveToolPolicy,
       requestedPreset
-    } = await prepareCurrentPreset(conversationId, text, creating, previewing)
+    } = await prepareCurrentPreset(conversationId, text, creating)
     const mountedPresetId = previous?.mountedPresetId ?? requestedPreset.id
     const mountedPresetRevision = previous?.mountedPresetRevision ?? requestedPreset.revision
     const presetChanged = mountedPresetId !== requestedPreset.id
       || mountedPresetRevision !== requestedPreset.revision
     if (!creating) await requireIdleSession(ctx, runtime.runtimeSessionId)
+    const worldbooks = optionalService(ctx, 'eleckoiWorldbookRounds')
+    worldbooks?.release(runtime.runtimeSessionId)
     const sessionRoot = join(bridgeRoot, safePathPart(conversationId))
-    if (!previewing) mkdirSync(sessionRoot, { recursive: true })
+    mkdirSync(sessionRoot, { recursive: true })
     const nextTurn = creating ? 1 : await nextSessionTurn(ctx, runtime.runtimeSessionId)
-    const operationId = creating || previewing ? undefined : randomUUID()
+    const operationId = creating ? undefined : randomUUID()
     if (operationId) {
       await ctx.eleckoiConversationLifecycle.prepare({
         operationId, conversationId, runtimeSessionId: runtime.runtimeSessionId, turn: nextTurn,
         text, model: mainModel, runtime
       }, signal)
     }
-    if (!previewing) writeRuntimeCheckpoint(
+    if (!creating && !generationOptions.get(conversationId)?.skipWIAN && worldbooks?.hasManagedBindings(conversationId)) {
+      const context = runtime.conversationContext
+      const round = await worldbooks.prepareRound({
+        conversationId, runtimePreparation: runtime, modelSnapshot: mainModel,
+        currentPromptText: context.currentPromptText ?? text
+      })
+      signal?.throwIfAborted()
+      worldbooks.activate(runtime.runtimeSessionId, round)
+    }
+    writeRuntimeCheckpoint(
       sessionRoot,
       nextTurn,
       ctx.eleckoiProductData.snapshotConversationRuntime(conversationId)
     )
-    let conversationContext = { ...runtime.conversationContext, conversationId }
-    const messages = optionalService(ctx, 'eleckoiCompatibilityMessages')
-    const worldbooks = optionalService(ctx, 'eleckoiWorldbookRounds')
-    const dataBank = optionalService(ctx, 'eleckoiCompatibilityDataBank')
-    if (prepareRound && messages) {
-      conversationContext = {
-        ...conversationContext,
-        history: ctx.eleckoiProductData.projectConversationPromptHistory(
-          cutGenerationHistory(await messages.requestHistory(conversationId), controls), runtime),
-        historyMode: 'replace'
-      }
-    }
-    if (prepareRound && compatibility) {
-      const frozen = await compatibilityRuntime.freeze({
-        ...compatibility,
-        runtimePreparation: { ...runtime, conversationContext }
-      }, conversationId, { readOnly: previewing })
-      conversationContext = {
-        ...frozen.runtimePreparation.conversationContext,
-        ...(frozen.preset.compatibility ? {
-          compatibilityPreset: frozen.preset,
-          compatibilityPersona: frozen.persona,
-          compatibilityCard: frozen.card
-        } : {})
-      }
-    }
-    if (prepareRound && !controls.skipWIAN && worldbooks?.hasManagedBindings(conversationId)) {
-      const worldbookRound = await worldbooks.prepareRound({
-        conversationId,
-        runtimePreparation: { ...runtime, conversationContext },
-        modelSnapshot: mainModel,
-        currentPromptText: conversationContext.currentPromptText ?? text,
-        dryRun: previewing,
-        messages: (conversationContext.history ?? []).map(message => message.content),
-        messageCount: (conversationContext.history ?? []).length,
-        ...(conversationContext.compatibilityCard ? {
-          examples: conversationContext.compatibilityCard.data?.mes_example ?? '',
-          scanContext: {
-            characterDescription: conversationContext.compatibilityCard.data?.description ?? '',
-            characterPersonality: conversationContext.compatibilityCard.data?.personality ?? '',
-            scenario: conversationContext.compatibilityCard.data?.scenario ?? '',
-            creatorNotes: conversationContext.compatibilityCard.data?.creator_notes ?? '',
-            personaDescription: conversationContext.compatibilityPersona?.description ?? ''
-          }
-        } : {})
-      })
-      // This is a provider projection only. The writable native setting bridge
-      // keeps the original entries so committing a turn cannot change their
-      // trigger policy or make a compatibility-owned entry disappear.
-      conversationContext = {
-        ...conversationContext,
-        settingLibrary: worldbooks.nativeStaticLibrary({ ...runtime, conversationContext }, worldbookRound),
-        worldbookRound
-      }
-    }
-    if (prepareRound && dataBank) {
-      const generation = optionalService(ctx, 'eleckoiCompatibilityGeneration')
-      const recalled = await dataBank.recall(
-        { conversationId, characterId: conversationContext.characterId },
-        (conversationContext.history ?? []).map(message => message.content),
-        [conversationContext.currentPromptText ?? text],
-        generation?.tokens && generation?.decode ? {
-          tokens: value => generation.tokens(value, { conversationId, modelSnapshot: mainModel }),
-          decode: value => generation.decode(value, { conversationId, modelSnapshot: mainModel })
-        } : undefined
-      )
-      conversationContext = { ...conversationContext, dataBankRound: recalled }
-    }
-    if (prepareRound) {
-      conversationContext = { ...conversationContext, compatibilityTools: callbacks?.hasClients()
-        ? await callbacks.toolSnapshot(conversationId) : [] }
-      const generation = optionalService(ctx, 'eleckoiCompatibilityGeneration')
-      const injections = generation?.injections(conversationId) ?? []
-      const contents = callbacks?.hasClients() ? await callbacks.expandMany(injections.map(entry => entry.content), { conversationId, readOnly: previewing })
-        : injections.map(entry => entry.content)
-      conversationContext = { ...conversationContext, compatibilityInjections: injections.map((entry, index) => ({ ...entry, content: contents[index] })),
-        mainGenerationOptions: controls }
-    }
-    if (previewing) return { runtimeSessionId: runtime.runtimeSessionId, model: mainModel, conversationContext,
-      messages: previewConversationRequest(conversationContext, mainModel), presetId: requestedPreset.id, dryRun: true }
     const variableStateFile = join(sessionRoot, 'eleckoi-variable-state.json')
     const settingStateFile = join(sessionRoot, 'eleckoi-setting-library-state.json')
     const contextFile = join(sessionRoot, 'eleckoi-conversation-context.json')
@@ -215,8 +110,8 @@ export function installRoleplaySessionRuntime(ctx, presetRegistrar) {
     )
     writeContextBridge(
       contextFile,
-      conversationContext.currentPromptText ?? text,
-      conversationContext
+      runtime.conversationContext.currentPromptText ?? text,
+      runtime.conversationContext
     )
     writeSessionSnapshot(snapshotRoot, runtime.runtimeSessionId, {
       conversationId,
@@ -230,7 +125,6 @@ export function installRoleplaySessionRuntime(ctx, presetRegistrar) {
         pendingPresetRevision: requestedPreset.revision
       } : {}),
       model: mainModel,
-      ...modelBindings,
       variableStateFile,
       settingStateFile,
       contextFile,
@@ -242,11 +136,6 @@ export function installRoleplaySessionRuntime(ctx, presetRegistrar) {
       historyCompactionInstructions: runtime.agentPreset.historyCompactionInstructions ?? ''
     })
     if (!creating) await presetRegistrar.selectForSession(runtime.runtimeSessionId)
-    const agent = ctx.agents?.get(runtime.runtimeSessionId)
-    if (agent && !creating) {
-      synchronizeCompatibilityTools(agent.ctx, snapshotRoot, runtime.runtimeSessionId)
-      await synchronizeImageGenerationTools(agent.ctx, snapshotRoot, runtime.runtimeSessionId)
-    }
     signal?.throwIfAborted()
     if (operationId) ctx.eleckoiConversationLifecycle.begin({
       operationId, conversationId, runtimeSessionId: runtime.runtimeSessionId, turn: nextTurn
@@ -257,11 +146,18 @@ export function installRoleplaySessionRuntime(ctx, presetRegistrar) {
 
   const service = {
     withGenerationOptions(conversationId, options, action) {
-      if (generationOptions.has(conversationId)) throw new Error('Generation preparation is already active in this conversation')
+      if (generationOptions.has(conversationId)) throw new Error('当前聊天已有 SDK 生成准备。')
       generationOptions.set(conversationId, { ...options })
       return Promise.resolve().then(action).finally(() => generationOptions.delete(conversationId))
     },
-    previewPrompt(conversationId, text) { return prepare(conversationId, text, false, true, true) },
+    async adoptFork(conversationId, sourceConversationId, sourceTurn, afterTurn) {
+      const sourceRoot = join(bridgeRoot, safePathPart(sourceConversationId))
+      const state = readRuntimeCheckpoint(sourceRoot, sourceTurn + (afterTurn ? 1 : 0))?.state
+      if (state) ctx.eleckoiProductData.restoreConversationRuntime(conversationId, state)
+      const prepared = await prepare(conversationId, '', true)
+      await presetRegistrar.registerForSession(prepared.runtimeSessionId)
+      return prepared.runtimeSessionId
+    },
     async prepareSessionAccess(conversationId) {
       await ctx.eleckoiConversationLifecycle.drain(conversationId)
       const prepared = await prepareCurrentPreset(conversationId, '')
@@ -280,23 +176,41 @@ export function installRoleplaySessionRuntime(ctx, presetRegistrar) {
       }
       return prepared.runtimeSessionId
     },
-    async adoptFork(conversationId, sourceConversationId, sourceTurn, afterTurn) {
-      const sourceRoot = join(bridgeRoot, safePathPart(sourceConversationId))
-      const state = readRuntimeCheckpoint(sourceRoot, sourceTurn + (afterTurn ? 1 : 0))?.state
-      if (state) ctx.eleckoiProductData.restoreConversationRuntime(conversationId, state)
-      const prepared = await prepare(conversationId, '', true)
-      await presetRegistrar.registerForSession(prepared.runtimeSessionId)
-      const resolved = await ctx.sessionController.resolveAgent(prepared.runtimeSessionId)
-      if ('error' in resolved) throw resolved.error
-      resolved.agent.ctx.effect(() => installRequestConfig(resolved.agent.ctx, snapshotRoot, prepared.runtimeSessionId))
-      resolved.agent.ctx.effect(() => installConversationContext(resolved.agent.ctx, snapshotRoot, prepared.runtimeSessionId))
-      resolved.agent.ctx.effect(() => installCompatibilityTools(resolved.agent.ctx, snapshotRoot, prepared.runtimeSessionId))
-      await resolved.agent.ctx.effect(() => installImageGenerationTools(resolved.agent.ctx, snapshotRoot, prepared.runtimeSessionId))
-      return prepared.runtimeSessionId
-    },
     async preparePrompt(conversationId, text, signal) {
-      const prepared = await prepare(conversationId, text, false, true, false, signal)
-      return prepared.runtimeSessionId
+      const sessionId = ctx.eleckoiProductData.runtimeSessionId(conversationId)
+      try {
+        const prepared = await prepare(conversationId, text, false, signal)
+        return prepared.runtimeSessionId
+      } catch (error) {
+        optionalService(ctx, 'eleckoiWorldbookRounds')?.release(sessionId)
+        throw error
+      }
+    },
+    async previewPrompt(conversationId, text) {
+      const runtime = ctx.eleckoiProductData.prepareConversationRuntime(conversationId, text)
+      const model = { ...await currentRequestSnapshot(ctx), ...(generationOptions.get(conversationId)?.responseLength
+        ? { maxTokens: generationOptions.get(conversationId).responseLength } : {}) }
+      const resolved = await ctx.sessionController.resolveAgent(runtime.runtimeSessionId)
+      if ('error' in resolved) throw resolved.error
+      let surface = resolved.agent.session.deriveMessages()
+      const cutoff = generationOptions.get(conversationId)?.historyCutoffId
+      if (cutoff) {
+        const index = surface.findIndex(message => message.id === cutoff)
+        if (index < 0) throw new Error('预览的原始用户输入不在当前 Session 中。')
+        surface = surface.slice(0, index + 1)
+      } else surface = [...surface, createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } })]
+      let conversationContext = runtime.conversationContext
+      const worldbooks = optionalService(ctx, 'eleckoiWorldbookRounds')
+      if (!generationOptions.get(conversationId)?.skipWIAN && worldbooks?.hasManagedBindings(conversationId)) {
+        const worldbookRound = await worldbooks.prepareRound({ conversationId, runtimePreparation: runtime,
+          modelSnapshot: model, currentPromptText: conversationContext.currentPromptText ?? text, dryRun: true })
+        conversationContext = { ...conversationContext, worldbookRound, settingLibrary: worldbooks.nativeStaticLibrary(runtime, worldbookRound) }
+      }
+      const messages = projectRequestInput(surface, requestProjectionSnapshot(conversationContext), {
+        instructions: sessionInstructions({ model, conversationContext }) || null,
+        currentPromptText: conversationContext.currentPromptText ?? text
+      })
+      return { model, messages, dryRun: true }
     },
     currentOperation(conversationId) {
       const sessionId = ctx.eleckoiProductData.runtimeSessionId(conversationId)
@@ -376,6 +290,7 @@ export function installRoleplaySessionRuntime(ctx, presetRegistrar) {
     async removeArtifacts(conversationId, sessionId) {
       await ctx.eleckoiConversationLifecycle.drain(conversationId)
       ctx.eleckoiConversationLifecycle.forget(conversationId)
+      optionalService(ctx, 'eleckoiWorldbookRounds')?.release(sessionId, conversationId)
       removeSessionSnapshot(snapshotRoot, sessionId)
       rmSync(join(bridgeRoot, safePathPart(conversationId)), { recursive: true, force: true })
       refreshSettingBranches()
@@ -385,6 +300,7 @@ export function installRoleplaySessionRuntime(ctx, presetRegistrar) {
 
   const disposeCommit = ctx.on('session/event', (session, event) => {
     if (event.type !== 'turn/end') return
+    optionalService(ctx, 'eleckoiWorldbookRounds')?.release(session.id)
     let snapshot
     try {
       snapshot = readSessionSnapshot(snapshotRoot, session.id)
@@ -427,15 +343,6 @@ export function installRoleplaySessionRuntime(ctx, presetRegistrar) {
   return () => { disposeCommit(); disposeHistoryStats(); disposeTurnOutcomes(); disposeInputContinuations() }
 }
 
-function cutGenerationHistory(history, options) {
-  if (!options.historyCutoffId) return history
-  const index = history.findIndex(message => message.id === options.historyCutoffId)
-  if (index < 0) throw new Error(`Generation history target is missing: ${options.historyCutoffId}`)
-  return history.slice(0, index)
-}
-
-// Cordis supports optional late services through get(name, false); direct
-// property reads require inject and would create a circular bootstrap here.
 function optionalService(ctx, name) {
   return typeof ctx.get === 'function' ? ctx.get(name, false) : ctx[name]
 }
@@ -513,8 +420,9 @@ async function requireIdleSession(ctx, sessionId) {
   if (resolved.agent.status !== 'idle') throw new Error('当前聊天仍在生成，不能提交新的消息。')
 }
 
-export function materializeAgentPreset(root, templatePath, preset, toolPolicy, mainModel, { mountedPresetId = ACTIVE_RUNTIME_PRESET_ID } = {}) {
+export function materializeAgentPreset(root, templatePath, preset, toolPolicy, mainModel) {
   if (!/^[a-z0-9][a-z0-9-]*$/.test(preset.id)) throw new Error('预设编号不能用于 DSH Agent Preset。')
+  const mountedPresetId = ACTIVE_RUNTIME_PRESET_ID
   const directory = join(root, mountedPresetId)
   mkdirSync(directory, { recursive: true })
   let composition = readFileSync(templatePath, 'utf8')

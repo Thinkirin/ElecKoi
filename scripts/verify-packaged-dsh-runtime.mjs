@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { dshClientPages } from './dsh-client-pages.mjs'
 
@@ -9,6 +9,13 @@ const appAsar = join(unpacked, 'resources', 'app.asar')
 
 if (!existsSync(executable) || !existsSync(appAsar)) {
   throw new Error(`找不到已解包的 ElecKoi：${unpacked}`)
+}
+
+for (const [source, packaged] of [['LICENSE', 'ElecKoi-LICENSE.txt'], ['NOTICE', 'ElecKoi-NOTICE.txt']]) {
+  const packagedPath = join(unpacked, 'resources', 'licenses', packaged)
+  if (!existsSync(packagedPath) || !readFileSync(packagedPath).equals(readFileSync(join(process.cwd(), source)))) {
+    throw new Error(`安装包缺少完整的 ElecKoi 许可文件：${packaged}`)
+  }
 }
 
 const probe = `
@@ -55,7 +62,7 @@ const probe = `
     process.stdout.write('Packaged browser dependency boundary check passed.\\n')
     try {
       await access(join(appAsar, 'node_modules', 'pnpm'))
-      throw new Error('pnpm leaked into app.asar; the packaged runtime must use resources/dsh/pnpm only.')
+      throw new Error('pnpm leaked into app.asar; the packaged runtime must use apps/desktop/resources/dsh/pnpm only.')
     } catch (error) {
       if (error?.code === 'ENOENT') {
         process.stdout.write('Packaged pnpm duplication check passed.\\n')
@@ -94,10 +101,10 @@ const probe = `
     await access(join(appAsar, 'node_modules', '@eleckoi', 'dsh-client-persona', 'src', 'client.js'))
     await access(join(appAsar, 'node_modules', '@eleckoi', 'dsh-client-presets', 'src', 'client.js'))
     process.stdout.write('Packaged ElecKoi DSH client module is present.\\n')
-    const productRenderer = join(appAsar, 'out', 'renderer-dsh')
-    const productHtml = await readFile(join(productRenderer, 'src', 'renderer', 'dsh.html'), 'utf8')
-    const productScript = productHtml.match(/<script\\b[^>]*\\bsrc="(?:\\.\\.\\/)+assets\\/([^"\\s]+\\.js)"/i)?.[1]
-    const productStyle = productHtml.match(/<link\\b[^>]*\\bhref="(?:\\.\\.\\/)+assets\\/([^"\\s]+\\.css)"/i)?.[1]
+    const productRenderer = join(appAsar, 'node_modules', '@eleckoi', 'web-client', 'dist')
+    const productHtml = await readFile(join(productRenderer, 'dsh.html'), 'utf8')
+    const productScript = productHtml.match(/<script\\b[^>]*\\bsrc="\\.\\/assets\\/([^"\\s]+\\.js)"/i)?.[1]
+    const productStyle = productHtml.match(/<link\\b[^>]*\\bhref="\\.\\/assets\\/([^"\\s]+\\.css)"/i)?.[1]
     if (!productScript || !productStyle) throw new Error('Packaged ElecKoi DSH renderer entry is incomplete.')
     await access(join(productRenderer, 'assets', productScript))
     await access(join(productRenderer, 'assets', productStyle))
@@ -105,7 +112,7 @@ const probe = `
       await access(join(productRenderer, 'assets', pageAsset))
     }
     process.stdout.write('Packaged ElecKoi DSH renderer assets are present.\\n')
-    const runtimeUrl = pathToFileURL(join(appAsar, 'node_modules', '@eleckoi', 'dsh-runtime', 'dist', 'index.mjs')).href
+    const runtimeUrl = pathToFileURL(join(appAsar, 'node_modules', '@eleckoi', 'desktop-host', 'dist', 'index.mjs')).href
     const { DshDesktopPluginHost } = await import(runtimeUrl)
     const packageManagerPath = join(unpacked, 'resources', 'dsh', 'pnpm', 'bin', 'pnpm.mjs')
     const nodeBinPath = join(unpacked, 'resources', 'dsh', 'node-bin')

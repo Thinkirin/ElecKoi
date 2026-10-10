@@ -1,6 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { createUserMessage, createSystemMessage, createAssistantMessage, createToolResultMessage, freezeMessage } from '@deepseek-ai/dsh-llm';
-import { protocolFor, providerRequest } from './generation-protocol.js';
 
 export const MAIN_GENERATION_METHODS = ['chat.generateFromHistory'];
 const text = message => typeof message.content === 'string' ? message.content : (message.content || []).filter(part => part.type === 'text').map(part => part.text).join('');
@@ -27,7 +25,7 @@ export class MainAgentGeneration {
     const options = { ...params.options, type, ...(params.speakerId ? { speakerId: params.speakerId } : {}) };
     if (options.responseLength !== undefined && (!Number.isSafeInteger(options.responseLength) || options.responseLength <= 0)) throw new TypeError('responseLength must be a positive token count');
     if (options.speakerId && !this.ctx.eleckoiProductData.readCharacters().items.some(character => character.id === options.speakerId)) throw new Error(`Character does not exist: ${options.speakerId}`);
-    if (options.jsonSchema && (typeof options.jsonSchema !== 'object' || !(options.jsonSchema.value || options.jsonSchema.schema))) throw new TypeError('jsonSchema requires a value/schema object');
+    if (options.jsonSchema) throw Object.assign(new Error('The locked DSH main-generation contract does not support jsonSchema'), { code: 'GENERATION_OPTION_NOT_SUPPORTED' });
     if (this.running.has(conversationId)) throw new Error('Agent generation is already running in this chat');
     const controller = this.ctx.sessionController, sessionId = this.ctx.eleckoiProductData.runtimeSessionId(conversationId);
     const resolved = await controller.resolveAgent(sessionId);
@@ -43,18 +41,16 @@ export class MainAgentGeneration {
       ? `Continue the last assistant reply from exactly where it ended.${options.quiet_prompt ? '\n' + options.quiet_prompt : ''}`
       : options.quiet_prompt || 'Write the next assistant reply using the conversation history.';
     if (['regenerate', 'swipe'].includes(type)) {
-      // Preview retains the source Session. Real regeneration rewinds past the
-      // source user before preparing its prompt, so that ID no longer exists.
-      if (options.dryRun === true) options.historyCutoffId = sourceUser.id;
-      else delete options.historyCutoffId;
+      // The existing product regeneration keeps the original user input identity.
+      options.historyCutoffId = sourceUser.dshMessageId;
     }
-    if (options.quietImage) options.promptImages = await this.service('attachments').admitPromptContent([await imageInput(options.quietImage)]);
+    if (options.quietImage) {
+      if (options.dryRun) throw Object.assign(new Error('Image admission is not performed during a dry run'), { code: 'GENERATION_OPTION_NOT_SUPPORTED' });
+      options.promptImages = [await imageInput(options.quietImage)];
+    }
     if (options.dryRun === true) return sessions.withGenerationOptions(conversationId, options, async () => {
       const preview = await sessions.previewPrompt(conversationId, prompt);
-      const request = { provider: preview.model.provider, model: preview.model.model, messages: preview.messages, stream: true,
-        ...(preview.model.maxTokens ? { maxTokens: preview.model.maxTokens } : {}) };
-      const prepared = await this.beforeRequest(request, preview.conversationContext, true);
-      return { ...preview, messages: wireMessages(prepared.request?.messages || preview.messages), request: prepared.body || prepared.request };
+      return { ...preview, messages: wireMessages(preview.messages) };
     });
     const task = { conversationId, sessionId, type, agent, options, oldReply, sourceUser, beforeSeq: 0, abort: new AbortController(), admitted: false };
     this.running.set(conversationId, task);
@@ -79,8 +75,8 @@ export class MainAgentGeneration {
           const prepared = await this.ctx.eleckoiConversationsApi.preparePrompt(conversationId, prompt, task.abort.signal);
           task.operationId = prepared.operationId;
           task.abort.signal.throwIfAborted();
-          const content = [{ type: 'text', text: prompt }];
-          agent.followup(createUserMessage({ source: { kind: 'eleckoi-generation', conversationId, generationType: type }, content }));
+          const content = [{ type: 'text', text: prompt }, ...(options.promptImages ?? [])];
+          await controller.prompt({ requestId: randomUUID(), sessionId, mode: 'queue', content }, task.abort.signal);
           task.admitted = true;
         }
       });
@@ -131,66 +127,6 @@ export class MainAgentGeneration {
     this.publish({ event: 'agent.run.finished', payload: { conversationId: task.conversationId, runId: task.sessionId,
       nativeMain: true, message: reply, messageCount: history.length } });
   }
-  async beforeRequest(request, context, dryRun = false) {
-    const controls = context.mainGenerationOptions || {}, settings = context.compatibilityPreset?.compatibility ? { ...context.compatibilityPreset.settings } : {};
-    if (controls.jsonSchema) settings.response_format = { type: 'json_schema', json_schema: { name: controls.jsonSchema.name || 'response',
-      schema: controls.jsonSchema.value || controls.jsonSchema.schema, strict: controls.jsonSchema.strict ?? true } };
-    if (controls.responseLength) request = { ...request, maxTokens: controls.responseLength };
-    if (this.generation.requiresAdvancedSettings(settings) && !dryRun) return { stream: this.generation.streamWithSettings(request, settings,
-      { conversationId: context.conversationId }) };
-    if (!this.callbacks.hasClients()) return { request };
-    const connection = await this.generation.connection({ conversationId: context.conversationId, configId: request.provider, model: request.model });
-    const format = protocolFor(connection.api || ''), messages = await this.providerMessages(request.messages, request.signal);
-    const params = { stream: true, presetSettings: settings, ...request, messages,
-      tools: request.tools?.map(tool => ({ type: 'function', function: { name: tool.name, description: tool.description, parameters: tool.parameters } })) };
-    const body = await this.callbacks.callback('__ElecKoiBeforeProviderRequest', { conversationId: context.conversationId, format,
-      request: providerRequest(format, request.model, messages, params), dryRun }, { conversationId: context.conversationId, signal: request.signal });
-    if (dryRun) return { request, body };
-    const nativeFields = new Set(['model', 'messages', 'stream', 'temperature', 'top_p', 'max_tokens', 'max_completion_tokens', 'tools', 'stop']);
-    if (format !== 'ChatCompletions' || Object.keys(body).some(key => !nativeFields.has(key))) return {
-      stream: this.generation.streamWithSettings(request, settings, { conversationId: context.conversationId, preparedBody: body }) };
-    if (!Array.isArray(body.messages)) throw new TypeError('Agent prompt hook must return a messages array');
-    const native = [];
-    for (const [index, message] of body.messages.entries()) {
-      if (JSON.stringify(message) === JSON.stringify(messages[index])) native.push(request.messages[index]);
-      else native.push(await this.fromHookMessage(message, request.messages[index], request.provider, body.model));
-    }
-    return { request: { ...request, model: body.model, messages: native,
-      ...(body.temperature === undefined ? {} : { temperature: body.temperature }), ...(body.top_p === undefined ? {} : { topP: body.top_p }),
-      ...(body.max_completion_tokens ?? body.max_tokens ? { maxTokens: body.max_completion_tokens ?? body.max_tokens } : {}),
-      ...(body.stop ? { stop: body.stop } : {}), ...(body.tools ? { tools: body.tools.map(tool => tool.function) } : {}) } };
-  }
-  async *streamRequest(request, context) {
-    const prepared = await this.beforeRequest(request, context);
-    yield* prepared.stream || this.ctx.llm.stream(prepared.request);
-  }
-  async providerMessages(messages, signal) {
-    const result = wireMessages(messages);
-    for (const [index, message] of messages.entries()) {
-      const content = [];
-      for (const block of message.content || []) {
-        if (block.type === 'text') content.push({ type: 'text', text: block.text });
-        else if (block.type === 'image' || block.type === 'file') {
-          if (!this.generation.projectBlock) throw new Error('Main Agent attachment projection service is not mounted');
-          content.push(await this.generation.projectBlock(block, signal));
-        }
-      }
-      result[index].content = content.length === 1 && content[0].type === 'text' ? content[0].text : content;
-    }
-    return result;
-  }
-  async fromHookMessage(message, original, provider, model) {
-    if (Array.isArray(message.content) && message.content.some(part => part.type === 'image_url')) {
-      const content = [];
-      for (const part of message.content) {
-        if (part.type === 'image_url') content.push(...await this.service('attachments').admitPromptContent([await imageInput(part.image_url?.url || part.image_url)]));
-        else if (part.type === 'text') content.push(part);
-        else throw new Error(`Invalid main Agent prompt hook content block: ${part.type}`);
-      }
-      message = { ...message, content };
-    }
-    return fromWireMessage(message, original, provider, model);
-  }
   async close() {
     this.closed = true;
     for (const task of this.running.values()) { task.abort.abort(); task.agent.cancel({ kind: 'user' }); }
@@ -212,16 +148,6 @@ export function wireMessages(messages) {
   });
 }
 
-function fromWireMessage(message, original, provider, model) {
-  const content = typeof message.content === 'string' ? [{ type: 'text', text: message.content }] : message.content || [];
-  const tools = (message.tool_calls || []).map(call => ({ type: 'tool-call', id: call.id, name: call.function.name, arguments: call.function.arguments }));
-  if (original?.role === message.role) return freezeMessage({ ...original, content: [...content, ...tools] });
-  if (message.role === 'user') return createUserMessage({ content, source: { kind: 'plugin:main-generation' } });
-  if (message.role === 'system') return createSystemMessage(text({ content }));
-  if (message.role === 'assistant') return createAssistantMessage({ content: [...content, ...tools], source: { provider, model } });
-  if (message.role === 'tool') return createToolResultMessage({ content, callId: message.tool_call_id, isError: message.is_error ?? false });
-  throw new Error(`Invalid Agent prompt hook role: ${message.role}`);
-}
 
 async function imageInput(value) {
   if (typeof value !== 'string' || !value) throw new TypeError('quietImage must be an image URL');

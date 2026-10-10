@@ -11,10 +11,9 @@ function sourceFiles(path) {
   if (!existsSync(absolute)) return []
   const result = []
   for (const entry of readdirSync(absolute, { withFileTypes: true })) {
-    if (['node_modules', 'dist', 'build', '.git'].includes(entry.name)) continue
     const child = join(absolute, entry.name)
-    if (entry.isDirectory()) result.push(...sourceFiles(relative(root, child)))
-    else if (entry.isFile() && sourceExtensions.has(extname(entry.name))) result.push(child)
+    if (entry.isDirectory() && !['node_modules', 'dist', 'lib', 'out'].includes(entry.name)) result.push(...sourceFiles(relative(root, child)))
+    else if (sourceExtensions.has(extname(entry.name))) result.push(child)
   }
   return result
 }
@@ -40,7 +39,7 @@ function forbidImports(path, patterns, description) {
   }
 }
 
-for (const path of ['src', 'packages']) {
+for (const path of ['apps', 'packages']) {
   forbidImports(path, [/['"]react-markdown(?:\/[^'"]*)?['"]/, /\bReactMarkdown\b/],
     '禁止恢复 ReactMarkdown；文字渲染必须使用 Client 装配的官方组件。')
 }
@@ -52,49 +51,49 @@ for (const key of ['dependencies', 'devDependencies', 'optionalDependencies']) {
 }
 
 assertClosedSet(
-  'src/main',
+  'apps/desktop/src/main',
   new Set(['host', 'i18n', 'modules', 'platform']),
   new Set(['main.ts'])
 )
-assertClosedSet('src/shared', new Set(['contracts', 'foundation']), new Set())
-assertClosedSet('src/preload', new Set(), new Set(['preload.ts']))
+assertClosedSet('packages/product-shared/src', new Set(['contracts', 'foundation']), new Set())
+assertClosedSet('apps/desktop/src/preload', new Set(), new Set(['preload.ts']))
 assertClosedSet(
-  'src/renderer/src',
+  'apps/web/src',
   new Set(['app', 'assets', 'modules', 'ui', 'utils']),
   new Set(['main.jsx', 'env.d.ts'])
 )
 
 forbidImports(
-  'src/renderer',
+  'apps/web/src',
   [
     /from\s+['"]electron['"]/,
     /from\s+['"]node:/,
     /from\s+['"]better-sqlite3['"]/,
     /from\s+['"]drizzle-orm/,
     /from\s+['"]@deepseek-ai\//,
-    /from\s+['"]@eleckoi\/dsh-runtime['"]/
+    /from\s+['"]@eleckoi\/(?:dsh-runtime|desktop-host)['"]/
   ],
   '违反 Renderer 只能通过 DSH Client 服务或明确的 Electron 壳适配访问桌面能力的边界。'
 )
 forbidImports(
-  'src/main',
+  'apps/desktop/src/main',
   [/from\s+['"]@renderer(?:\/|['"])/, /from\s+['"][^'"]*renderer\//],
   '违反 Main 不得导入 Renderer 的边界。'
 )
 forbidImports(
-  'src/preload',
+  'apps/desktop/src/preload',
   [
     /from\s+['"]@renderer(?:\/|['"])/,
     /from\s+['"][^'"]*renderer\//,
     /from\s+['"]@main(?:\/|['"])/,
     /from\s+['"][^'"]*main\//,
     /from\s+['"]@deepseek-ai\//,
-    /from\s+['"]@eleckoi\/dsh-runtime['"]/
+    /from\s+['"]@eleckoi\/(?:dsh-runtime|desktop-host)['"]/
   ],
   '违反 Preload 只能依赖 Electron 与 Shared Contract 的边界。'
 )
 forbidImports(
-  'src/shared',
+  'packages/product-shared/src',
   [
     /from\s+['"]electron['"]/,
     /from\s+['"]node:/,
@@ -106,19 +105,19 @@ forbidImports(
   '违反 Shared 只能保存跨进程合同与纯逻辑的边界。'
 )
 forbidImports(
-  'src/main/platform',
+  'apps/desktop/src/main/platform',
   [/from\s+['"]@main\/modules(?:\/|['"])/],
   '违反 Platform Adapter 不得反向依赖业务模块的边界。'
 )
 
-const mainModulesRoot = join(root, 'src/main/modules')
+const mainModulesRoot = join(root, 'apps/desktop/src/main/modules')
 const mainModuleDependencies = new Map()
 for (const entry of readdirSync(mainModulesRoot, { withFileTypes: true })) {
   if (entry.isDirectory() && !existsSync(join(mainModulesRoot, entry.name, 'index.ts'))) {
-    failures.push(`src/main/modules/${entry.name} 缺少唯一公开入口 index.ts。`)
+    failures.push(`apps/desktop/src/main/modules/${entry.name} 缺少唯一公开入口 index.ts。`)
   }
 }
-for (const file of sourceFiles('src/main/modules')) {
+for (const file of sourceFiles('apps/desktop/src/main/modules')) {
   const normalized = relative(mainModulesRoot, file).split(sep).join('/')
   const ownModule = normalized.split('/')[0]
   const content = readFileSync(file, 'utf8')
@@ -267,14 +266,14 @@ for (const file of sourceFiles('packages/dsh-product-data/src/domain')) {
   }
 }
 
-const rendererModulesRoot = join(root, 'src/renderer/src/modules')
+const rendererModulesRoot = join(root, 'apps/web/src/modules')
 const rendererModuleDependencies = new Map()
 for (const entry of readdirSync(rendererModulesRoot, { withFileTypes: true })) {
   if (entry.isDirectory() && !existsSync(join(rendererModulesRoot, entry.name, 'index.js'))) {
-    failures.push(`src/renderer/src/modules/${entry.name} 缺少唯一公开入口 index.js。`)
+    failures.push(`apps/web/src/modules/${entry.name} 缺少唯一公开入口 index.js。`)
   }
 }
-for (const file of sourceFiles('src/renderer/src/modules')) {
+for (const file of sourceFiles('apps/web/src/modules')) {
   const normalized = relative(rendererModulesRoot, file).split(sep).join('/')
   const ownModule = normalized.split('/')[0]
   const content = readFileSync(file, 'utf8')
@@ -306,7 +305,7 @@ for (const file of sourceFiles('src/renderer/src/modules')) {
 
 assertAcyclicModules(rendererModuleDependencies, 'Renderer 业务模块')
 
-for (const file of sourceFiles('src/renderer/src/app')) {
+for (const file of sourceFiles('apps/web/src/app')) {
   const content = readFileSync(file, 'utf8')
   for (const match of content.matchAll(/(?:from\s+|import\s*\(\s*)['"]([^'"]+)['"]/g)) {
     const specifier = match[1]
@@ -321,46 +320,51 @@ for (const file of sourceFiles('src/renderer/src/app')) {
   }
 }
 
-for (const file of [...sourceFiles('src/renderer/src/app'), ...sourceFiles('src/renderer/src/modules')]) {
+for (const file of [...sourceFiles('apps/web/src/app'), ...sourceFiles('apps/web/src/modules')]) {
   const lines = readFileSync(file, 'utf8').split(/\r?\n/).length
   if (lines > 600) {
     reviewNotices.push(`${relative(root, file)} 达到 ${lines} 行；请人工确认它仍围绕单一职责保持高内聚。行数本身不要求拆分。`)
   }
 }
 
-for (const file of sourceFiles('src')) {
+const productSources = ['apps/desktop/src', 'apps/web/src', 'packages/product-shared/src'].flatMap(sourceFiles)
+for (const file of productSources) {
   const content = readFileSync(file, 'utf8')
   if (/\bDesktopGateway\b|\bdesktopGateway\b|\bwindow\.eleckoi\b|eleckoi\.desktop\.request|DESKTOP_REQUEST_CHANNEL/.test(content)) {
     failures.push(`${relative(root, file)} 恢复了已删除的 Desktop Gateway 业务桥；跨 Host/Client 产品调用必须使用 DSH Remote。`)
   }
-  if (!file.startsWith(join(root, 'src/preload') + sep) && /\bipcRenderer\b/.test(content)) {
+  if (!file.startsWith(join(root, 'apps/desktop/src/preload') + sep) && /\bipcRenderer\b/.test(content)) {
     failures.push(`${relative(root, file)} 在 Preload 之外直接使用 ipcRenderer。`)
   }
-  // This platform adapter retains only the transient child-window return stack
-  // across document navigation. Product preferences/data still belong to Host.
-  const navigationAdapter = file === join(root, 'src/renderer/src/app/services/platform.js')
-  if ((/\blocalStorage\b/.test(content)) || (!navigationAdapter && /\bsessionStorage\b/.test(content))) {
+  if (/\blocalStorage\b|\bsessionStorage\b/.test(content)) {
     failures.push(`${relative(root, file)} 使用浏览器临时存储；产品状态必须由 DSH Host 所有的正式存储合同持久化。`)
   }
 }
 
-const dshHostComposition = join(root, 'src/main/host/dshHostPlugin.ts')
-for (const file of sourceFiles('src')) {
+const dshHostComposition = join(root, 'apps/desktop/src/main/host/dshHostPlugin.ts')
+for (const file of productSources) {
   const content = readFileSync(file, 'utf8')
-  if (/@eleckoi\/dsh-runtime|@deepseek-ai\/dsh-/.test(content) && file !== dshHostComposition) {
+  if (/@eleckoi\/(?:dsh-runtime|desktop-host)|@deepseek-ai\/dsh-/.test(content) && file !== dshHostComposition) {
     failures.push(`${relative(root, file)} 绕过了 Desktop Host 组合根；产品侧不得直接依赖 DSH Runtime。`)
   }
 }
 const dshRuntimeExports = JSON.parse(readFileSync(join(root, 'packages/dsh-runtime/package.json'), 'utf8')).exports
-for (const file of sourceFiles('packages/dsh-runtime/src')) {
+for (const file of [...sourceFiles('packages/dsh-runtime/src'), ...sourceFiles('apps/desktop-host/src')]) {
   const content = readFileSync(file, 'utf8')
-  const invalidSubpath = [...content.matchAll(/@eleckoi\/dsh-runtime\/([\w-]+)/g)]
+  const invalidSubpath = [...content.matchAll(/['"]@eleckoi\/dsh-runtime\/([^'"\s]+)['"]/g)]
     .some(([, name]) => !Object.hasOwn(dshRuntimeExports, `./${name}`))
   if (/packages[\\/]dsh-runtime[\\/]src/.test(content) || invalidSubpath) {
     failures.push(`${relative(root, file)} 绕过了 @eleckoi/dsh-runtime 的公开入口。`)
   }
 }
 
+for (const obsolete of ['src', 'resources', 'electron.vite.config.ts', 'electron-builder.yml', 'vite.dsh.config.mjs']) {
+  if (existsSync(join(root, obsolete))) failures.push(obsolete + ' 不得恢复为根目录桌面工程；应用入口和资源必须由 apps 下的应用拥有。')
+}
+const desktopManifest = JSON.parse(readFileSync(join(root, 'apps/desktop/package.json'), 'utf8'))
+if (desktopManifest.name !== 'eleckoi-desktop' || desktopManifest.version !== rendererDependencies.version) {
+  failures.push('桌面应用必须保持既有名称和版本身份，工作区与桌面版本必须一致。')
+}
 if (reviewNotices.length > 0) {
   console.warn(reviewNotices.map((notice) => `- 架构复核提示：${notice}`).join('\n'))
 }

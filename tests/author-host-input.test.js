@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AUTHOR_API_VERSION } from '@eleckoi/author-sdk';
-import { routeAuthorHostInputRequest } from '../src/renderer/src/modules/authorFrontend/model/authorHostInput.js';
+import { routeAuthorHostInputRequest } from '../apps/web/src/modules/authorFrontend/model/authorHostInput.js';
 
 const originalWindow = globalThis.window;
 

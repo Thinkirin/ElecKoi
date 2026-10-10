@@ -198,7 +198,7 @@ export class SlashCommandParser {
         this.registerLanguage();
     }
     registerLanguage() {
-        // NUMBER mode is copied from highlightjs's own implementation for JavaScript
+        // NUMBER mode recognizes JavaScript numeric literals.
         // https://tc39.es/ecma262/#sec-literals-numeric-literals
         const decimalDigits = '[0-9](_?[0-9])*';
         const frac = `\\.(${decimalDigits})`;

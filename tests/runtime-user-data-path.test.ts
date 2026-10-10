@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runtimeUserDataPath } from '../src/main/host/startup/runtimeUserDataPath'
+import { runtimeUserDataPath } from '../apps/desktop/src/main/host/startup/runtimeUserDataPath'
 
 describe('runtime user data path', () => {
   it('keeps the packaged application on the established product directory', () => {

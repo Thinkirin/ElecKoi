@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join, resolve, sep } from 'node:path'
-import { DshDesktopPluginHost } from '@eleckoi/dsh-runtime'
+import { DshDesktopPluginHost } from '@eleckoi/desktop-host'
 
 const root = await mkdtemp(join(tmpdir(), 'eleckoi-electron-dsh-'))
 const host = new DshDesktopPluginHost({
@@ -9,8 +9,8 @@ const host = new DshDesktopPluginHost({
   workspaceRoot: join(root, 'workspace'),
   productDatabasePath: join(root, 'product.sqlite'),
   productMediaRoot: join(root, 'media'),
-  presetTemplatePath: resolve('resources/dsh/agent-preset-template/agent.cordis.yml'),
-  agentPatchPath: resolve('resources/dsh/desktop-agent.patch.yml'),
+  presetTemplatePath: resolve('apps/desktop/resources/dsh/agent-preset-template/agent.cordis.yml'),
+  agentPatchPath: resolve('apps/desktop/resources/dsh/desktop-agent.patch.yml'),
   executablePath: process.execPath
 })
 

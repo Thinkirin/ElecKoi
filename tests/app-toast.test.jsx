@@ -1,9 +1,9 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { AppToast } from '../src/renderer/src/ui/ui/AppToast.jsx';
+import { AppToast } from '../apps/web/src/ui/ui/AppToast.jsx';
 
-vi.mock('../src/renderer/src/ui/icons/index.jsx', async () => {
+vi.mock('../apps/web/src/ui/icons/index.jsx', async () => {
   const { createElement } = await import('react');
   const Icon = ({ size = 16 }) => createElement('svg', { width: size, height: size, 'aria-hidden': true });
   return { CopyIcon: Icon, XIcon: Icon };

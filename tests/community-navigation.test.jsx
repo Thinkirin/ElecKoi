@@ -1,10 +1,10 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, describe, expect, it, vi } from "vitest";
-import { CommunityDialog } from "../src/renderer/src/app/windows/shell/components/CommunityDialog.jsx";
-import { SidebarRail } from "../src/renderer/src/app/windows/shell/components/SidebarRail.jsx";
-import { CommunityNavIcon, CreatorStudioNavIcon, MessageNavIcon, ModelNavIcon, PersonNavIcon, PresetNavIcon } from "../src/renderer/src/ui/icons/navIcons.jsx";
-import { ELECKOI_QQ_GROUP_NUMBER } from "../src/shared/foundation/community";
+import { CommunityDialog } from "../apps/web/src/app/windows/shell/components/CommunityDialog.jsx";
+import { SidebarRail } from "../apps/web/src/app/windows/shell/components/SidebarRail.jsx";
+import { CommunityNavIcon, CreatorStudioNavIcon, MessageNavIcon, ModelNavIcon, PersonNavIcon, PresetNavIcon } from "../apps/web/src/ui/icons/navIcons.jsx";
+import { ELECKOI_QQ_GROUP_NUMBER } from "../packages/product-shared/src/foundation/community";
 
 vi.stubGlobal("React", React);
 afterAll(() => vi.unstubAllGlobals());

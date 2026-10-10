@@ -421,7 +421,7 @@ describe('ElecKoi roleplay client contribution', () => {
 
     const typeDeclarations = [...slotTypes.matchAll(/'([^']+)':\s*\{\s*kind:\s*'([^']+)'\s*scope:\s*'([^']+)'/g)]
       .filter(([, id]) => !id!.startsWith('eleckoi.roleplay.session'))
-    expect(manifest.eleckoi.developerInterfaces.map((item: any) => item.id).sort())
+    expect(manifest.eleckoi.developerInterfaces.filter((item: any) => item.kind === 'ui-slot').map((item: any) => item.id).sort())
       .toEqual(typeDeclarations.map(([, id]) => id).sort())
     const modes: Record<string, string> = { single: 'replace', keyed: 'replace', chain: 'replace', list: 'append' }
     for (const [, id, kind, scope] of typeDeclarations) {

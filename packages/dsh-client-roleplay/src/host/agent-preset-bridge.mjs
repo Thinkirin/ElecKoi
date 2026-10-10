@@ -5,12 +5,10 @@ import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { installRequestConfig } from './request-config.mjs'
-import { installCompatibilityTools } from './compatibility-tools.mjs'
-import { installImageGenerationTools } from './image-generation-tools.mjs'
 import { readRuntimePresetDefinition } from './preset-definition.mjs'
 import { commitSessionPreset, inheritSessionSnapshot, readSessionSnapshot, removeSessionSnapshot } from './session-snapshot.mjs'
 import { applyDisabledPolicy } from './tool-policy.mjs'
-import { ACTIVE_RUNTIME_PRESET_ID, installRoleplaySessionRuntime, materializeAgentPreset } from './session-runtime.mjs'
+import { ACTIVE_RUNTIME_PRESET_ID, installRoleplaySessionRuntime } from './session-runtime.mjs'
 import { refreshSessionModelSnapshot } from './model-selection-migration.mjs'
 
 export const name = 'eleckoi-agent-preset-bridge'
@@ -106,12 +104,6 @@ export async function apply(ctx) {
     ? registerActivePreset()
     : registerLegacyPreset(id)
 
-  // Creation uses the same native composition/registry with project filesystem tools.
-  // Its durable identity cannot collide with the currently selected roleplay preset.
-  const creatorPreset = materializeAgentPreset(presetRoot, templatePath,
-    { id: 'eleckoi-creator', name: 'ElecKoi 项目创作', versionId: 'creator-v1', roleplayPlan: { steps: [] } },
-    { disabledGroupIds: ['builtin:variables', 'builtin:setting-library', 'builtin:roleplay-workflow'] }, {}, { mountedPresetId: 'eleckoi-creator' })
-
   // TODO(迁移清理)：停止支持保存实体化预设 ID 的旧版本直升，并确认仍支持恢复的
   // Session、快照及导入记录都已持久选择 eleckoi-active 后，删除 legacyRegistrations、
   // registerLegacyPreset、legacyAliasDefinition、旧目录扫描及对应迁移用例。
@@ -124,7 +116,6 @@ export async function apply(ctx) {
       .sort()
     await Promise.all(ids.map(registerPreset))
   }
-  await registerLegacyPreset(creatorPreset.id)
   const presetRegistrar = {
     async prepareForSession(sessionId, requestedPresetId) {
       await registerPreset(requestedPresetId)
@@ -182,12 +173,9 @@ export async function apply(ctx) {
         : await refreshSessionModelSnapshot(ctx, snapshotRoot, agent.id)
       inherited = child
       await registerPreset(snapshot.mountedPresetId)
-      if (child) installRequestConfig(agent.ctx, snapshotRoot, agent.id, { compatibilitySettings: false })
       if (!child) {
         installRequestConfig(agent.ctx, snapshotRoot, agent.id)
-        installConversationContext(agent.ctx, snapshotRoot, agent.id)
-        agent.ctx.effect(() => installCompatibilityTools(agent.ctx, snapshotRoot, agent.id))
-        await agent.ctx.effect(() => installImageGenerationTools(agent.ctx, snapshotRoot, agent.id))
+        installConversationContext(agent.ctx, snapshotRoot, agent.id, ctx.eleckoiRequestPreviews)
       }
       applyDisabledPolicy(agent.ctx, snapshot.disabledToolGroupIds)
     } catch (error) {
